@@ -35,6 +35,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	response := res.LoginUserResponse{
 		ID:    user.ID,
 		Email: user.Email,
+		Name:  user.Name,
 		Role:  uint(user.Role),
 	}
 
