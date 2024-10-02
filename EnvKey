@@ -1,0 +1,36 @@
+
+
+
+#postgres 컨테이너용
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=12341234
+POSTGRES_DB=test_db
+
+# redis 컨테이너용
+REDIS_PORT=6379
+
+# go 로컬용
+# POSTGRES_DSN=host=localhost user=postgres password=12341234 dbname=test_db port=5432 sslmode=disable
+
+#docker 컴포즈로 실행했을 때 postgres와 연결
+POSTGRES_DSN=host=postgres user=postgres password=12341234 dbname=test_db port=5432 sslmode=disable
+
+# go 로컬용
+# REDIS_ADDR=localhost:6379
+# REDIS_PASSWORD=
+# REDIS_DB=0
+
+# go 컨테이너용
+REDIS_ADDR=redis:6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# go 컨테이너용 / 로컬용
+GO_ENV=dev
+PORT=8080
+ACCESS_TOKEN_SECRET=access_secret_key
+REFRESH_TOKEN_SECRET=refresh_secret_key
+
+SYSTEM_ADMIN_EMAIL=admin@link.com
+SYSTEM_ADMIN_PASSWORD=@Link1234

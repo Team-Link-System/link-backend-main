@@ -1,0 +1,30 @@
+# .air.toml 파일
+
+# Working directory 설정 (예: 프로젝트 루트)
+root = "."
+
+# Build 섹션 추가
+[build]
+  # Build 명령어 설정 - main.go 파일이 있는 cmd/ 폴더를 빌드
+  cmd = "go build -o ./tmp/main ./cmd/main.go"
+  bin = "./tmp/main"
+  full_bin = "APP_ENV=dev APP_USER=air ./tmp/main"
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  exclude_dir = ["bin", "dev", "proc", "sys", "lib", "mnt", "media", "etc", "run", "var"]
+  include_dir = []
+# Watch these files.
+  include_file = []
+# Exclude files.
+exclude_file = [] 
+exclude_regex = ["_test\\.go"]
+
+# 파일 확장자 필터 - .go, .toml, .env 등의 파일이 변경될 때만 감지
+[extensions]
+  include = ["go", "toml", "env"]
+
+# Logging 설정
+[log]
+# Show log time
+  time = true
+# Only show main log (silences watcher, build, runner)
+main_only = false

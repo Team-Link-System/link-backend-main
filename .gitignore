@@ -1,0 +1,34 @@
+tmp/*
+/vendor/
+
+# 빌드 결과물
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.a
+
+# 개발 환경 관련 파일
+.env
+.env.*
+.idea/
+.vscode/
+
+# Logs
+*.log
+*.log.*
+
+# 시스템 파일 및 IDE 관련 파일들
+.DS_Store
+Thumbs.db
+
+# Git에서 무시해야 하는 OS별 파일
+*.swp
+*.swo
+*.swn
+/tmp/
+
+# Go race detector logs
+*.race
