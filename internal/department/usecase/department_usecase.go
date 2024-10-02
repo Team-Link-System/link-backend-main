@@ -6,6 +6,7 @@ import (
 	_departmentRepo "link/internal/department/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
+	"link/pkg/dto/department/req"
 	"log"
 )
 
@@ -13,7 +14,7 @@ type DepartmentUsecase interface {
 	CreateDepartment(request *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error)
 	GetDepartments() ([]_departmentEntity.Department, error)
 	GetDepartment(departmentID uint) (*_departmentEntity.Department, error)
-	UpdateDepartment(department *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error)
+	UpdateDepartment(targetDepartmentID uint, requestUserId uint, request req.UpdateDepartmentRequest) (*_departmentEntity.Department, error)
 	DeleteDepartment(departmentID uint, requestUserId uint) error
 }
 
@@ -72,7 +73,7 @@ func (du *departmentUsecase) GetDepartment(departmentID uint) (*_departmentEntit
 }
 
 // TODO 부서 수정 (관리자 이상만 가능)
-func (du *departmentUsecase) UpdateDepartment(department *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error) {
+func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUserId uint, request req.UpdateDepartmentRequest) (*_departmentEntity.Department, error) {
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -84,13 +85,21 @@ func (du *departmentUsecase) UpdateDepartment(department *_departmentEntity.Depa
 		return nil, fmt.Errorf("권한이 없습니다")
 	}
 
-	updatedDepartment, err := du.departmentRepository.UpdateDepartment(targetDepartment.ID, department)
+	updates := make(map[string]interface{})
+	if request.Name != nil {
+		updates["name"] = *request.Name
+	}
+	if request.ManagerID != nil {
+		updates["manager_id"] = *request.ManagerID
+	}
+
+	err = du.departmentRepository.UpdateDepartment(targetDepartmentID, updates)
 	if err != nil {
 		log.Printf("부서 수정에 실패했습니다: %v", err)
 		return nil, fmt.Errorf("부서 수정에 실패했습니다")
 	}
 
-	return updatedDepartment, nil
+	return nil, nil
 }
 
 // TODO 부서 삭제 (관리자 이상만 가능)

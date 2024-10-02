@@ -74,6 +74,7 @@ func main() {
 				department.POST("/", departmentHandler.CreateDepartment)
 				department.GET("/", departmentHandler.GetDepartments)
 				department.GET("/:id", departmentHandler.GetDepartment)
+				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
 			}
 

@@ -114,12 +114,7 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 		return
 	}
 
-	department := &entity.Department{
-		Name:      request.Name,
-		ManagerID: &request.ManagerID,
-	}
-
-	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(uint(targetDepartmentID), department, requestUserId)
+	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(uint(targetDepartmentID), requestUserId, request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
 		return

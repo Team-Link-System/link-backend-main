@@ -6,6 +6,6 @@ type CreateDepartmentRequest struct {
 }
 
 type UpdateDepartmentRequest struct {
-	Name      string `json:"name" binding:"required"`
-	ManagerID uint   `json:"manager_id,omitempty"`
+	Name      *string `json:"name" binding:"required"`
+	ManagerID *uint   `json:"manager_id,omitempty"`
 }
