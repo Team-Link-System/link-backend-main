@@ -105,6 +105,12 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 // TODO 부서 삭제 (관리자 이상만 가능)
 func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId uint) error {
 
+	_, err := du.departmentRepository.GetDepartment(departmentID)
+	if err != nil {
+		log.Printf("부서 조회에 실패했습니다: %v", err)
+		return fmt.Errorf("부서 조회에 실패했습니다")
+	}
+
 	//TODO 요청하는 계정이 관리자 계정인지 확인
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
