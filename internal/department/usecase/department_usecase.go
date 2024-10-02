@@ -13,7 +13,8 @@ type DepartmentUsecase interface {
 	CreateDepartment(request *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error)
 	GetDepartments() ([]_departmentEntity.Department, error)
 	GetDepartment(departmentID uint) (*_departmentEntity.Department, error)
-	DeleteDepartment(departmentID uint, requestUserId uint) (*_departmentEntity.Department, error)
+	UpdateDepartment(department *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error)
+	DeleteDepartment(departmentID uint, requestUserId uint) error
 }
 
 type departmentUsecase struct {
@@ -70,10 +71,8 @@ func (du *departmentUsecase) GetDepartment(departmentID uint) (*_departmentEntit
 	return department, nil
 }
 
-// TODO 부서 삭제 (관리자 이상만 가능)
-func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId uint) (*_departmentEntity.Department, error) {
-
-	//TODO 요청하는 계정이 관리자 계정인지 확인
+// TODO 부서 수정 (관리자 이상만 가능)
+func (du *departmentUsecase) UpdateDepartment(department *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error) {
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -81,26 +80,42 @@ func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId u
 	}
 
 	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 사용자 ID %d", requestUserId)
+		log.Printf("권한이 없는 사용자가 부서를 수정하려 했습니다: 사용자 ID %d", requestUserId)
 		return nil, fmt.Errorf("권한이 없습니다")
 	}
 
-	department, err := du.departmentRepository.GetDepartment(departmentID)
+	updatedDepartment, err := du.departmentRepository.UpdateDepartment(targetDepartment.ID, department)
 	if err != nil {
-		log.Printf("부서 조회에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("부서 조회에 실패했습니다")
+		log.Printf("부서 수정에 실패했습니다: %v", err)
+		return nil, fmt.Errorf("부서 수정에 실패했습니다")
+	}
+
+	return updatedDepartment, nil
+}
+
+// TODO 부서 삭제 (관리자 이상만 가능)
+func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId uint) error {
+
+	//TODO 요청하는 계정이 관리자 계정인지 확인
+	requestUser, err := du.userRepository.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return fmt.Errorf("사용자 조회에 실패했습니다")
+	}
+
+	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 사용자 ID %d", requestUserId)
+		return fmt.Errorf("권한이 없습니다")
 	}
 
 	err = du.departmentRepository.DeleteDepartment(departmentID)
 	if err != nil {
 		log.Printf("부서 삭제에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("부서 삭제에 실패했습니다")
+		return fmt.Errorf("부서 삭제에 실패했습니다")
 	}
 
-	return department, nil
+	return nil
 }
-
-//TODO 부서 수정 (관리자 이상만 가능)
 
 //TODO 부서 삭제 요청(부서 관리자만 가능)
 

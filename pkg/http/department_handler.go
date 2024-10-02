@@ -88,14 +88,45 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 }
 
 // TODO 부서 수정 ( 관리자 )
-// func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
-// 	departmentID := c.Param("id")
-// 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 부서 ID입니다"))
-// 		return
-// 	}
-// }
+func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
+	departmentID := c.Param("id")
+	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 부서 ID입니다"))
+		return
+	}
+
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	requestUserId, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	var request req.UpdateDepartmentRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 요청입니다."))
+		return
+	}
+
+	department := &entity.Department{
+		Name:      request.Name,
+		ManagerID: &request.ManagerID,
+	}
+
+	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(uint(targetDepartmentID), department, requestUserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, interceptor.Success("부서 수정 성공", updatedDepartment))
+}
 
 // TODO 부서 삭제 ( 관리자만 )
 func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
@@ -118,7 +149,7 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 		return
 	}
 
-	_, err = h.departmentUsecase.DeleteDepartment(uint(targetDepartmentID), requestUserId)
+	err = h.departmentUsecase.DeleteDepartment(uint(targetDepartmentID), requestUserId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
 		return

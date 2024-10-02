@@ -44,6 +44,13 @@ func (p *departmentPersistence) GetDepartment(departmentID uint) (*entity.Depart
 	return &department, nil
 }
 
+func (p *departmentPersistence) UpdateDepartment(departmentID uint, department *entity.Department) (*entity.Department, error) {
+	if err := p.db.Model(&entity.Department{}).Where("id = ?", departmentID).Updates(department).Error; err != nil {
+		return nil, fmt.Errorf("department 업데이트 중 DB 오류: %w", err)
+	}
+	return department, nil
+}
+
 func (p *departmentPersistence) DeleteDepartment(departmentID uint) error {
 	if err := p.db.Where("id = ?", departmentID).Delete(&entity.Department{}).Error; err != nil {
 		return fmt.Errorf("department 삭제 중 DB 오류: %w", err)
