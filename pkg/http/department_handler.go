@@ -97,9 +97,35 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 // 	}
 // }
 
-//TODO 부서장 변경 및, 부서 내용 변경
+// TODO 부서 삭제 ( 관리자만 )
+func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
+	departmentID := c.Param("id")
+	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 부서 ID입니다"))
+		return
+	}
 
-//TODO 부서 삭제 ( 관리자만 )
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	requestUserId, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	_, err = h.departmentUsecase.DeleteDepartment(uint(targetDepartmentID), requestUserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, interceptor.Success("부서 삭제 성공", nil))
+}
 
 //TODO 부서 수정 요청 저장 - 부서장만 요청 가능 - 내용은 바디에 있음
 

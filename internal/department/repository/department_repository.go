@@ -6,4 +6,5 @@ type DepartmentRepository interface {
 	CreateDepartment(department *entity.Department) error
 	GetDepartments() ([]entity.Department, error)
 	GetDepartment(departmentID uint) (*entity.Department, error)
+	DeleteDepartment(departmentID uint) error
 }

@@ -159,7 +159,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	}
 
 	// 대상 사용자 조회
-	_, err = u.userRepo.GetUserByID(targetUserId)
+	targetUser, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
 		log.Printf("대상 사용자 조회에 실패했습니다: %v", err)
 		return fmt.Errorf("대상 사용자를 찾을 수 없습니다")
@@ -169,6 +169,12 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return fmt.Errorf("권한이 없습니다")
+	}
+
+	//TODO 삭제하려는 대상에 시스템관리자는 불가능함
+	if targetUser.Role == entity.RoleAdmin {
+		log.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return fmt.Errorf("시스템 관리자 계정은 삭제가 불가능합니다")
 	}
 
 	return u.userRepo.DeleteUser(targetUserId)
