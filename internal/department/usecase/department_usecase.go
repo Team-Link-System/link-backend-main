@@ -85,6 +85,12 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 		return nil, fmt.Errorf("권한이 없습니다")
 	}
 
+	_, err = du.departmentRepository.GetDepartment(targetDepartmentID)
+	if err != nil {
+		log.Printf("업데이트가 불가능한 부서입니다: %v", err)
+		return nil, fmt.Errorf("존재하지 않는 부서입니다")
+	}
+
 	updates := make(map[string]interface{})
 	if request.Name != nil {
 		updates["name"] = *request.Name
