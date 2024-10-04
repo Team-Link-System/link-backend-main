@@ -6,11 +6,11 @@ import (
 )
 
 type Department struct {
-	ID   uint   `gorm:"primaryKey"`
-	Name string `gorm:"type:varchar(255);not null"`
+	ID   uint
+	Name string
 	// Manager와의 관계 설정 (nullable)
-	ManagerID *uint             `gorm:"null"`                 // 외래 키 nullable 설정
-	Manager   *_userEntity.User `gorm:"foreignKey:ManagerID"` // GORM 관계 설정 (nullable)
+	ManagerID *uint
+	Manager   *_userEntity.User
 	// 여러 팀과의 관계 설정
 	// Teams []Team `gorm:"foreignKey:DepartmentID"`
 

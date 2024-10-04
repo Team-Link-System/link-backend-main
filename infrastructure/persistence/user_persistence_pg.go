@@ -8,7 +8,7 @@ import (
 
 	"link/internal/user/entity"
 	"link/internal/user/repository"
-	"link/pkg/dto/user/req"
+	"link/pkg/dto/req"
 )
 
 type userPersistencePostgres struct {
@@ -49,6 +49,21 @@ func (r *userPersistencePostgres) GetUserByID(id uint) (*entity.User, error) {
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
 	return &user, nil
+}
+
+func (r *userPersistencePostgres) GetUserByIds(ids []uint) ([]entity.User, error) {
+	var users []entity.User
+
+	// ids 슬라이스가 비어있는지 확인
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("유효하지 않은 사용자 ID 목록")
+	}
+
+	// GORM에서 IN 조건을 사용하여 사용자 조회
+	if err := r.db.Where("id IN ?", ids).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	}
+	return users, nil
 }
 
 func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User, error) {
@@ -124,6 +139,16 @@ func (r *userPersistencePostgres) SearchUser(request req.SearchUserRequest) ([]e
 	// 최종 쿼리 실행
 	if err := query.Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("사용자 검색 중 DB 오류: %w", err)
+	}
+
+	return users, nil
+}
+
+func (r *userPersistencePostgres) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
+	var users []entity.User
+
+	if err := r.db.Where("department_id = ?", departmentId).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("부서 사용자 조회 중 DB 오류: %w", err)
 	}
 
 	return users, nil

@@ -2,8 +2,8 @@ package http
 
 import (
 	"link/internal/auth/usecase"
-	"link/pkg/dto/auth/req"
-	"link/pkg/dto/auth/res"
+	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 	"link/pkg/interceptor"
 	"net/http"
 

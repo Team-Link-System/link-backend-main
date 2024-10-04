@@ -6,8 +6,8 @@ import (
 	"log"
 	"strconv"
 
-	"link/pkg/dto/user/req"
-	"link/pkg/dto/user/res"
+	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 	"link/pkg/interceptor"
 	"net/http"
 
@@ -290,4 +290,23 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, interceptor.Success("사용자 검색 성공", response))
+}
+
+// TODO 해당 부서에 속한 사용자 리스트 가져오기
+func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
+	departmentId := c.Param("departmentId")
+
+	departmentIdUint, err := strconv.ParseUint(departmentId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 부서 ID입니다"))
+		return
+	}
+
+	users, err := h.userUsecase.GetUsersByDepartment(uint(departmentIdUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, interceptor.Success("부서 사용자 조회 성공", users))
 }

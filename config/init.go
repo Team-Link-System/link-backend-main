@@ -12,7 +12,7 @@ import (
 
 // InitAdminUser 초기 관리자 계정 생성
 func InitAdminUser(db *gorm.DB) {
-	if err := db.AutoMigrate(&model.Group{}, &model.User{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}); err != nil {
 		log.Fatalf("테이블 자동 생성 중 오류 발생: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func InitAdminUser(db *gorm.DB) {
 }
 
 func AutoMigrate(db *gorm.DB) {
-	if err := db.AutoMigrate(&model.Department{}); err != nil {
+	if err := db.AutoMigrate(&model.Department{}, &model.ChatRoom{}, &model.Chat{}); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
 }

@@ -3,7 +3,7 @@ package http
 import (
 	"link/internal/department/entity"
 	"link/internal/department/usecase"
-	"link/pkg/dto/department/req"
+	"link/pkg/dto/req"
 	"link/pkg/interceptor"
 	"net/http"
 	"strconv"

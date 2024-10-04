@@ -44,7 +44,6 @@ func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 }
 
 // Refresh Token 검증 및 Access Token 재발급 인터셉터
-// Refresh Token 검증 및 Access Token 재발급 인터셉터
 func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if email := c.GetString("email"); email != "" {

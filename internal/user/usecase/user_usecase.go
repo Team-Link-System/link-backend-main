@@ -6,7 +6,7 @@ import (
 
 	"link/internal/user/entity"
 	"link/internal/user/repository"
-	"link/pkg/dto/user/req"
+	"link/pkg/dto/req"
 	utils "link/pkg/util"
 )
 
@@ -19,6 +19,7 @@ type UserUsecase interface {
 	UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
+	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 }
 
 type userUsecase struct {
@@ -192,6 +193,14 @@ func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, 
 }
 
 // TODO 해당 부서에 속한 사용자 리스트 가져오기
+func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
+	users, err := u.userRepo.GetUsersByDepartment(departmentId)
+	if err != nil {
+		log.Printf("부서 사용자 조회에 실패했습니다: %v", err)
+		return nil, fmt.Errorf("부서 사용자 조회에 실패했습니다")
+	}
+	return users, nil
+}
 
 //TODO 자기가 속한 부서의 사용자 리스트
 

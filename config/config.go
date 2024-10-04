@@ -12,6 +12,26 @@ import (
 	"gorm.io/gorm"
 )
 
+type Config struct {
+	HTTPPort string
+	WSPath   string
+	WSPort   string
+	DB       *gorm.DB
+	Redis    *redis.Client
+}
+
+func LoadConfig() *Config {
+	LoadEnv()
+
+	return &Config{
+		HTTPPort: ":" + getEnv("HTTP_PORT", "8080"),
+		WSPort:   ":" + getEnv("WS_PORT", "8081"),
+		WSPath:   getEnv("WS_PATH", "/ws"),
+		DB:       InitDB(),
+		Redis:    InitRedis(),
+	}
+}
+
 func LoadEnv() {
 	env := os.Getenv("GO_ENV")
 	if env == "" {
@@ -64,4 +84,11 @@ func InitRedis() *redis.Client {
 func parseRedisDB(db string) int {
 	i, _ := strconv.Atoi(db)
 	return i
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }

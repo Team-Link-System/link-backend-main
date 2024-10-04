@@ -12,6 +12,6 @@ type Department struct {
 	Manager   *User `gorm:"foreignKey:ManagerID"`           // GORM 관계 설정 (nullable)
 	// 여러 팀과의 관계 설정
 	// Teams []Team `gorm:"foreignKey:DepartmentID"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"` // 메시지를 보낸 시간
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"` // 메시지를 보낸 시간
 }

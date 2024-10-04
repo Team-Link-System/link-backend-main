@@ -6,7 +6,7 @@ import (
 	_departmentRepo "link/internal/department/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
-	"link/pkg/dto/department/req"
+	"link/pkg/dto/req"
 	"log"
 )
 

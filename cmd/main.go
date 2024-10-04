@@ -2,29 +2,28 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	"link/config"
-	"link/pkg/http"
+	handlerHttp "link/pkg/http"
 	"link/pkg/interceptor"
+	"link/pkg/ws"
 )
 
 func main() {
-	// 환경 변수 로드 및 DB 초기화
-	config.LoadEnv()
-	db := config.InitDB()
-	redisClient := config.InitRedis()
-	config.InitAdminUser(db)
-	config.AutoMigrate(db)
+
+	cfg := config.LoadConfig()
+
+	config.InitAdminUser(cfg.DB)
+	config.AutoMigrate(cfg.DB)
 
 	// TODO: Gin 모드 설정 (프로덕션일 경우)
 	// gin.SetMode(gin.ReleaseMode)
 
 	// dig 컨테이너 생성 및 의존성 주입
-	container := config.BuildContainer(db, redisClient)
+	container := config.BuildContainer(cfg.DB, cfg.Redis)
 
 	// Gin 라우터 설정
 	r := gin.Default()
@@ -42,20 +41,30 @@ func main() {
 	// 프록시 신뢰 설정 (프록시를 사용하지 않으면 nil 설정)
 	r.SetTrustedProxies(nil)
 	// 글로벌 에러 처리 미들웨어 적용
-
 	r.Use(interceptor.ErrorHandler())
+
+	wsHub := ws.NewWebSocketHub()
+	go wsHub.Run()
+
 	err := container.Invoke(func(
-		userHandler *http.UserHandler,
-		authHandler *http.AuthHandler,
-		departmentHandler *http.DepartmentHandler,
+		userHandler *handlerHttp.UserHandler,
+		authHandler *handlerHttp.AuthHandler,
+		departmentHandler *handlerHttp.DepartmentHandler,
+		chatHandler *handlerHttp.ChatHandler,
 		tokenInterceptor *interceptor.TokenInterceptor,
+		wsHandler *ws.WsHandler,
 	) {
+
 		api := r.Group("/api")
 		publicRoute := api.Group("/")
 		{
 			publicRoute.POST("user/signup", userHandler.RegisterUser)
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
 			publicRoute.POST("auth/signin", authHandler.SignIn)
+
+			// WebSocket 핸들러 추가
+			publicRoute.GET("/ws", wsHandler.HandleWebSocket)
+
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor(), tokenInterceptor.RefreshTokenInterceptor())
 		{
@@ -68,6 +77,7 @@ func main() {
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
+				// user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
 			}
 			department := protectedRoute.Group("department")
 			{
@@ -78,20 +88,20 @@ func main() {
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
 			}
 
+			chat := protectedRoute.Group("chat")
+			{
+				chat.POST("/", chatHandler.CreateChatRoom)
+			}
 		}
 	})
 	if err != nil {
 		log.Fatal("의존성 주입에 실패했습니다: ", err)
 	}
 
-	// 환경 변수에서 포트 가져오기
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // 기본값 설정
+	// HTTP 서버 시작
+	log.Printf("HTTP 서버 실행중: %s", cfg.HTTPPort)
+	if err := r.Run(cfg.HTTPPort); err != nil {
+		log.Fatalf("HTTP 서버 시작 실패: %v", err)
 	}
-
-	// 서버 실행
-	log.Printf("서버 실행중 : %s", port)
-	log.Fatal(r.Run(":" + port))
 
 }
