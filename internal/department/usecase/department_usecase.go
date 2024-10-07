@@ -77,7 +77,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("사용자 조회에 실패했습니다")
+		return nil, fmt.Errorf("요청 사용자를 찾을 수 없습니다")
 	}
 
 	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {

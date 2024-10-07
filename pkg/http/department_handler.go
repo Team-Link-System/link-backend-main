@@ -92,7 +92,7 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 	departmentID := c.Param("id")
 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 부서 ID입니다"))
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 
 	var request req.UpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 요청입니다."))
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
 	}
 
