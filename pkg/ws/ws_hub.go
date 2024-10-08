@@ -65,9 +65,14 @@ func (hub *WebSocketHub) AddToChatRoom(chatRoomID uint, conn *websocket.Conn) {
 }
 
 // 채팅방에서 클라이언트 제거
+// 채팅방에서 클라이언트 제거 후 클라이언트가 없으면 방 삭제
 func (hub *WebSocketHub) RemoveFromChatRoom(chatRoomID uint, conn *websocket.Conn) {
 	if room, exists := hub.ChatRooms[chatRoomID]; exists {
 		delete(room.Clients, conn)
+
+		if len(room.Clients) == 0 {
+			delete(hub.ChatRooms, chatRoomID) // 클라이언트가 없으면 방 삭제
+		}
 	}
 }
 

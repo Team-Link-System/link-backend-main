@@ -26,9 +26,7 @@ func NewWsHandler(hub *WebSocketHub, chatUsecase usecase.ChatUsecase) *WsHandler
 	}
 }
 
-// HandleWebSocket 함수는 WebSocket 요청을 처리합니다.
 func (h *WsHandler) HandleWebSocket(c *gin.Context) {
-	// WebSocket 연결을 업그레이드합니다.
 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("WebSocket 업그레이드 실패: %v", err)
@@ -36,7 +34,7 @@ func (h *WsHandler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// 첫 번째 메시지에서 토큰을 받아서 처리
+	// 첫 번째 메시지에서 토큰과 roomId를 받아 처리
 	var initialMessage struct {
 		Token  string `json:"token"`
 		RoomID string `json:"roomId"`
@@ -53,7 +51,6 @@ func (h *WsHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 	tokenString := strings.TrimPrefix(initialMessage.Token, "Bearer ")
-	// Access Token을 검증
 	claims, err := util.ValidateAccessToken(tokenString)
 	if err != nil {
 		log.Printf("토큰 검증 실패: %v", err)
@@ -64,18 +61,24 @@ func (h *WsHandler) HandleWebSocket(c *gin.Context) {
 	requestUserId := claims.UserId
 
 	// roomId를 uint로 변환
-	roomId, err := strconv.ParseUint(initialMessage.RoomID, 10, 32) // uint32 범위로 변환
+	roomId, err := strconv.ParseUint(initialMessage.RoomID, 10, 32)
 	if err != nil {
 		conn.WriteMessage(websocket.CloseMessage, []byte("Invalid roomId"))
 		return
 	}
 
-	// TODO: DB에서 roomId가 실제로 존재하는지 확인 (chatUsecase를 통해 DB 검증)
-	chatRoom, err := h.chatUsecase.GetChatRoomById(uint(roomId))
-	if err != nil || chatRoom == nil {
-		log.Printf("존재하지 않는 채팅방 ID: %d", roomId)
-		conn.WriteMessage(websocket.CloseMessage, []byte("Invalid roomId"))
-		return
+	// WebSocket 메모리에서 채팅방이 있는지 확인
+	if _, exists := h.hub.ChatRooms[uint(roomId)]; !exists {
+		// WebSocket 메모리에 채팅방이 없으면 DB에서 확인
+		chatRoom, err := h.chatUsecase.GetChatRoomById(uint(roomId))
+		if err != nil || chatRoom == nil {
+			log.Printf("존재하지 않는 채팅방 ID: %d", roomId)
+			conn.WriteMessage(websocket.CloseMessage, []byte("Invalid roomId"))
+			return
+		}
+
+		// DB에서 채팅방이 확인되면 WebSocket 메모리에 새로 추가
+		h.hub.AddToChatRoom(uint(roomId), conn)
 	}
 
 	// WebSocket 클라이언트를 등록합니다.
