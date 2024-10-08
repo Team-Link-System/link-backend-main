@@ -1,6 +1,7 @@
 package interceptor
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -26,7 +27,6 @@ func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 		if authHeader != "" {
 			// "Bearer " 접두사 제거
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
 			// Access Token 검증
 			claims, err := util.ValidateAccessToken(tokenString)
 			if err == nil {
@@ -46,8 +46,10 @@ func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 // Refresh Token 검증 및 Access Token 재발급 인터셉터
 func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if email := c.GetString("email"); email != "" {
-			log.Println(email)
+		email, _ := c.Get("email")
+		userId, _ := c.Get("userId")
+
+		if email != nil && userId != nil {
 			c.Next()
 			return
 		}
@@ -69,6 +71,8 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 		}
 
 		claims, err := util.ValidateRefreshToken(refreshToken)
+		fmt.Println(claims)
+		fmt.Println("asdasdasd")
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
 			c.Abort()

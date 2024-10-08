@@ -16,6 +16,6 @@ type Chat struct {
 	Content    string            `json:"content"`
 	ChatRoomID uint              `json:"chat_room_id"`
 	ChatRoom   ChatRoom          `json:"chat_room"` // 채팅방 정보
-	UserID     uint              `json:"user_id"`
+	SenderID   uint              `json:"sender_id"`
 	User       *_userEntity.User `json:"user"` // 사용자 정보
 }

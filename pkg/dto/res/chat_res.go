@@ -8,7 +8,6 @@ type UserInfoResponse struct {
 }
 
 type CreateChatRoomResponse struct {
-	ID        uint               `json:"id"`
 	Name      string             `json:"name"`
 	IsPrivate bool               `json:"is_private"`
 	Users     []UserInfoResponse `json:"users"`

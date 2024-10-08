@@ -9,7 +9,8 @@ import (
 	"link/config"
 	handlerHttp "link/pkg/http"
 	"link/pkg/interceptor"
-	"link/pkg/ws"
+
+	ws "link/pkg/ws"
 )
 
 func main() {
@@ -30,7 +31,7 @@ func main() {
 
 	// CORS 설정
 	// r.Use(cors.New(cors.Config{
-	// 	AllowOrigins:     []string{"http://192.168.1.13:3000"}, // 허용할 도메인
+	// 	AllowOrigins:     []string{"*"}, // 허용할 도메인
 	// 	AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	// 	AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 	// 	ExposeHeaders:    []string{"Content-Length"},
@@ -44,6 +45,7 @@ func main() {
 	r.Use(interceptor.ErrorHandler())
 
 	wsHub := ws.NewWebSocketHub()
+
 	go wsHub.Run()
 
 	err := container.Invoke(func(
@@ -55,6 +57,13 @@ func main() {
 		wsHandler *ws.WsHandler,
 	) {
 
+		// WebSocket 관련 라우팅 그룹
+		wsGroup := r.Group("/ws")
+		{
+			// 인증된 사용자만 WebSocket 사용 가능
+			wsGroup.GET("chat", wsHandler.HandleWebSocket)
+		}
+
 		api := r.Group("/api")
 		publicRoute := api.Group("/")
 		{
@@ -63,7 +72,6 @@ func main() {
 			publicRoute.POST("auth/signin", authHandler.SignIn)
 
 			// WebSocket 핸들러 추가
-			publicRoute.GET("/ws", wsHandler.HandleWebSocket)
 
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor(), tokenInterceptor.RefreshTokenInterceptor())
@@ -87,10 +95,12 @@ func main() {
 				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
 			}
-
 			chat := protectedRoute.Group("chat")
 			{
+				//! 채팅방 관련 핸들러
 				chat.POST("/", chatHandler.CreateChatRoom)
+				chat.GET("/", chatHandler.GetChatRoomList)
+				// chat.GET("/:id", chatHandler.GetChatRoom) // 채팅방 정보
 			}
 		}
 	})

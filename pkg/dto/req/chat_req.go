@@ -5,3 +5,9 @@ type CreateChatRoomRequest struct {
 	Name      string `json:"name"`
 	IsPrivate bool   `json:"is_private"`
 }
+
+type SendMessageRequest struct {
+	SenderID   uint   `json:"sender_id"`
+	Content    string `json:"content"`
+	ChatRoomID uint   `json:"chat_room_id"`
+}

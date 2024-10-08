@@ -1,109 +1,97 @@
 package ws
 
 import (
+	"link/internal/chat/usecase"
+	"link/pkg/dto/req"
+	"link/pkg/util"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
+// WsHandler struct는 WebSocketHub와 연동합니다.
 type WsHandler struct {
-	hub *WebSocketHub
+	hub         *WebSocketHub
+	chatUsecase usecase.ChatUsecase
 }
 
-type Message struct {
-	Type        string `json:"type"`         // 메시지 타입 ("chat", "notification", "presence")
-	SenderID    uint   `json:"sender_id"`    // 보낸 사람의 ID
-	ReceiverID  uint   `json:"receiver_id"`  // 받는 사람의 ID (1:1 채팅)
-	GroupID     uint   `json:"group_id"`     // 그룹 ID (그룹 채팅)
-	Content     string `json:"content"`      // 메시지 내용
-	IsAnonymous bool   `json:"is_anonymous"` // 익명 여부 (익명 채팅용)
-}
-
-type Notification struct {
-	UserID  uint   `json:"user_id"`
-	Message string `json:"message"`
-}
-
-type Presence struct {
-	UserID uint   `json:"user_id"`
-	Status string `json:"status"` // "online" or "offline"
-}
-
-func NewWsHandler(hub *WebSocketHub) *WsHandler {
+// NewWsHandler는 WebSocketHub를 받아서 새로운 WsHandler를 반환합니다.
+func NewWsHandler(hub *WebSocketHub, chatUsecase usecase.ChatUsecase) *WsHandler {
 	return &WsHandler{
-		hub: hub,
+		hub:         hub,
+		chatUsecase: chatUsecase,
 	}
 }
 
+// HandleWebSocket 함수는 WebSocket 요청을 처리합니다.
 func (h *WsHandler) HandleWebSocket(c *gin.Context) {
+	// WebSocket 연결을 업그레이드합니다.
 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("웹소켓 연결 실패:", err)
+		log.Printf("WebSocket 업그레이드 실패: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// 첫 번째 메시지에서 토큰을 받아서 처리
+	var initialMessage struct {
+		Token  string `json:"token"`
+		RoomID string `json:"roomId"`
+	}
+	err = conn.ReadJSON(&initialMessage)
+	if err != nil {
+		log.Printf("초기 메시지 수신 실패: %v", err)
+		conn.WriteMessage(websocket.CloseMessage, []byte("Invalid initial message"))
 		return
 	}
 
-	// 클라이언트를 허브에 등록
-	h.hub.Register <- conn
+	if initialMessage.Token == "" {
+		conn.WriteMessage(websocket.CloseMessage, []byte("Unauthorized"))
+		return
+	}
+	tokenString := strings.TrimPrefix(initialMessage.Token, "Bearer ")
+	// Access Token을 검증
+	claims, err := util.ValidateAccessToken(tokenString)
+	if err != nil {
+		log.Printf("토큰 검증 실패: %v", err)
+		conn.WriteMessage(websocket.CloseMessage, []byte("Unauthorized"))
+		return
+	}
 
-	// 클라이언트와 메시지 통신 처리
-	go h.handleMessages(conn)
-}
+	requestUserId := claims.UserId
 
-func (h *WsHandler) handleMessages(conn *websocket.Conn) {
-	defer func() {
-		h.hub.Unregister <- conn // 클라이언트 연결 해제
-	}()
+	// roomId를 uint로 변환
+	roomId, err := strconv.ParseUint(initialMessage.RoomID, 10, 32) // uint32 범위로 변환
+	if err != nil {
+		conn.WriteMessage(websocket.CloseMessage, []byte("Invalid roomId"))
+		return
+	}
 
+	// TODO: DB에서 roomId가 실제로 존재하는지 확인 (chatUsecase를 통해 DB 검증)
+	chatRoom, err := h.chatUsecase.GetChatRoomById(uint(roomId))
+	if err != nil || chatRoom == nil {
+		log.Printf("존재하지 않는 채팅방 ID: %d", roomId)
+		conn.WriteMessage(websocket.CloseMessage, []byte("Invalid roomId"))
+		return
+	}
+
+	// WebSocket 클라이언트를 등록합니다.
+	h.hub.RegisterClient(conn, requestUserId)
+	defer h.hub.UnregisterClient(conn, requestUserId)
+
+	// WebSocket 메시지를 계속해서 수신하고 처리합니다.
 	for {
-		var message Message
+		var message req.SendMessageRequest
 		err := conn.ReadJSON(&message)
 		if err != nil {
-			log.Println("메시지 읽기 오류:", err)
+			log.Printf("메시지 수신 실패: %v", err)
 			break
 		}
 
-		switch message.Type {
-		case "chat":
-			h.hub.HandleChat(message)
-		case "notification":
-			h.hub.SendNotification(Notification{UserID: message.ReceiverID, Message: message.Content})
-		case "presence":
-			h.hub.HandlePresenceChange(message.SenderID, message.Content)
-		}
-	}
-}
-func (hub *WebSocketHub) HandleChat(message Message) {
-	if message.GroupID != 0 {
-		// 그룹 채팅
-		group := hub.Groups[message.GroupID] // 그룹 ID로 그룹 찾기
-		for client := range group.Clients {
-			client.WriteJSON(message) // 그룹 내 모든 클라이언트에게 메시지 전송
-		}
-	} else if message.ReceiverID != 0 {
-		// 1:1 채팅
-		if client, ok := hub.UserClients[message.ReceiverID]; ok {
-			client.WriteJSON(message) // 받는 사람에게 메시지 전송
-		}
-	} else {
-		// 익명 채팅 (모든 클라이언트에게 브로드캐스트)
-		for client := range hub.Clients {
-			client.WriteJSON(message)
-		}
-	}
-}
-
-func (hub *WebSocketHub) SendNotification(notification Notification) {
-	// 특정 사용자에게 알림 전송
-	if client, ok := hub.UserClients[notification.UserID]; ok {
-		client.WriteJSON(notification)
-	}
-}
-
-func (hub *WebSocketHub) HandlePresenceChange(userID uint, status string) {
-	// 접속 상태 변경
-	if client, ok := hub.UserClients[userID]; ok {
-		presence := Presence{UserID: userID, Status: status}
-		client.WriteJSON(presence) // 사용자에게 상태 변화를 알림
+		// chat_id를 기준으로 메시지 전송
+		h.hub.SendMessageToChatRoom(uint(roomId), message)
 	}
 }
