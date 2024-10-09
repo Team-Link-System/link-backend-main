@@ -1,15 +1,16 @@
 package ws
 
 import (
-	"link/internal/chat/usecase"
-	"link/pkg/dto/req"
-	"link/pkg/util"
 	"log"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
+	"link/internal/chat/usecase"
+	"link/pkg/dto/req"
+	"link/pkg/util"
 )
 
 // WsHandler struct는 WebSocketHub와 연동합니다.
@@ -37,7 +38,7 @@ func (h *WsHandler) HandleWebSocket(c *gin.Context) {
 	// 첫 번째 메시지에서 토큰과 roomId를 받아 처리
 	var initialMessage struct {
 		Token  string `json:"token"`
-		RoomID string `json:"roomId"`
+		RoomID string `json:"chat_room_id"`
 	}
 	err = conn.ReadJSON(&initialMessage)
 	if err != nil {
@@ -88,6 +89,7 @@ func (h *WsHandler) HandleWebSocket(c *gin.Context) {
 	// WebSocket 메시지를 계속해서 수신하고 처리합니다.
 	for {
 		var message req.SendMessageRequest
+		message.SenderID = requestUserId
 		err := conn.ReadJSON(&message)
 		if err != nil {
 			log.Printf("메시지 수신 실패: %v", err)
