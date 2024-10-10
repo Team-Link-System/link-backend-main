@@ -1,17 +1,17 @@
 package http
 
 import (
-	"link/internal/user/entity"
-	"link/internal/user/usecase"
 	"log"
+	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
+	"link/internal/user/entity"
+	"link/internal/user/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/interceptor"
-	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {

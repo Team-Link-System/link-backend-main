@@ -2,14 +2,13 @@ package usecase
 
 import (
 	"fmt"
-	"link/internal/chat/entity"
-	"link/pkg/dto/req"
 	"log"
 
+	"link/internal/chat/entity"
 	_chatRepo "link/internal/chat/repository"
-	_userRepo "link/internal/user/repository"
-
 	_userEntity "link/internal/user/entity"
+	_userRepo "link/internal/user/repository"
+	"link/pkg/dto/req"
 )
 
 type ChatUsecase interface {
@@ -31,15 +30,14 @@ func NewChatUsecase(chatRepository _chatRepo.ChatRepository, userRepository _use
 
 // TODO 채팅방 생성
 func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomRequest) (*entity.ChatRoom, error) {
-
-	fmt.Println(request.UserIDs)
-
 	// 해당 유저들이 실제로 존재하는지 확인
 	users, err := uc.userRepository.GetUserByIds(request.UserIDs)
 	if err != nil {
 		log.Printf("채팅방 생성 중 DB 오류: %v", err)
 		return nil, fmt.Errorf("채팅방 생성에 실패했습니다: %w", err)
 	}
+
+	//TODO 요청 사용자 리스트 갯수와 db에 있는 사용자 리스트 갯수가 맞는지 확인
 
 	// users 목록이 길이가 2명 이상인지 확인
 	if len(users) < 2 {

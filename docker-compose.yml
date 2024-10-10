@@ -31,7 +31,7 @@ services:
       - redis
     environment:
       GO_ENV: ${GO_ENV}
-      PORT: ${PORT}
+      PORT: ${HTTP_PORT}
       REDIS_ADDR: ${REDIS_ADDR}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
@@ -43,7 +43,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "${PORT}:8080"
+      - "${HTTP_PORT}:8080"
     command: ["air", "-c", "/app/.air.toml"]
 
 volumes:

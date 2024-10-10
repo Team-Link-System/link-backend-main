@@ -3,12 +3,12 @@ package persistence
 import (
 	"errors"
 	"fmt"
-	"link/infrastructure/model"
-	"link/internal/chat/repository"
 
 	"gorm.io/gorm"
 
+	"link/infrastructure/model"
 	chatEntity "link/internal/chat/entity"
+	"link/internal/chat/repository"
 	userEntity "link/internal/user/entity"
 )
 
@@ -49,7 +49,7 @@ func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, 
 	var chatRooms []model.ChatRoom
 	// 해당 사용자가 속한 그룹 채팅방 조회
 	err := r.db.Preload("Users").Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
-		Where("chat_room_users.user_id = ? AND chat_rooms.is_private = ?", userId, false).
+		Where("chat_room_users.user_id = ?", userId).
 		Find(&chatRooms).Error
 
 	if err != nil {
@@ -68,8 +68,10 @@ func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, 
 			}
 		}
 		result[i] = &chatEntity.ChatRoom{
-			ID:    chatRoom.ID,
-			Users: users,
+			ID:        chatRoom.ID,
+			Name:      chatRoom.Name,
+			IsPrivate: chatRoom.IsPrivate,
+			Users:     users,
 		}
 	}
 

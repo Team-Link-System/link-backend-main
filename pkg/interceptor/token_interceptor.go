@@ -24,6 +24,7 @@ func NewTokenInterceptor(authUsecase usecase.AuthUsecase) *TokenInterceptor {
 func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+		fmt.Println(authHeader)
 		if authHeader != "" {
 			// "Bearer " 접두사 제거
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
