@@ -78,6 +78,8 @@ func (hub *WebSocketHub) RemoveFromChatRoom(chatRoomID uint, conn *websocket.Con
 
 // 특정 채팅방에 메시지 보내기
 func (hub *WebSocketHub) SendMessageToChatRoom(chatRoomID uint, message interface{}) {
+	fmt.Printf("chatRoomID: %v\n", chatRoomID)
+	fmt.Printf("message: %v\n", message)
 	if room, exists := hub.ChatRooms[chatRoomID]; exists {
 		for client := range room.Clients {
 			client.WriteJSON(message)
