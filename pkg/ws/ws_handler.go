@@ -40,7 +40,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// 첫 번째 메시지에서 토큰과 roomId를 받아 처리
+	// 첫 번째 메시지에서 토큰과 roomId를 받아 처리 (초기 연결)
 	var initialMessage struct {
 		Token  string `json:"token"`
 		RoomID uint   `json:"chat_room_id"`
@@ -56,9 +56,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		return
 	}
 
-	//TODO initialMessage는 한번만 오는 요청이 아니잖아
-
-	// 토큰 검증
+	// 토큰 검증 (초기 연결에서만 수행)
 	claims, err := util.ValidateAccessToken(initialMessage.Token)
 	if err != nil {
 		log.Printf("토큰 검증 실패: %v", err)
@@ -122,11 +120,12 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			break
 		}
 
+		// 메시지 확인 (초기 연결 이후)
 		fmt.Println("message", message)
 		fmt.Println("requestUserId", requestUserId)
 
 		// 채팅 메시지를 데이터베이스에 저장
-		_, err = h.chatUsecase.SaveMessage(message.SenderID, message.ChatRoomID, message.Content)
+		_, err = h.chatUsecase.SaveMessage(requestUserId, message.ChatRoomID, message.Content) // requestUserId 사용
 		if err != nil {
 			log.Printf("채팅 메시지 저장 실패: %v", err)
 			response := res.JsonResponse{
@@ -142,7 +141,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			Success: true,
 			Payload: &res.Payload{
 				ChatRoomID: message.ChatRoomID,
-				SenderID:   message.SenderID,
+				SenderID:   requestUserId, // 보낸 사람 ID는 requestUserId로 설정
 				Content:    message.Content,
 				CreatedAt:  time.Now().Format(time.RFC3339),
 			},

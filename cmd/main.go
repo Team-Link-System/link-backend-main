@@ -83,6 +83,7 @@ func main() {
 				//! 채팅방 관련 핸들러
 				chat.GET("/list", chatHandler.GetChatRoomList)
 				chat.POST("", chatHandler.CreateChatRoom)
+
 				// chat.GET("/:id", chatHandler.GetChatRoom) // 채팅방 정보
 			}
 			user := protectedRoute.Group("user")
