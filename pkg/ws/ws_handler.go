@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -120,6 +121,9 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			conn.WriteJSON(response)
 			break
 		}
+
+		fmt.Println("message", message)
+		fmt.Println("requestUserId", requestUserId)
 
 		// 채팅 메시지를 데이터베이스에 저장
 		_, err = h.chatUsecase.SaveMessage(message.SenderID, message.ChatRoomID, message.Content)
