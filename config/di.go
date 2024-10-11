@@ -14,6 +14,7 @@ import (
 	authUsecase "link/internal/auth/usecase"
 	chatUsecase "link/internal/chat/usecase"
 	departmentUsecase "link/internal/department/usecase"
+	notificationUsecase "link/internal/notification/usecase"
 	userUsecase "link/internal/user/usecase"
 
 	"github.com/go-redis/redis/v8"
@@ -40,17 +41,20 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client) *dig.Container {
 	container.Provide(persistence.NewUserPersistencePostgres)
 	container.Provide(persistence.NewDepartmentPersistencePostgres)
 	container.Provide(persistence.NewChatPersistencePostgres)
-
+	container.Provide(persistence.NewNotificationPersistenceMongo)
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)
 	container.Provide(userUsecase.NewUserUsecase)
 	container.Provide(departmentUsecase.NewDepartmentUsecase)
 	container.Provide(chatUsecase.NewChatUsecase)
+	container.Provide(notificationUsecase.NewNotificationUsecase)
+
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
 	container.Provide(http.NewAuthHandler)
 	container.Provide(http.NewDepartmentHandler)
 	container.Provide(http.NewChatHandler)
+	container.Provide(http.NewNotificationHandler)
 
 	return container
 }

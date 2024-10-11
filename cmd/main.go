@@ -53,8 +53,10 @@ func main() {
 		authHandler *handlerHttp.AuthHandler,
 		departmentHandler *handlerHttp.DepartmentHandler,
 		chatHandler *handlerHttp.ChatHandler,
+		notificationHandler *handlerHttp.NotificationHandler,
 		tokenInterceptor *interceptor.TokenInterceptor,
 		wsHandler *ws.WsHandler,
+
 	) {
 
 		// WebSocket 관련 라우팅 그룹
@@ -104,6 +106,11 @@ func main() {
 				department.GET("/:id", departmentHandler.GetDepartment)
 				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
+			}
+
+			notification := protectedRoute.Group("notification")
+			{
+				notification.POST("", notificationHandler.CreateNotification)
 			}
 		}
 	})

@@ -61,7 +61,9 @@ func InitAdminUser(db *gorm.DB) {
 }
 
 func AutoMigrate(db *gorm.DB) {
-	if err := db.AutoMigrate(&model.Department{}, &model.ChatRoom{}, &model.Chat{}); err != nil {
+
+	//TODO postgres 테이블 자동 생성
+	if err := db.AutoMigrate(&model.Department{}, &model.ChatRoom{}, &model.Chat{}, &model.Notification{}); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
 }

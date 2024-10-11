@@ -40,11 +40,21 @@ services:
       SYSTEM_ADMIN_PASSWORD: ${SYSTEM_ADMIN_PASSWORD}
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      MONGO_DSN: ${MONGO_DSN}
     volumes:
       - .:/app
     ports:
       - "${HTTP_PORT}:8080"
     command: ["air", "-c", "/app/.air.toml"]
+
+
+  # mongo:
+  #   image: mongo:latest
+  #   container_name: mongo
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo_data:/data/db
 
 volumes:
   postgres_data:
