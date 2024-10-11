@@ -23,7 +23,7 @@ func main() {
 	// gin.SetMode(gin.ReleaseMode)
 
 	// dig 컨테이너 생성 및 의존성 주입
-	container := config.BuildContainer(cfg.DB, cfg.Redis)
+	container := config.BuildContainer(cfg.DB, cfg.Redis, cfg.Mongo)
 
 	// Gin 라우터 설정
 	r := gin.Default()

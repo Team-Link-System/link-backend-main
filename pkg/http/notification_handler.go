@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"link/internal/notification/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/interceptor"
@@ -20,21 +21,22 @@ func NewNotificationHandler(notificationUsecase usecase.NotificationUsecase) *No
 // TODO 알림 생성 핸들러
 func (h *NotificationHandler) CreateNotification(c *gin.Context) {
 
-	userId, exists := c.Get("userId") //! 요청하는 사람
-	if !exists {
-		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
-		return
-	}
+	// userId, exists := c.Get("userId") //! 요청하는 사람
+	// if !exists {
+	// 	c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+	// 	return
+	// }
 
-	userIdUint, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 사용자 ID입니다"))
-		return
-	}
+	// senderId, ok := userId.(uint)
+	// if !ok {
+	// 	c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 사용자 ID입니다"))
+	// 	return
+	// }
 
 	//TODO 초대 내용
+
 	var request req.CreateNotificationRequest
-	request.SenderId = userIdUint
+	fmt.Println(request)
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
