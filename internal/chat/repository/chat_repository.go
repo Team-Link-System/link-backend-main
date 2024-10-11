@@ -11,4 +11,5 @@ type ChatRepository interface {
 
 	//TODO 메시지 관련
 	SaveMessage(chat *entity.Chat) error
+	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
 }

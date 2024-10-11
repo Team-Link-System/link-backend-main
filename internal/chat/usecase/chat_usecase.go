@@ -17,6 +17,7 @@ type ChatUsecase interface {
 	GetChatRoomById(roomId uint) (*entity.ChatRoom, error)
 
 	SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error)
+	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
 }
 
 type chatUsecase struct {
@@ -93,6 +94,7 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomReq
 // TODO 채팅방 조회
 func (uc *chatUsecase) GetChatRoomById(roomId uint) (*entity.ChatRoom, error) {
 	chatRoom, err := uc.chatRepository.GetChatRoomById(roomId)
+	fmt.Println(chatRoom)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
 		return nil, fmt.Errorf("채팅방 조회에 실패했습니다")
@@ -109,8 +111,6 @@ func (uc *chatUsecase) GetChatRoomList(userId uint) ([]*entity.ChatRoom, error) 
 	}
 	return chatRooms, nil
 }
-
-// TODO 채팅방 내용 조회
 
 // TODO 메시지 저장
 func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error) {
@@ -141,4 +141,14 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 	}
 
 	return chat, nil
+}
+
+// TODO 채팅방 내용 조회
+func (uc *chatUsecase) GetChatMessages(chatRoomID uint) ([]*entity.Chat, error) {
+	chatMessages, err := uc.chatRepository.GetChatMessages(chatRoomID)
+	if err != nil {
+		log.Printf("채팅 내용 조회 중 DB 오류: %v", err)
+		return nil, fmt.Errorf("채팅 내용 조회에 실패했습니다")
+	}
+	return chatMessages, nil
 }

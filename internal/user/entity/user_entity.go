@@ -14,14 +14,14 @@ const (
 )
 
 type User struct {
-	ID           uint      `json:"id"`
-	Name         string    `json:"name" binding:"required"`
-	Email        string    `json:"email" binding:"required,email" `
-	Password     string    `json:"password" binding:"required"`
-	Phone        string    `json:"phone"`
-	DepartmentID *uint     `json:"department_id"` // 부서에 속하지 않을 수 있음
-	TeamID       *uint     `json:"team_id"`       // 팀에 속하지 않을 수 있음
-	Role         UserRole  `json:"role" binding:"required"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint      `json:"id" binding:"required"`
+	Name         string    `json:"name,omitempty" binding:"required"`
+	Email        string    `json:"email,omitempty" binding:"required" `
+	Password     string    `json:"password,omitempty" binding:"required"`
+	Phone        string    `json:"phone,omitempty"`
+	DepartmentID *uint     `json:"department_id,omitempty"` // 부서에 속하지 않을 수 있음
+	TeamID       *uint     `json:"team_id,omitempty"`       // 팀에 속하지 않을 수 있음
+	Role         UserRole  `json:"role,omitempty" binding:"required"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at,omitempty"`
 }

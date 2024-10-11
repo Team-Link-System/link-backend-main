@@ -25,3 +25,11 @@ type JsonResponse struct {
 	Message string   `json:"message,omitempty"`
 	Payload *Payload `json:"payload,omitempty"`
 }
+
+type GetChatMessagesResponse struct {
+	Content    string `json:"content"`
+	SenderID   uint   `json:"sender_id"`
+	ChatRoomID uint   `json:"chat_room_id"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at,omitempty"`
+}

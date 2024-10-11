@@ -2,6 +2,8 @@ package http
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -70,7 +72,38 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, interceptor.Success("채팅방 생성 성공", response))
 }
 
-// TODO 해당 계정이 보유한 채팅 리스트
+// TODO 채팅방 정보 조회
+func (h *ChatHandler) GetChatRoomById(c *gin.Context) {
+
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	_, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	chatRoomId := c.Param("chatroomid")
+
+	chatRoomIdUint, err := strconv.ParseUint(chatRoomId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다"))
+		return
+	}
+
+	chat, err := h.chatUsecase.GetChatRoomById(uint(chatRoomIdUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
+	}
+
+	c.JSON(http.StatusOK, interceptor.Success("채팅방 조회 성공", chat))
+}
+
+// TODO 해당 계정이 보유한 채팅방 리스트
 func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
@@ -91,4 +124,33 @@ func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, interceptor.Success("채팅방 리스트 조회 성공", chatRooms))
+}
+
+// TODO 채팅방의 채팅 내용 가져오기
+func (h *ChatHandler) GetChatMessages(c *gin.Context) {
+
+	chatRoomId := c.Param("chatroomid")
+	targetChatRoomId, err := strconv.ParseUint(chatRoomId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, interceptor.Error(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다"))
+		return
+	}
+
+	chatMessages, err := h.chatUsecase.GetChatMessages(uint(targetChatRoomId))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
+		return
+	}
+
+	var response []res.GetChatMessagesResponse
+	for _, chatMessage := range chatMessages {
+		response = append(response, res.GetChatMessagesResponse{
+			Content:    chatMessage.Content,
+			SenderID:   chatMessage.SenderID,
+			ChatRoomID: chatMessage.ChatRoomID,
+			CreatedAt:  chatMessage.CreatedAt.Format(time.DateTime),
+		})
+	}
+
+	c.JSON(http.StatusOK, interceptor.Success("채팅 내용 조회 성공", response))
 }
