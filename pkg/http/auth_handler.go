@@ -41,8 +41,8 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 
 	//! 도메인 다를 때 사용
 
-	c.SetCookie("accessToken", token.AccessToken, 1200, "/", "192.168.1.162", false, true)
-	c.SetCookie("refreshToken", token.RefreshToken, 5*24*3600, "/", "192.168.1.162", false, true)
+	c.SetCookie("accessToken", token.AccessToken, 1200, "/", "", false, true)
+	c.SetCookie("refreshToken", token.RefreshToken, 5*24*3600, "/", "", false, true)
 	c.JSON(http.StatusOK, interceptor.Success("로그인 성공", response))
 }
 
