@@ -25,16 +25,19 @@ func NewNotificationUsecase(notificationRepo _notificationRepo.NotificationRepos
 func (n *notificationUsecase) CreateNotification(request req.CreateNotificationRequest) (*entity.Notification, error) {
 	var content string
 	var title string
+	var status string
 
 	//TODO 초대 타입에 따라서 title이 달라짐 가공처리
 	if request.Type == "invite" {
 		//TODO content와 title이 달라짐
 		content = fmt.Sprintf("%d님이 초대 요청을 보냈습니다.", request.SenderId)
 		title = "초대 요청"
+		status = "PENDING"
 	} else if request.Type == "mention" {
 		//TODO content와 title이 달라짐
 		content = fmt.Sprintf("%d님이 언급하셨습니다.", request.SenderId)
 		title = "언급 알림"
+		status = "" //!언급일 때는 그냥 빈값으로 처리
 	} else {
 		return nil, fmt.Errorf("잘못된 알림 타입입니다")
 	}
@@ -45,7 +48,7 @@ func (n *notificationUsecase) CreateNotification(request req.CreateNotificationR
 		Type:       request.Type,
 		Content:    content,
 		Title:      title,
-		Status:     "PENDING",
+		Status:     status,
 		CreatedAt:  time.Now(),
 	}
 
