@@ -30,11 +30,11 @@ func main() {
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},                         // 허용할 도메인
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},       // 허용할 HTTP 메서드
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},       // 허용할 요청 헤더
-		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"}, // 응답 헤더 노출
-		AllowCredentials: true,                                                      // 인증 정보 포함 허용
+		AllowOrigins:     []string{"http://localhost:3000", "http://192.168.1.13:3000", "http://192.168.1.162:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "Cookie"},
+		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
+		AllowCredentials: true,
 	}))
 
 	// r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
@@ -88,7 +88,7 @@ func main() {
 			}
 			user := protectedRoute.Group("user")
 			{
-				user.GET("", userHandler.GetAllUsers)
+				user.GET("/list", userHandler.GetAllUsers)
 				user.GET("/:id", userHandler.GetUserInfo)
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
@@ -98,7 +98,7 @@ func main() {
 			department := protectedRoute.Group("department")
 			{
 				department.POST("", departmentHandler.CreateDepartment)
-				department.GET("", departmentHandler.GetDepartments)
+				department.GET("/list", departmentHandler.GetDepartments)
 				department.GET("/:id", departmentHandler.GetDepartment)
 				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)

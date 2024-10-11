@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,36 +19,41 @@ func NewTokenInterceptor(authUsecase usecase.AuthUsecase) *TokenInterceptor {
 	return &TokenInterceptor{authUsecase: authUsecase}
 }
 
+// TODO CROSS-STIE 요청일 경우 OPTIONS 요청은 토큰검증없이 바로 처리
+// Access Token 검증 인터셉터
 // Access Token 검증 인터셉터
 func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		fmt.Println(authHeader)
-		if authHeader != "" {
-			// "Bearer " 접두사 제거
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		// OPTIONS 요청은 인증 없이 바로 처리
+
+		accessToken, _ := c.Cookie("accessToken")
+		fmt.Println("accessToken")
+		fmt.Println(accessToken)
+		if accessToken != "" {
 			// Access Token 검증
-			claims, err := util.ValidateAccessToken(tokenString)
+			claims, err := util.ValidateAccessToken(accessToken)
 			if err == nil {
-				// Access Token이 유효한 경우 email과 name을 Context에 설정
+				// Access Token이 유효한 경우 email과 userId를 Context에 설정
 				c.Set("email", claims.Email)
 				c.Set("userId", claims.UserId)
 				c.Next() // Access Token이 유효하면 다음 핸들러로 진행
 				return
 			}
 		}
-
-		// Access Token이 유효하지 않으면 Refresh Token 검증으로 넘김
-		c.Next() // 다음 단계(Refresh Token 검증)로 넘어감
+		// Access Token이 유효하지 않으면 다음 단계로 넘어감 (Refresh Token 검증)
+		c.Next()
 	}
 }
 
 // Refresh Token 검증 및 Access Token 재발급 인터셉터
 func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// OPTIONS 요청은 인증 없이 바로 처리
+		// OPTIONS 요청은 인증 없이 바로 처리
 		email, _ := c.Get("email")
 		userId, _ := c.Get("userId")
 
+		// Access Token이 유효하다면 바로 다음 단계로
 		if email != nil && userId != nil {
 			c.Next()
 			return
@@ -57,13 +61,15 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 
 		// Access Token이 없거나 유효하지 않은 경우 Refresh Token 검증
 		refreshToken, err := c.Cookie("refreshToken")
+		fmt.Println("refreshToken")
+		fmt.Println(refreshToken)
 		if err != nil || refreshToken == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다."})
 			c.Abort()
 			return
 		}
 
-		//TODO  Redis에 저장된 리프레시인지 검증 틀리면, 재로그인 하라고 해야함
+		// Redis에 저장된 리프레시 토큰 검증
 		err = i.authUsecase.ValidateRefreshToken(refreshToken)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
@@ -72,15 +78,13 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 		}
 
 		claims, err := util.ValidateRefreshToken(refreshToken)
-		fmt.Println(claims)
-		fmt.Println("asdasdasd")
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
 			c.Abort()
 			return
 		}
 
-		// TODO 위의 검증 맞으면, 액세스 토큰 새로 발급해야함
+		// Access Token 재발급
 		newAccessToken, err := util.GenerateAccessToken(claims.Name, claims.Email, claims.UserId)
 		if err != nil {
 			log.Printf("액세스 토큰 재발급 실패: %v", err)
@@ -88,8 +92,8 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.SetCookie("accessToken", newAccessToken, 1200, "/", "", false, false)
-
+		c.SetCookie("accessToken", newAccessToken, 1200, "/", "", false, true)
+		// 새로운 Access Token 정보로 Context 설정
 		c.Set("email", claims.Email)
 		c.Set("userId", claims.UserId)
 		c.Next()

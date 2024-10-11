@@ -7,7 +7,8 @@ type CreateChatRoomRequest struct {
 }
 
 type SendMessageRequest struct {
-	SenderID   uint   `json:"sender_id"`
-	Content    string `json:"content"`
-	ChatRoomID uint   `json:"chat_room_id"`
+	SenderID uint   `json:"sender_id"`
+	Token    string `json:"token,omitempty"`
+	Content  string `json:"content"`
+	RoomID   uint   `json:"chat_room_id"`
 }

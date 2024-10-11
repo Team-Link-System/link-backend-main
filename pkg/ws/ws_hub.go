@@ -51,7 +51,9 @@ func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint) {
 		delete(hub.Clients, conn)
 		conn.Close()
 	}
-	delete(hub.UserClients, userID)
+	if existingConn, ok := hub.UserClients[userID]; ok && existingConn == conn {
+		delete(hub.UserClients, userID)
+	}
 }
 
 // 채팅방에 클라이언트 추가
@@ -65,7 +67,6 @@ func (hub *WebSocketHub) AddToChatRoom(chatRoomID uint, conn *websocket.Conn) {
 }
 
 // 채팅방에서 클라이언트 제거
-// 채팅방에서 클라이언트 제거 후 클라이언트가 없으면 방 삭제
 func (hub *WebSocketHub) RemoveFromChatRoom(chatRoomID uint, conn *websocket.Conn) {
 	if room, exists := hub.ChatRooms[chatRoomID]; exists {
 		delete(room.Clients, conn)
@@ -78,20 +79,27 @@ func (hub *WebSocketHub) RemoveFromChatRoom(chatRoomID uint, conn *websocket.Con
 
 // 특정 채팅방에 메시지 보내기
 func (hub *WebSocketHub) SendMessageToChatRoom(chatRoomID uint, message interface{}) {
-	fmt.Printf("chatRoomID: %v\n", chatRoomID)
-	fmt.Printf("message: %v\n", message)
 	if room, exists := hub.ChatRooms[chatRoomID]; exists {
 		for client := range room.Clients {
-			client.WriteJSON(message)
+			if err := client.WriteJSON(message); err != nil {
+				fmt.Printf("클라이언트에게 메시지 전송 실패: %v\n", err)
+				client.Close()
+				delete(room.Clients, client)
+			}
 		}
 	} else {
-		fmt.Printf("Chat Room (ID: %d) not found, unable to send message\n", chatRoomID)
+		fmt.Printf("채팅방(ID: %d)이 존재하지 않습니다. 메시지를 보낼 수 없습니다.\n", chatRoomID)
 	}
 }
 
+// 모든 클라이언트에게 메시지 브로드캐스트
 func (hub *WebSocketHub) BroadcastMessage(message interface{}) {
 	for client := range hub.Clients {
-		client.WriteJSON(message)
+		if err := client.WriteJSON(message); err != nil {
+			fmt.Printf("클라이언트에게 메시지 전송 실패: %v\n", err)
+			client.Close()
+			delete(hub.Clients, client)
+		}
 	}
 }
 
