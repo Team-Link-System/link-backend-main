@@ -111,6 +111,7 @@ func main() {
 			notification := protectedRoute.Group("notification")
 			{
 				notification.POST("", notificationHandler.CreateNotification)
+				notification.GET("/list", notificationHandler.GetNotifications)
 			}
 		}
 	})

@@ -2,15 +2,17 @@ package usecase
 
 import (
 	"fmt"
+	"time"
+
 	"link/internal/notification/entity"
 	_notificationRepo "link/internal/notification/repository"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/dto/req"
-	"time"
 )
 
 type NotificationUsecase interface {
 	CreateNotification(request req.CreateNotificationRequest) (*entity.Notification, error)
+	GetNotifications(userId uint) ([]*entity.Notification, error)
 }
 
 type notificationUsecase struct {
@@ -70,4 +72,24 @@ func (n *notificationUsecase) CreateNotification(request req.CreateNotificationR
 	}
 
 	return notification, nil
+}
+
+func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notification, error) {
+
+	//TODO 수신자 id가 존재하는지 확인
+	user, err := n.userRepo.GetUserByID(userId)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, fmt.Errorf("수신자가 존재하지 않습니다")
+	}
+
+	//TODO 수신자 id로 알림 조회
+	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return notifications, nil
 }
