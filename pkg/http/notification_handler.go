@@ -55,6 +55,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, err.Error()))
 		return
 	}
+	fmt.Println(notifications)
 
 	c.JSON(http.StatusOK, interceptor.Success("알림 조회 성공", notifications))
 }

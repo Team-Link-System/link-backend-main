@@ -30,7 +30,7 @@ func (r *notificationPersistenceMongo) CreateNotification(notification *entity.N
 
 func (r *notificationPersistenceMongo) GetNotificationsByReceiverId(receiverId uint) ([]*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
-	filter := bson.M{"receiver_id": receiverId}
+	filter := bson.M{"receiverid": receiverId}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
