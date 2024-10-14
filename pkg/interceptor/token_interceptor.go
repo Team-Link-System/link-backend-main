@@ -25,7 +25,6 @@ func NewTokenInterceptor(authUsecase usecase.AuthUsecase) *TokenInterceptor {
 func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// OPTIONS 요청은 인증 없이 바로 처리
-
 		accessToken, _ := c.Cookie("accessToken")
 		fmt.Println("accessToken")
 		fmt.Println(accessToken)

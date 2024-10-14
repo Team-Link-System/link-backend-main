@@ -23,7 +23,7 @@ func main() {
 	// gin.SetMode(gin.ReleaseMode)
 
 	// dig 컨테이너 생성 및 의존성 주입
-	container := config.BuildContainer(cfg.DB, cfg.Redis)
+	container := config.BuildContainer(cfg.DB, cfg.Redis, cfg.Mongo)
 
 	// Gin 라우터 설정
 	r := gin.Default()
@@ -53,8 +53,10 @@ func main() {
 		authHandler *handlerHttp.AuthHandler,
 		departmentHandler *handlerHttp.DepartmentHandler,
 		chatHandler *handlerHttp.ChatHandler,
+		notificationHandler *handlerHttp.NotificationHandler,
 		tokenInterceptor *interceptor.TokenInterceptor,
 		wsHandler *ws.WsHandler,
+
 	) {
 
 		// WebSocket 관련 라우팅 그룹
@@ -104,6 +106,12 @@ func main() {
 				department.GET("/:id", departmentHandler.GetDepartment)
 				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
+			}
+
+			notification := protectedRoute.Group("notification")
+			{
+				notification.POST("", notificationHandler.CreateNotification)
+				notification.GET("/list", notificationHandler.GetNotifications)
 			}
 		}
 	})

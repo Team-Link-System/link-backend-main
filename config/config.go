@@ -2,12 +2,16 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -18,6 +22,7 @@ type Config struct {
 	WSPort   string
 	DB       *gorm.DB
 	Redis    *redis.Client
+	Mongo    *mongo.Client
 }
 
 func LoadConfig() *Config {
@@ -29,6 +34,7 @@ func LoadConfig() *Config {
 		WSPath:   getEnv("WS_PATH", "/ws"),
 		DB:       InitDB(),
 		Redis:    InitRedis(),
+		Mongo:    InitMongo(),
 	}
 }
 
@@ -45,9 +51,9 @@ func LoadEnv() {
 
 	err := godotenv.Load(envFile)
 	if err != nil {
-		log.Printf("Error loading %s file", envFile)
+		log.Printf("에러 %s 파일 로드", envFile)
 	} else {
-		log.Printf("Loaded %s file", envFile)
+		log.Printf("%s 파일 로드 성공", envFile)
 	}
 }
 
@@ -55,7 +61,7 @@ func InitDB() *gorm.DB {
 	dsn := os.Getenv("POSTGRES_DSN")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("POSTGRES DATABASE CONNECTION ERROR: ", err)
+		log.Fatal("POSTGRES DB 연결 오류: ", err)
 	}
 
 	// 개발자 모드에서 디버그 모드 활성화
@@ -75,10 +81,30 @@ func InitRedis() *redis.Client {
 	})
 
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
-		log.Fatal("Failed to connect to Redis:", err)
+		log.Fatal("레디스 연결 오류:", err)
 	}
 
 	return rdb
+}
+
+func InitMongo() *mongo.Client {
+
+	mongoURI := os.Getenv("MONGO_DSN")
+	clientOptions := options.Client().ApplyURI(mongoURI).SetConnectTimeout(10 * time.Second)
+	// MongoDB 클라이언트 초기화
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatalf("몽고DB 연결 오류: %v", err)
+	}
+
+	// 연결 확인
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatalf("몽고DB 연결 오류: %v", err)
+	}
+
+	fmt.Println("몽고DB 연결 성공")
+	return client
 }
 
 func parseRedisDB(db string) int {
