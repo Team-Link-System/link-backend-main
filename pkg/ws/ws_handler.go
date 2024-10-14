@@ -27,6 +27,8 @@ func NewWsHandler(hub *WebSocketHub, chatUsecase usecase.ChatUsecase) *WsHandler
 	}
 }
 
+// TODO 채팅 핸들러
+// HandleWebSocketConnection는 채팅 WebSocket 연결을 처리합니다.
 func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	// 쿼리 스트링에서 token을 가져옴
 	token := c.Query("token")
@@ -71,7 +73,6 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 	err = conn.ReadJSON(&initialMessage)
 	if err != nil {
-		log.Println(initialMessage)
 		log.Printf("초기 메시지 수신 실패: %v", err)
 		response := res.JsonResponse{
 			Success: false,
@@ -101,19 +102,14 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 
 	// WebSocket 클라이언트를 채팅방에 등록
-	h.hub.RegisterClient(conn, requestUserId)
+	h.hub.RegisterClient(conn, requestUserId, "chat")
 	defer h.hub.UnregisterClient(conn, requestUserId)
 
 	// 연결 성공 메시지를 전송
 	response := res.JsonResponse{
 		Success: true,
 		Message: "Connection successful",
-		Payload: &res.Payload{
-			ChatRoomID: initialMessage.RoomID,
-			SenderID:   requestUserId,
-			Content:    "Welcome to the chat room",
-			CreatedAt:  time.Now().Format(time.RFC3339),
-		},
+		Type:    "chat",
 	}
 	conn.WriteJSON(response)
 
@@ -122,11 +118,11 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		var message req.SendMessageRequest
 		err = conn.ReadJSON(&message)
 		if err != nil {
-			// 채팅 메시지 수신 오류 처리
 			log.Printf("채팅 메시지 수신 실패: %v", err)
 			response := res.JsonResponse{
 				Success: false,
 				Message: "Invalid message format",
+				Type:    "chat",
 			}
 			conn.WriteJSON(response)
 			break
@@ -139,6 +135,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			response := res.JsonResponse{
 				Success: false,
 				Message: "Failed to save message",
+				Type:    "chat",
 			}
 			conn.WriteJSON(response)
 			continue
@@ -147,6 +144,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		// 메시지 전송 성공 응답 및 브로드캐스트
 		response = res.JsonResponse{
 			Success: true,
+			Type:    "chat",
 			Payload: &res.Payload{
 				ChatRoomID: message.RoomID,
 				SenderID:   requestUserId,
@@ -154,6 +152,91 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 				CreatedAt:  time.Now().Format(time.RFC3339),
 			},
 		}
-		h.hub.BroadcastMessage(response)
+		h.hub.SendMessageToChatRoom(message.RoomID, response)
 	}
 }
+
+// // TODO 알림 처리 핸들러
+// func (h *WsHandler) HandleNotificationWebSocketConnection(c *gin.Context) {
+// 	token := c.Query("token")
+// 	if token == "" {
+// 		response := res.JsonResponse{
+// 			Success: false,
+// 			Message: "Token is required",
+// 		}
+// 		c.JSON(http.StatusBadRequest, response)
+// 		return
+// 	}
+
+// 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
+// 	if err != nil {
+// 		log.Printf("WebSocket 업그레이드 실패: %v", err)
+// 		response := res.JsonResponse{
+// 			Success: false,
+// 			Message: "Failed to upgrade WebSocket connection",
+// 		}
+// 		conn.WriteJSON(response)
+// 		return
+// 	}
+// 	defer conn.Close()
+
+// 	// 토큰 검증
+// 	claims, err := util.ValidateAccessToken(token)
+// 	if err != nil {
+// 		log.Printf("토큰 검증 실패: %v", err)
+// 		response := res.JsonResponse{
+// 			Success: false,
+// 			Message: "Unauthorized",
+// 		}
+// 		conn.WriteJSON(response)
+// 		return
+// 	}
+
+// 	requestUserId := claims.UserId
+
+// 	h.hub.RegisterClient(conn, requestUserId)
+// 	defer h.hub.UnregisterClient(conn, requestUserId)
+
+// 	// 연결 성공 메시지를 전송
+// 	response := res.JsonResponse{
+// 		Success: true,
+// 		Message: "Connection successful",
+// 	}
+// 	conn.WriteJSON(response)
+
+// 	// 이후 알림 처리 루프
+// 	for {
+// 		var notification req.NotificationRequest
+// 		err = conn.ReadJSON(&notification)
+// 		if err != nil {
+// 			log.Printf("알림 수신 실패: %v", err)
+// 			response := res.JsonResponse{
+// 				Success: false,
+// 				Message: "Invalid notification format",
+// 			}
+// 			conn.WriteJSON(response)
+// 			break
+// 		}
+
+// 		// 알림 처리
+
+// 		//TODO 알림 DB에 저장
+// 		err = h.chatUsecase.SaveNotification(requestUserId, notification.Type, notification.Data)
+// 		if err != nil {
+// 			log.Printf("알림 저장 실패: %v", err)
+// 			response := res.JsonResponse{
+// 				Success: false,
+// 				Message: "Failed to save notification",
+// 			}
+// 			conn.WriteJSON(response)
+// 			continue
+// 		}
+
+// 		// 알림 전송 성공 응답 및 브로드캐스트
+// 		response = res.JsonResponse{
+// 			Success: true,
+// 			Message: "Notification sent successfully",
+// 		}
+// 		h.hub.BroadcastMessage(response)
+// 	}
+// }
