@@ -109,13 +109,15 @@ func (hub *WebSocketHub) RemoveFromChatRoom(chatRoomID uint, conn *websocket.Con
 }
 
 // 특정 채팅방에 메시지 보내기 (인터페이스로 메시지 받음)
+// 클라이언트에게 메시지를 전송할 때 연결이 닫혀 있으면 해당 클라이언트를 제거합니다.
 func (hub *WebSocketHub) SendMessageToChatRoom(chatRoomID uint, message interface{}) {
 	if room, exists := hub.ChatRooms[chatRoomID]; exists {
 		for client := range room.Clients {
 			if err := client.WriteJSON(message); err != nil {
 				fmt.Printf("클라이언트에게 메시지 전송 실패: %v\n", err)
-				client.Close()
-				delete(room.Clients, client)
+				client.Close()               // 클라이언트 연결을 닫음
+				delete(room.Clients, client) // 채팅방에서 클라이언트 제거
+				hub.UnregisterClient(client) // WebSocketHub에서 클라이언트 제거
 			}
 		}
 	} else {
