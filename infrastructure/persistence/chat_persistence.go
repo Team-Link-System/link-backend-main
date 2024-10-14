@@ -1,9 +1,12 @@
 package persistence
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -13,11 +16,12 @@ import (
 )
 
 type chatPersistence struct {
-	db *gorm.DB
+	db    *gorm.DB
+	mongo *mongo.Client
 }
 
-func NewChatPersistencePostgres(db *gorm.DB) repository.ChatRepository {
-	return &chatPersistence{db: db}
+func NewChatPersistencePostgres(db *gorm.DB, mongo *mongo.Client) repository.ChatRepository {
+	return &chatPersistence{db: db, mongo: mongo}
 }
 
 func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
@@ -103,16 +107,41 @@ func (r *chatPersistence) FindPrivateChatRoomByUsers(userID1, userID2 uint) (*ch
 	}, nil
 }
 
-// TODO 메시지 저장
+// TODO 메시지 저장 - 이건 mongo에 저장
 func (r *chatPersistence) SaveMessage(chat *chatEntity.Chat) error {
-	result := r.db.Create(&model.Chat{
-		Content:    chat.Content,
-		ChatRoomID: chat.ChatRoomID,
-		SenderID:   chat.SenderID,
-	})
+	//TODO 처음에는 모든 사용자가 읽지 않았으므로 UnreadBy에 모든 사용자를 추가하고 UnreadCount를 사용자 수와 동일하게 설정
+	//TODO postgres에서 채팅방 참여중인 사용자들 조회
+	var users []model.User
+	err := r.db.Table("chat_room_users").
+		Joins("JOIN users ON chat_room_users.user_id = users.id").
+		Where("chat_room_users.chat_room_id = ?", chat.ChatRoomID).
+		Select("users.id"). // 사용자 ID만 조회
+		Scan(&users).Error
 
-	if result.Error != nil {
-		return fmt.Errorf("메시지 저장 중 DB 오류: %w", result.Error)
+	if err != nil {
+		return fmt.Errorf("채팅방 참여 중인 사용자들 조회 중 DB 오류: %w", err)
+	}
+
+	// 조회한 사용자 ID를 기반으로 UnreadBy 필드 설정
+	unreadBy := make([]uint, len(users))
+	for i, user := range users {
+		unreadBy[i] = user.ID
+	}
+
+	chatModel := model.Chat{
+		Content:     chat.Content,
+		ChatRoomID:  chat.ChatRoomID,
+		SenderID:    chat.SenderID,
+		CreatedAt:   chat.CreatedAt,
+		UnreadBy:    unreadBy,   // 모든 사용자를 UnreadBy에 추가
+		UnreadCount: len(users), // 처음엔 모든 사용자가 읽지 않았으므로 UnreadCount는 사용자 수와 동일
+	}
+
+	// MongoDB에 메시지 저장
+	collection := r.mongo.Database("link").Collection("messages")
+	_, err = collection.InsertOne(context.Background(), chatModel)
+	if err != nil {
+		return fmt.Errorf("메시지 저장 중 MongoDB 오류: %w", err)
 	}
 
 	return nil
@@ -150,19 +179,25 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 	}, nil
 }
 
-// TODO 채팅방 메시지 조회
+// TODO 메시지 조회
 func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, error) {
-	var chatMessages []model.Chat
+	collection := r.mongo.Database("link").Collection("messages")
 
-	// 채팅방 ID와 전송자 정보만 조회
-	err := r.db.Select("content, chat_room_id, sender_id, created_at").
-		Where("chat_room_id = ?", chatRoomID).
-		Find(&chatMessages).Error
+	// MongoDB에서 채팅방 ID로 메시지 조회
+	filter := bson.M{"chat_room_id": chatRoomID}
+	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
-		return nil, fmt.Errorf("채팅 내용 조회 중 DB 오류: %w", err)
+		return nil, fmt.Errorf("채팅 내용 조회 중 MongoDB 오류: %w", err)
+	}
+	defer cursor.Close(context.Background())
+
+	// MongoDB에서 조회한 메시지를 저장할 슬라이스
+	var chatMessages []model.Chat
+	if err = cursor.All(context.Background(), &chatMessages); err != nil {
+		return nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
 	}
 
-	// 채팅 내용을 entity로 변환
+	// 조회한 데이터를 entity로 변환
 	entityChatMessages := make([]*chatEntity.Chat, len(chatMessages))
 	for i, chatMessage := range chatMessages {
 		entityChatMessages[i] = &chatEntity.Chat{

@@ -13,12 +13,14 @@ type ChatRoom struct {
 }
 
 type Chat struct {
-	ID         uint              `json:"id,omitempty"`
-	Content    string            `json:"content,omitempty"`
-	ChatRoomID uint              `json:"chat_room_id,omitempty"`
-	ChatRoom   ChatRoom          `json:"chat_room,omitempty"` // 채팅방 정보
-	SenderID   uint              `json:"sender_id,omitempty"`
-	User       *_userEntity.User `json:"user,omitempty"` // 사용자 정보
-	CreatedAt  time.Time         `json:"created_at,omitempty"`
-	UpdatedAt  time.Time         `json:"updated_at,omitempty"`
+	ID          uint              `json:"id,omitempty"`
+	Content     string            `json:"content,omitempty"`
+	ChatRoomID  uint              `json:"chat_room_id,omitempty"`
+	ChatRoom    ChatRoom          `json:"chat_room,omitempty"` // 채팅방 정보
+	SenderID    uint              `json:"sender_id,omitempty"`
+	User        *_userEntity.User `json:"user,omitempty"` // 사용자 정보
+	UnreadBy    []uint            `json:"unread_by,omitempty"`
+	UnreadCount uint              `json:"unread_count,omitempty"`
+	CreatedAt   time.Time         `json:"created_at,omitempty"`
+	UpdatedAt   time.Time         `json:"updated_at,omitempty"`
 }
