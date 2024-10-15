@@ -20,6 +20,7 @@ type UserUsecase interface {
 	DeleteUser(targetUserId, requestUserId uint) error
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+	GetUserByID(userId uint) (*entity.User, error)
 }
 
 type userUsecase struct {
@@ -61,7 +62,7 @@ func (u *userUsecase) ValidateEmail(email string) error {
 	return nil
 }
 
-// TODO 사용자 정보 가져오기
+// TODO 사용자 정보 가져오기 (다른 사용자)
 func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error) {
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
@@ -200,6 +201,16 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 		return nil, fmt.Errorf("부서 사용자 조회에 실패했습니다")
 	}
 	return users, nil
+}
+
+// TODO 본인 정보 가져오기
+func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
+	user, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, fmt.Errorf("사용자 조회에 실패했습니다")
+	}
+	return user, nil
 }
 
 //TODO 자기가 속한 부서의 사용자 리스트

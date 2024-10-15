@@ -49,8 +49,6 @@ type SearchUserResponse struct {
 }
 
 type Ws_UserResponse struct {
-	ID    uint   `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
+	UserID uint `json:"user_id"`
+	Online bool `json:"online"`
 }

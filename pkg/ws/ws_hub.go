@@ -2,11 +2,12 @@ package ws
 
 import (
 	"fmt"
-	"link/pkg/dto/res"
 	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
+
+	"link/pkg/dto/res"
 )
 
 // WebSocketHub는 클라이언트와 채팅방을 관리하고, 클라이언트의 온라인 상태 및 알림을 관리합니다.
@@ -48,35 +49,50 @@ func NewWebSocketHub() *WebSocketHub {
 }
 
 // 클라이언트 등록
+// 유저 상태 변경 시 메시지 전송
 func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomID uint) {
-	// 전체 유저 연결 관리 (온라인 상태 설정)
-	hub.Clients.Store(userID, conn)
-	hub.OnlineClients.Store(userID, true) // 유저 온라인 상태
-
-	// 유저의 온라인 상태를 브로드캐스트
-	hub.BroadcastOnlineStatus()
+	// 이전 상태 확인
 
 	// 채팅방에 클라이언트 추가 (채팅방 참여자에게만 전송)
 	if roomID != 0 {
 		hub.AddToChatRoom(roomID, userID, conn)
+	} else {
+		//TODO userClient가 메모리에있는지 확인
+		_, ok := hub.Clients.Load(userID)
+		if !ok {
+			//TODO 없으면 그냥 메모리에 추가
+			hub.Clients.Store(userID, conn)
+			conn.WriteJSON(res.JsonResponse{
+				Success: true,
+				Message: fmt.Sprintf("User %d 연결 성공", userID),
+				Type:    "connection",
+			})
+		}
+		//TODO 온라인 상태 변경
+		oldStatus, ok := hub.OnlineClients.Load(userID)
+		if !ok || oldStatus == nil || oldStatus == false {
+			hub.OnlineClients.Store(userID, true)
+			hub.BroadcastOnlineStatus(userID, true)
+		}
 	}
 }
 
-// 클라이언트 해제
-// 클라이언트 해제
+// 클라이언트 해제 (오프라인 상태 변경 시에만 메시지 전송)
 func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint, roomID uint) {
-	if _, ok := hub.Clients.Load(userID); ok {
-		hub.Clients.Delete(userID)
-		hub.OnlineClients.Store(userID, false) // 유저 오프라인 상태
-		conn.Close()                           // 연결 닫기
-
-		// 유저 오프라인 상태를 브로드캐스트
-		hub.BroadcastOnlineStatus()
-	}
-
 	// 채팅방에서 유저 제거
 	if roomID != 0 {
 		hub.RemoveFromChatRoom(roomID, userID)
+	} else {
+		_, ok := hub.Clients.Load(userID)
+		if ok {
+			hub.Clients.Delete(userID)
+			conn.Close()
+		}
+		oldStatus, ok := hub.OnlineClients.Load(userID)
+		if ok && oldStatus == true {
+			hub.OnlineClients.Store(userID, false)
+			hub.BroadcastOnlineStatus(userID, false)
+		}
 	}
 }
 
@@ -117,6 +133,7 @@ func (hub *WebSocketHub) SendMessageToChatRoom(roomID uint, message res.JsonResp
 }
 
 // 특정 유저에게 메시지 전송 -> 특정 유저에게 알람을 보낼 때,
+// 알림 같은거 보낼 때 사용
 func (hub *WebSocketHub) SendMessageToUser(userID uint, message res.JsonResponse) {
 	if conn, ok := hub.Clients.Load(userID); ok {
 		client := conn.(*websocket.Conn)
@@ -135,17 +152,27 @@ func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message int
 
 // 전체 온라인 상태를 체크하여 모든 유저의 상태를 업데이트
 // BroadcastOnlineStatus 함수
-func (hub *WebSocketHub) BroadcastOnlineStatus() {
-	hub.OnlineClients.Range(func(userID, onlineStatus interface{}) bool {
-		statusMessage := fmt.Sprintf("유저 %d의 온라인 상태: %v\n", userID, onlineStatus)
-		hub.BroadcastToAllUsers(statusMessage)
-		return true
-	})
+// 상태가 변경되었을 때만 전체 브로드캐스트
+// 온라인 상태 변경할 때
+func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
+	statusMessage := res.JsonResponse{
+		Success: true,
+		Message: fmt.Sprintf("User %d 연결상태 변경 알림: %v", userID, online),
+		Type:    "connection",
+		Payload: res.Ws_UserResponse{
+			UserID: userID,
+			Online: online,
+		},
+	}
+	hub.BroadcastToAllUsers(statusMessage)
 }
 
+// TODO 이건 RoomID와는 관계 없음
 func (hub *WebSocketHub) BroadcastToAllUsers(message interface{}) {
-	hub.Clients.Range(func(_, conn interface{}) bool {
-		conn.(*websocket.Conn).WriteJSON(message)
+	hub.Clients.Range(func(id, conn interface{}) bool {
+		if _, ok := id.(uint); ok {
+			conn.(*websocket.Conn).WriteJSON(message)
+		}
 		return true
 	})
 }
@@ -155,15 +182,18 @@ func (hub *WebSocketHub) Run() {
 	for {
 		select {
 		case registration := <-hub.Register:
-			hub.RegisterClient(registration.Conn, registration.UserID, registration.RoomID)
+			// 경로에 따라 다른 웹소켓 처리를 진행
+			if registration.RoomID == 0 {
+				// RoomID가 0이면 유저 상태 웹소켓
+				hub.RegisterClient(registration.Conn, registration.UserID, 0) // 유저 상태 처리
+			} else {
+				// RoomID가 존재하면 채팅 웹소켓
+				hub.RegisterClient(registration.Conn, registration.UserID, registration.RoomID) // 채팅 처리
+			}
+
 		case conn := <-hub.Unregister:
-			// 여기에서 클라이언트가 연결을 끊었을 때 처리 가능
-			hub.UnregisterClient(conn, 0, 0) // roomID와 userID는 필요시 전달
+			// 클라이언트 연결 해제
+			hub.UnregisterClient(conn, 0, 0)
 		}
 	}
 }
-
-// 채팅방 내 클라이언트 관리: roomId 안에 여러 userId를 등록하여, 각각의 클라이언트 WebSocket을 관리.
-// 유저 개별 알림: userId를 기반으로 메시지나 알림을 개별적으로 전달.
-// 온라인/오프라인 상태 관리: sync.Map을 사용해 유저의 온라인 상태를 관리하여, 전체 유저의 상태를 방송(BroadcastOnlineStatus)하거나 필요한 경우 특정 유저의 상태를 확인.
-// 클라이언트 연결/해제 처리: 클라이언트가 연결을 해제하거나 다시 연결할 때 등록/해제 처리 로직을 개선.

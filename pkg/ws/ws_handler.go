@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 
 	_chatUsecase "link/internal/chat/usecase"
 	_notificationUsecase "link/internal/notification/usecase"
+	_userUsecase "link/internal/user/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/util"
@@ -23,14 +23,16 @@ type WsHandler struct {
 	hub                 *WebSocketHub
 	chatUsecase         _chatUsecase.ChatUsecase
 	notificationUsecase _notificationUsecase.NotificationUsecase
+	userUsecase         _userUsecase.UserUsecase
 }
 
 // NewWsHandler는 WebSocketHub를 받아서 새로운 WsHandler를 반환합니다.
-func NewWsHandler(hub *WebSocketHub, chatUsecase _chatUsecase.ChatUsecase, notificationUsecase _notificationUsecase.NotificationUsecase) *WsHandler {
+func NewWsHandler(hub *WebSocketHub, chatUsecase _chatUsecase.ChatUsecase, notificationUsecase _notificationUsecase.NotificationUsecase, userUsecase _userUsecase.UserUsecase) *WsHandler {
 	return &WsHandler{
 		hub:                 hub,
 		chatUsecase:         chatUsecase,
 		notificationUsecase: notificationUsecase,
+		userUsecase:         userUsecase,
 	}
 }
 
@@ -120,7 +122,6 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 	}
 
-	// WebSocket 클라이언트를 채팅방에 등록
 	h.hub.RegisterClient(conn, uint(userIdUint), uint(roomIdUint))
 
 	// 연결 성공 메시지 전송
@@ -237,25 +238,19 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		return
 	}
 
-	// 사용자 WebSocket을 등록 (채팅방 ID는 0으로 설정 - 즉, 사용자 전용 WebSocket)
-	h.hub.RegisterClient(conn, uint(userIdUint), 0)
-
-	// 연결 성공 메시지를 전송
-	conn.WriteJSON(res.JsonResponse{
-		Success: true,
-		Message: fmt.Sprintf("User %d 연결 성공", userIdUint),
-		Type:    "connection",
-	})
-
-	h.hub.BroadcastOnlineStatus()
-
 	// 연결이 종료될 때 WebSocket 정리
 	defer func() {
 		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
-		h.hub.BroadcastOnlineStatus() // 오프라인 상태 브로드캐스트
 		conn.Close()
 	}()
 
+	//TODO 메모리에 유저 상태 확인
+	_, exists := h.hub.Clients.Load(uint(userIdUint))
+	if !exists {
+		//TODO 없으면 등록 -> 어차피 있으나 없으나 연결함
+		h.hub.RegisterClient(conn, uint(userIdUint), 0)
+		// 연결 성공 메시지를 전송
+	}
 	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
 	for {
 		_, messageBytes, err := conn.ReadMessage()
