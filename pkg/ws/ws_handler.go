@@ -1,11 +1,14 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 
 	"link/internal/chat/usecase"
 	"link/pkg/dto/req"
@@ -28,17 +31,22 @@ func NewWsHandler(hub *WebSocketHub, chatUsecase usecase.ChatUsecase) *WsHandler
 }
 
 // HandleWebSocketConnection는 채팅 WebSocket 연결을 처리합니다.
+// HandleWebSocketConnection는 채팅 WebSocket 연결을 처리합니다.
 func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
-	// 쿼리 스트링에서 token을 가져옴
+	// 쿼리 스트링에서 token, roomId, senderId 가져오기
 	token := c.Query("token")
-	if token == "" {
+	roomId := c.Query("roomId")
+	senderId := c.Query("senderId")
+
+	if token == "" || roomId == "" || senderId == "" {
 		c.JSON(http.StatusBadRequest, res.JsonResponse{
 			Success: false,
-			Message: "Token is required",
+			Message: "Token, room_id, and sender_id are required",
 		})
 		return
 	}
 
+	// WebSocket 연결 업그레이드
 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("WebSocket 업그레이드 실패: %v", err)
@@ -48,9 +56,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		})
 		return
 	}
-	defer conn.Close()
 
-	// 토큰 검증 (초기 연결에서만 수행)
+	// 토큰 검증
 	_, err = util.ValidateAccessToken(token)
 	if err != nil {
 		log.Printf("토큰 검증 실패: %v", err)
@@ -61,27 +68,40 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		return
 	}
 
-	// 첫 번째 메시지에서 roomId를 받아 처리
-	var initialMessage struct {
-		SenderID uint `json:"sender_id"`
-		RoomID   uint `json:"chat_room_id"`
-	}
-	if err := conn.ReadJSON(&initialMessage); err != nil {
-		log.Printf("초기 메시지 수신 실패: %v", err)
+	// roomId 및 senderId 변환
+	roomIdUint, err := strconv.ParseUint(roomId, 10, 64)
+	if err != nil {
+		log.Printf("room_id 변환 실패: %v", err)
 		conn.WriteJSON(res.JsonResponse{
 			Success: false,
-			Message: "Invalid initial message format",
+			Message: "Invalid room_id format",
 		})
 		return
 	}
 
-	// 메모리에서 채팅방 확인
-	_, exists := h.hub.ChatRooms[initialMessage.RoomID]
+	userIdUint, err := strconv.ParseUint(senderId, 10, 64)
+	if err != nil {
+		log.Printf("sender_id 변환 실패: %v", err)
+		conn.WriteJSON(res.JsonResponse{
+			Success: false,
+			Message: "Invalid sender_id format",
+		})
+		return
+	}
+
+	// 연결 종료 시 클라이언트와 채팅방에서 제거
+	defer func() {
+		h.hub.RemoveFromChatRoom(uint(roomIdUint), uint(userIdUint))
+		h.hub.UnregisterClient(conn, uint(userIdUint), uint(roomIdUint))
+		conn.Close()
+	}()
+
+	// 메모리에서 채팅방 확인, 없으면 DB에서 가져오기
+	_, exists := h.hub.ChatRooms.Load(uint(roomIdUint))
 	if !exists {
-		// 채팅방이 메모리에 없으면 DB에서 확인
-		chatRoomEntity, err := h.chatUsecase.GetChatRoomById(initialMessage.RoomID)
+		chatRoomEntity, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
 		if err != nil || chatRoomEntity == nil {
-			log.Printf("채팅방 조회 실패: %v", err)
+			log.Printf("DB 채팅방 조회 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
 				Message: "Chat room not found",
@@ -89,25 +109,32 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			return
 		}
 		// DB에서 가져온 채팅방을 메모리에 추가
-		h.hub.AddToChatRoom(chatRoomEntity.ID, conn)
+		h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 	}
 
 	// WebSocket 클라이언트를 채팅방에 등록
-	h.hub.RegisterClient(conn, initialMessage.SenderID, "chat")
-	defer h.hub.UnregisterClient(conn)
+	h.hub.RegisterClient(conn, uint(userIdUint), uint(roomIdUint))
 
-	// 연결 성공 메시지를 전송
+	// 연결 성공 메시지 전송
 	conn.WriteJSON(res.JsonResponse{
 		Success: true,
 		Message: "Connection successful",
 		Type:    "chat",
+		Payload: &res.Payload{
+			ChatRoomID: uint(roomIdUint),
+			SenderID:   uint(userIdUint),
+		},
 	})
 
-	// 이후 채팅 메시지 처리 루프
+	// 채팅 메시지 처리 루프
 	for {
-		var message req.SendMessageRequest
-		if err := conn.ReadJSON(&message); err != nil {
-			log.Printf("채팅 메시지 수신 실패: %v", err)
+		// 메시지 수신
+		_, messageBytes, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("예기치 않은 WebSocket 종료: %v", err)
+			}
+			log.Printf("메시지 수신 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
 				Message: "Invalid message format",
@@ -116,7 +143,19 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			break
 		}
 
-		// 채팅 메시지를 데이터베이스에 저장
+		// 메시지 디코딩
+		var message req.SendMessageRequest
+		if err := json.Unmarshal(messageBytes, &message); err != nil {
+			log.Printf("메시지 디코딩 실패: %v", err)
+			conn.WriteJSON(res.JsonResponse{
+				Success: false,
+				Message: "Failed to decode message",
+				Type:    "chat",
+			})
+			continue
+		}
+
+		// 메시지 저장
 		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
 			log.Printf("채팅 메시지 저장 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
@@ -127,7 +166,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		// 메시지 전송 성공 응답 및 브로드캐스트
+		// 메시지 전송 성공 및 브로드캐스트
 		h.hub.SendMessageToChatRoom(message.RoomID, res.JsonResponse{
 			Success: true,
 			Type:    "chat",
