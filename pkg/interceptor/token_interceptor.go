@@ -1,7 +1,6 @@
 package interceptor
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -26,8 +25,6 @@ func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// OPTIONS 요청은 인증 없이 바로 처리
 		accessToken, _ := c.Cookie("accessToken")
-		fmt.Println("accessToken")
-		fmt.Println(accessToken)
 		if accessToken != "" {
 			// Access Token 검증
 			claims, err := util.ValidateAccessToken(accessToken)
@@ -60,8 +57,6 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 
 		// Access Token이 없거나 유효하지 않은 경우 Refresh Token 검증
 		refreshToken, err := c.Cookie("refreshToken")
-		fmt.Println("refreshToken")
-		fmt.Println(refreshToken)
 		if err != nil || refreshToken == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다."})
 			c.Abort()
