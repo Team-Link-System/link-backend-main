@@ -24,4 +24,5 @@ type User struct {
 	Role         UserRole  `json:"role,omitempty" binding:"required"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	IsOnline     bool      `json:"is_online,omitempty"`
 }

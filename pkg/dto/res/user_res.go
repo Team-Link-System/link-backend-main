@@ -20,6 +20,7 @@ type GetAllUsersResponse struct {
 	Role         uint      `json:"role"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	IsOnline     bool      `json:"is_online"`
 }
 
 type GetUserByIdResponse struct {
