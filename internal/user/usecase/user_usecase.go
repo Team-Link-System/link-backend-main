@@ -21,6 +21,7 @@ type UserUsecase interface {
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 	GetUserByID(userId uint) (*entity.User, error)
+	UpdateUserOnlineStatus(userId uint, online bool) error
 }
 
 type userUsecase struct {
@@ -211,6 +212,11 @@ func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
 		return nil, fmt.Errorf("사용자 조회에 실패했습니다")
 	}
 	return user, nil
+}
+
+// TODO 유저 상태 업데이트
+func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
+	return u.userRepo.UpdateUserOnlineStatus(userId, online)
 }
 
 //TODO 자기가 속한 부서의 사용자 리스트

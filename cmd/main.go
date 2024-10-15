@@ -18,6 +18,7 @@ func main() {
 
 	config.InitAdminUser(cfg.DB)
 	config.AutoMigrate(cfg.DB)
+	config.UpdateAllUserOffline(cfg.DB)
 
 	// TODO: Gin 모드 설정 (프로덕션일 경우)
 	// gin.SetMode(gin.ReleaseMode)

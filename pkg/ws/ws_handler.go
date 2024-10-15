@@ -242,14 +242,26 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	defer func() {
 		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
 		conn.Close()
+		//TODO 유저 상태 업데이트
+		h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false)
 	}()
 
 	//TODO 메모리에 유저 상태 확인
 	_, exists := h.hub.Clients.Load(uint(userIdUint))
 	if !exists {
-		//TODO 없으면 등록 -> 어차피 있으나 없으나 연결함
-		h.hub.RegisterClient(conn, uint(userIdUint), 0)
-		// 연결 성공 메시지를 전송
+		//TODO 없으면 DB에서 확인
+		user, err := h.userUsecase.GetUserByID(uint(userIdUint))
+		if err != nil {
+			log.Printf("사용자 조회에 실패했습니다: %v", err)
+			conn.WriteJSON(res.JsonResponse{
+				Success: false,
+				Message: "사용자 조회에 실패했습니다",
+				Type:    "error",
+			})
+			return
+		}
+		h.hub.RegisterClient(conn, user.ID, 0)
+		h.userUsecase.UpdateUserOnlineStatus(user.ID, true)
 	}
 	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
 	for {
@@ -285,6 +297,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
+		//TODO 알림 데이터베이스에 저장
 		h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
 			Success: true,
 			Type:    "notification",

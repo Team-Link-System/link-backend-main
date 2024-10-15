@@ -16,4 +16,5 @@ type UserRepository interface {
 	DeleteUser(id uint) error
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+	UpdateUserOnlineStatus(userId uint, online bool) error
 }
