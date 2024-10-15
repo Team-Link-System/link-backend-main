@@ -19,11 +19,11 @@ func NewAuthPersistenceRedis(redisClient *redis.Client) repository.AuthRepositor
 }
 
 // refreshToken 저장
-func (r *authPersistenceRedis) StoreRefreshToken(refreshToken, userId string) error {
+func (r *authPersistenceRedis) StoreRefreshToken(mergeKey, refreshToken string) error {
 	ctx := context.Background()
 
 	// Redis에 Refresh Token 저장
-	err := r.redisClient.Set(ctx, userId, refreshToken, time.Hour*24*5).Err() // 5일 유효
+	err := r.redisClient.Set(ctx, mergeKey, refreshToken, time.Hour*24*5).Err() // 5일 유효
 	if err != nil {
 		log.Printf("Refresh Token Redis 저장 오류: %v", err)
 		return err
@@ -33,10 +33,10 @@ func (r *authPersistenceRedis) StoreRefreshToken(refreshToken, userId string) er
 }
 
 // userId로 refreshToken 가져오기
-func (r *authPersistenceRedis) GetRefreshToken(userId string) (string, error) {
+func (r *authPersistenceRedis) GetRefreshToken(mergeKey string) (string, error) {
 	ctx := context.Background()
 
-	refreshToken, err := r.redisClient.Get(ctx, userId).Result()
+	refreshToken, err := r.redisClient.Get(ctx, mergeKey).Result()
 	if err != nil {
 		return "", err
 	}
@@ -45,11 +45,11 @@ func (r *authPersistenceRedis) GetRefreshToken(userId string) (string, error) {
 }
 
 // refreshToken 삭제 (로그아웃)
-func (r *authPersistenceRedis) DeleteRefreshToken(userId string) error {
+func (r *authPersistenceRedis) DeleteRefreshToken(mergeKey string) error {
 	ctx := context.Background()
 
 	// Redis에서 Refresh Token 삭제
-	err := r.redisClient.Del(ctx, userId).Err()
+	err := r.redisClient.Del(ctx, mergeKey).Err()
 	if err != nil {
 		log.Printf("Redis Refresh Token 삭제 오류: %v", err)
 		return err

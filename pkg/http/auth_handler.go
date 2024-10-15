@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"link/internal/auth/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
@@ -47,24 +46,28 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 }
 
 func (h *AuthHandler) SignOut(c *gin.Context) {
+	// userId를 가져옵니다.
 	userId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
 		return
 	}
 
-	userIdUint, ok := userId.(uint)
-	fmt.Println("userIdUint:", userIdUint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
-
-		err := h.authUsecase.SignOut(userIdUint)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "로그아웃 처리 중 오류가 발생했습니다"))
-			return
-		}
-
-		c.SetCookie("accessToken", "", -1, "/", "", false, true)
-		c.JSON(http.StatusOK, interceptor.Success("로그아웃 되었습니다", nil))
+	// email을 가져옵니다.
+	email, exists := c.Get("email")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, interceptor.Error(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
 	}
+
+	// 로그아웃 처리 로직 호출
+	err := h.authUsecase.SignOut(userId.(uint), email.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, interceptor.Error(http.StatusInternalServerError, "로그아웃 처리 중 오류가 발생했습니다"))
+		return
+	}
+
+	// accessToken 쿠키 삭제
+	c.SetCookie("accessToken", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, interceptor.Success("로그아웃 되었습니다", nil))
 }
