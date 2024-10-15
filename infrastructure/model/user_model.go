@@ -23,5 +23,6 @@ type User struct {
 	TeamID       *uint     `json:"team_id" gorm:"default:null"`       // 팀에 속하지 않을 수 있음
 	Role         UserRole  `json:"role" binding:"required" gorm:"type:integer;default:4"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt    time.Time `json:"updated_at"` //사용자 정보 바뀔 때만 업데이트
+	IsOnline     bool      `json:"is_online" gorm:"default:false"`
 }

@@ -153,3 +153,11 @@ func (r *userPersistencePostgres) GetUsersByDepartment(departmentId uint) ([]ent
 
 	return users, nil
 }
+
+// 유저상태 업데이트
+func (r *userPersistencePostgres) UpdateUserOnlineStatus(userId uint, online bool) error {
+	return r.db.Model(&entity.User{}).
+		Where("id = ?", userId).
+		Omit("updated_at").
+		Update("is_online", online).Error
+}
