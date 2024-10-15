@@ -15,8 +15,8 @@ import (
 // AuthUsecase 인터페이스 정의
 type AuthUsecase interface {
 	SignIn(email, password string) (*_userEntity.User, *entity.Token, error) // 로그인 처리
-	SignOut(userId uint) error                                               // 로그아웃 처리
-	GetRefreshToken(userId uint) (string, error)
+	SignOut(userId uint, email string) error                                 // 로그아웃 처리
+	GetRefreshToken(userId uint, email string) (string, error)
 }
 
 // authUsecase 구조체 정의
@@ -56,7 +56,9 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 	}
 
 	userIdStr := strconv.FormatUint(uint64(user.ID), 10)
-	err = u.authRepo.StoreRefreshToken(refreshToken, userIdStr)
+	//TODO userId:email 키값으로 레디스 저장
+	mergeKey := fmt.Sprintf("%s:%s", userIdStr, user.Email)
+	err = u.authRepo.StoreRefreshToken(mergeKey, refreshToken)
 	if err != nil {
 		log.Printf("리프레시 토큰 저장 오류: %v", err)
 		return nil, nil, fmt.Errorf("리프레시 토큰 저장에 실패했습니다")
@@ -69,13 +71,15 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 	}, nil
 }
 
-func (u *authUsecase) SignOut(userId uint) error {
+func (u *authUsecase) SignOut(userId uint, email string) error {
 	userIdStr := strconv.FormatUint(uint64(userId), 10)
 	if userIdStr == "" {
 		return fmt.Errorf("userId가 유효하지 않습니다")
 	}
 
-	err := u.authRepo.DeleteRefreshToken(userIdStr)
+	mergeKey := fmt.Sprintf("%s:%s", userIdStr, email)
+
+	err := u.authRepo.DeleteRefreshToken(mergeKey)
 	if err != nil {
 		log.Printf("로그아웃 처리 오류: %v", err)
 		return fmt.Errorf("로그아웃 처리에 실패했습니다")
@@ -84,14 +88,16 @@ func (u *authUsecase) SignOut(userId uint) error {
 }
 
 // TODO 레디스에서 userId로 리프레시 토큰 가져오기
-func (u *authUsecase) GetRefreshToken(userId uint) (string, error) {
+func (u *authUsecase) GetRefreshToken(userId uint, email string) (string, error) {
 	userIdStr := strconv.FormatUint(uint64(userId), 10)
 	fmt.Println("userIdStr:", userIdStr)
 	if userIdStr == "" {
 		return "", fmt.Errorf("userId가 유효하지 않습니다")
 	}
 
-	refreshToken, err := u.authRepo.GetRefreshToken(userIdStr)
+	mergeKey := fmt.Sprintf("%s:%s", userIdStr, email)
+
+	refreshToken, err := u.authRepo.GetRefreshToken(mergeKey)
 	if err != nil {
 		log.Printf("리프레시 토큰 조회 오류: %v", err)
 		return "", fmt.Errorf("로그인 필요")

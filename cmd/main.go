@@ -64,7 +64,7 @@ func main() {
 		{
 			// 인증된 사용자만 WebSocket 사용 가능
 			wsGroup.GET("/chat", wsHandler.HandleWebSocketConnection)
-			wsGroup.GET("", wsHandler.HandleUserWebSocketConnection)
+			wsGroup.GET("/user", wsHandler.HandleUserWebSocketConnection)
 		}
 
 		api := r.Group("/api")

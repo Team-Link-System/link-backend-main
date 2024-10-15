@@ -52,16 +52,8 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-
-		userIdUint, ok := userId.(uint)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "유효하지 않은 userId입니다"})
-			c.Abort()
-			return
-		}
-
 		// Redis에 저장된 리프레시 토큰 검증
-		refreshToken, err := i.authUsecase.GetRefreshToken(userIdUint)
+		refreshToken, err := i.authUsecase.GetRefreshToken(userId.(uint), email.(string))
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
 			c.Abort()
