@@ -64,7 +64,7 @@ func main() {
 		{
 			// 인증된 사용자만 WebSocket 사용 가능
 			wsGroup.GET("/chat", wsHandler.HandleWebSocketConnection)
-
+			wsGroup.GET("", wsHandler.HandleUserWebSocketConnection)
 		}
 
 		api := r.Group("/api")
@@ -79,7 +79,12 @@ func main() {
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor(), tokenInterceptor.RefreshTokenInterceptor())
 		{
-			protectedRoute.POST("auth/signout", authHandler.SignOut)
+
+			auth := protectedRoute.Group("auth")
+			{
+				auth.POST("/signout", authHandler.SignOut)
+			}
+
 			chat := protectedRoute.Group("chat")
 			{
 				//! 채팅방 관련 핸들러
