@@ -77,12 +77,14 @@ func main() {
 			// WebSocket 핸들러 추가
 
 		}
-		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor(), tokenInterceptor.RefreshTokenInterceptor())
+		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor())
+		//, tokenInterceptor.RefreshTokenInterceptor() accessToken 재발급 인터셉터 제거 -> accessToken 재발급 기능 따로 구현 (필요해지면 다시 사용)
 		{
 
 			auth := protectedRoute.Group("auth")
 			{
 				auth.POST("/signout", authHandler.SignOut)
+				auth.POST("/refresh", authHandler.RefreshToken) //TODO accessToken 재발급
 			}
 
 			chat := protectedRoute.Group("chat")
