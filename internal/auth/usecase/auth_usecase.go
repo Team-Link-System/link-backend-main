@@ -8,14 +8,15 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/util"
 	"log"
+	"strconv"
 	"time"
 )
 
 // AuthUsecase 인터페이스 정의
 type AuthUsecase interface {
 	SignIn(email, password string) (*_userEntity.User, *entity.Token, error) // 로그인 처리
-	SignOut(email string) error                                              // 로그아웃 처리
-	ValidateRefreshToken(refreshToken string) error                          // Refresh Token 검증 후 Access Token 재발급          // Redis에서 저장된 Refresh Token 조회
+	SignOut(userId uint) error                                               // 로그아웃 처리
+	GetRefreshToken(userId uint) (string, error)
 }
 
 // authUsecase 구조체 정의
@@ -54,7 +55,8 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 		return nil, nil, fmt.Errorf("리프레시 토큰 생성에 실패했습니다")
 	}
 
-	err = u.authRepo.StoreRefreshToken(refreshToken, user.Email)
+	userIdStr := strconv.FormatUint(uint64(user.ID), 10)
+	err = u.authRepo.StoreRefreshToken(refreshToken, userIdStr)
 	if err != nil {
 		log.Printf("리프레시 토큰 저장 오류: %v", err)
 		return nil, nil, fmt.Errorf("리프레시 토큰 저장에 실패했습니다")
@@ -67,8 +69,13 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 	}, nil
 }
 
-func (u *authUsecase) SignOut(refreshToken string) error {
-	err := u.authRepo.DeleteRefreshToken(refreshToken)
+func (u *authUsecase) SignOut(userId uint) error {
+	userIdStr := strconv.FormatUint(uint64(userId), 10)
+	if userIdStr == "" {
+		return fmt.Errorf("userId가 유효하지 않습니다")
+	}
+
+	err := u.authRepo.DeleteRefreshToken(userIdStr)
 	if err != nil {
 		log.Printf("로그아웃 처리 오류: %v", err)
 		return fmt.Errorf("로그아웃 처리에 실패했습니다")
@@ -76,13 +83,18 @@ func (u *authUsecase) SignOut(refreshToken string) error {
 	return nil
 }
 
-// Refresh Token 검증 후 새로운 Access Token 발급
-func (u *authUsecase) ValidateRefreshToken(refreshToken string) error {
-	// Refresh Token 검증
-	_, err := u.authRepo.GetEmailFromRefreshToken(refreshToken)
+// TODO 레디스에서 userId로 리프레시 토큰 가져오기
+func (u *authUsecase) GetRefreshToken(userId uint) (string, error) {
+	userIdStr := strconv.FormatUint(uint64(userId), 10)
+	fmt.Println("userIdStr:", userIdStr)
+	if userIdStr == "" {
+		return "", fmt.Errorf("userId가 유효하지 않습니다")
+	}
+
+	refreshToken, err := u.authRepo.GetRefreshToken(userIdStr)
 	if err != nil {
 		log.Printf("리프레시 토큰 조회 오류: %v", err)
-		return fmt.Errorf("로그인 필요")
+		return "", fmt.Errorf("로그인 필요")
 	}
-	return nil
+	return refreshToken, nil
 }

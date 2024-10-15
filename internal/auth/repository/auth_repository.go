@@ -1,7 +1,7 @@
 package repository
 
 type AuthRepository interface {
-	StoreRefreshToken(refreshToken, email string) error
-	GetEmailFromRefreshToken(refreshToken string) (string, error)
-	DeleteRefreshToken(refreshToken string) error
+	StoreRefreshToken(refreshToken, userId string) error
+	DeleteRefreshToken(userId string) error
+	GetRefreshToken(userId string) (string, error)
 }

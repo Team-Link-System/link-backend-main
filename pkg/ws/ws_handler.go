@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,7 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"link/internal/chat/usecase"
+	_chatUsecase "link/internal/chat/usecase"
+	_notificationUsecase "link/internal/notification/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/util"
@@ -18,20 +20,21 @@ import (
 
 // WsHandler struct는 WebSocketHub와 연동합니다.
 type WsHandler struct {
-	hub         *WebSocketHub
-	chatUsecase usecase.ChatUsecase
+	hub                 *WebSocketHub
+	chatUsecase         _chatUsecase.ChatUsecase
+	notificationUsecase _notificationUsecase.NotificationUsecase
 }
 
 // NewWsHandler는 WebSocketHub를 받아서 새로운 WsHandler를 반환합니다.
-func NewWsHandler(hub *WebSocketHub, chatUsecase usecase.ChatUsecase) *WsHandler {
+func NewWsHandler(hub *WebSocketHub, chatUsecase _chatUsecase.ChatUsecase, notificationUsecase _notificationUsecase.NotificationUsecase) *WsHandler {
 	return &WsHandler{
-		hub:         hub,
-		chatUsecase: chatUsecase,
+		hub:                 hub,
+		chatUsecase:         chatUsecase,
+		notificationUsecase: notificationUsecase,
 	}
 }
 
-// HandleWebSocketConnection는 채팅 WebSocket 연결을 처리합니다.
-// HandleWebSocketConnection는 채팅 WebSocket 연결을 처리합니다.
+// TODO 채팅 웹소켓 연결 핸들러
 func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	// 쿼리 스트링에서 token, roomId, senderId 가져오기
 	token := c.Query("token")
@@ -41,7 +44,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	if token == "" || roomId == "" || senderId == "" {
 		c.JSON(http.StatusBadRequest, res.JsonResponse{
 			Success: false,
-			Message: "Token, room_id, and sender_id are required",
+			Message: "Token, room_id, and sender_id이 필수입니다",
 		})
 		return
 	}
@@ -52,7 +55,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		log.Printf("WebSocket 업그레이드 실패: %v", err)
 		c.JSON(http.StatusBadRequest, res.JsonResponse{
 			Success: false,
-			Message: "Failed to upgrade WebSocket connection",
+			Message: "웹소켓 연결 실패",
+			Type:    "error",
 		})
 		return
 	}
@@ -64,6 +68,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		conn.WriteJSON(res.JsonResponse{
 			Success: false,
 			Message: "Unauthorized",
+			Type:    "error",
 		})
 		return
 	}
@@ -74,7 +79,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		log.Printf("room_id 변환 실패: %v", err)
 		conn.WriteJSON(res.JsonResponse{
 			Success: false,
-			Message: "Invalid room_id format",
+			Message: "room_id 형식이 올바르지 않습니다",
+			Type:    "error",
 		})
 		return
 	}
@@ -84,7 +90,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		log.Printf("sender_id 변환 실패: %v", err)
 		conn.WriteJSON(res.JsonResponse{
 			Success: false,
-			Message: "Invalid sender_id format",
+			Message: "sender_id 형식이 올바르지 않습니다",
+			Type:    "error",
 		})
 		return
 	}
@@ -104,7 +111,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			log.Printf("DB 채팅방 조회 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
-				Message: "Chat room not found",
+				Message: "채팅방이 없습니다",
+				Type:    "error",
 			})
 			return
 		}
@@ -118,12 +126,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	// 연결 성공 메시지 전송
 	conn.WriteJSON(res.JsonResponse{
 		Success: true,
-		Message: "Connection successful",
-		Type:    "chat",
-		Payload: &res.Payload{
-			ChatRoomID: uint(roomIdUint),
-			SenderID:   uint(userIdUint),
-		},
+		Message: "연결 성공",
+		Type:    "connection",
 	})
 
 	// 채팅 메시지 처리 루프
@@ -137,8 +141,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			log.Printf("메시지 수신 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
-				Message: "Invalid message format",
-				Type:    "chat",
+				Message: "메시지 형식이 올바르지 않습니다",
+				Type:    "error",
 			})
 			break
 		}
@@ -149,8 +153,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			log.Printf("메시지 디코딩 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
-				Message: "Failed to decode message",
-				Type:    "chat",
+				Message: "메시지 디코딩 실패",
+				Type:    "error",
 			})
 			continue
 		}
@@ -160,8 +164,8 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			log.Printf("채팅 메시지 저장 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
 				Success: false,
-				Message: "Failed to save message",
-				Type:    "chat",
+				Message: "채팅 메시지 저장 실패",
+				Type:    "error",
 			})
 			continue
 		}
@@ -170,7 +174,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		h.hub.SendMessageToChatRoom(message.RoomID, res.JsonResponse{
 			Success: true,
 			Type:    "chat",
-			Payload: &res.Payload{
+			Payload: &res.ChatPayload{
 				ChatRoomID: message.RoomID,
 				SenderID:   message.SenderID,
 				Content:    message.Content,
@@ -180,87 +184,125 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 }
 
-// // TODO 알림 처리 핸들러
-// func (h *WsHandler) HandleNotificationWebSocketConnection(c *gin.Context) {
-// 	token := c.Query("token")
-// 	if token == "" {
-// 		response := res.JsonResponse{
-// 			Success: false,
-// 			Message: "Token is required",
-// 		}
-// 		c.JSON(http.StatusBadRequest, response)
-// 		return
-// 	}
+// TODO 유저 웹소켓 연결 핸들러 - 이게 전송도 되고 수신도 되는거아냐?
+func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
+	// 쿼리 스트링에서 token과 userId 가져오기
+	token := c.Query("token")
+	userId := c.Query("userId")
 
-// 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
-// 	if err != nil {
-// 		log.Printf("WebSocket 업그레이드 실패: %v", err)
-// 		response := res.JsonResponse{
-// 			Success: false,
-// 			Message: "Failed to upgrade WebSocket connection",
-// 		}
-// 		conn.WriteJSON(response)
-// 		return
-// 	}
-// 	defer conn.Close()
+	if token == "" || userId == "" {
+		c.JSON(http.StatusBadRequest, res.JsonResponse{
+			Success: false,
+			Message: "Token 과 userId 이 필수입니다",
+			Type:    "error",
+		})
+		return
+	}
 
-// 	// 토큰 검증
-// 	claims, err := util.ValidateAccessToken(token)
-// 	if err != nil {
-// 		log.Printf("토큰 검증 실패: %v", err)
-// 		response := res.JsonResponse{
-// 			Success: false,
-// 			Message: "Unauthorized",
-// 		}
-// 		conn.WriteJSON(response)
-// 		return
-// 	}
+	// WebSocket 연결 업그레이드
+	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("WebSocket 업그레이드 실패: %v", err)
+		c.JSON(http.StatusBadRequest, res.JsonResponse{
+			Success: false,
+			Message: "웹소켓 연결 실패",
+			Type:    "error",
+		})
+		return
+	}
 
-// 	requestUserId := claims.UserId
+	// 토큰 검증
+	_, err = util.ValidateAccessToken(token)
+	if err != nil {
+		log.Printf("토큰 검증 실패: %v", err)
+		conn.WriteJSON(res.JsonResponse{
+			Success: false,
+			Message: "Unauthorized",
+			Type:    "error",
+		})
+		conn.Close()
+		return
+	}
 
-// 	h.hub.RegisterClient(conn, requestUserId)
-// 	defer h.hub.UnregisterClient(conn, requestUserId)
+	// userId 변환
+	userIdUint, err := strconv.ParseUint(userId, 10, 64)
+	if err != nil {
+		log.Printf("userId 변환 실패: %v", err)
+		conn.WriteJSON(res.JsonResponse{
+			Success: false,
+			Message: "userId 형식이 올바르지 않습니다",
+			Type:    "error",
+		})
+		conn.Close()
+		return
+	}
 
-// 	// 연결 성공 메시지를 전송
-// 	response := res.JsonResponse{
-// 		Success: true,
-// 		Message: "Connection successful",
-// 	}
-// 	conn.WriteJSON(response)
+	// 사용자 WebSocket을 등록 (채팅방 ID는 0으로 설정 - 즉, 사용자 전용 WebSocket)
+	h.hub.RegisterClient(conn, uint(userIdUint), 0)
 
-// 	// 이후 알림 처리 루프
-// 	for {
-// 		var notification req.NotificationRequest
-// 		err = conn.ReadJSON(&notification)
-// 		if err != nil {
-// 			log.Printf("알림 수신 실패: %v", err)
-// 			response := res.JsonResponse{
-// 				Success: false,
-// 				Message: "Invalid notification format",
-// 			}
-// 			conn.WriteJSON(response)
-// 			break
-// 		}
+	// 연결 성공 메시지를 전송
+	conn.WriteJSON(res.JsonResponse{
+		Success: true,
+		Message: fmt.Sprintf("User %d 연결 성공", userIdUint),
+		Type:    "connection",
+	})
 
-// 		// 알림 처리
+	h.hub.BroadcastOnlineStatus()
 
-// 		//TODO 알림 DB에 저장
-// 		err = h.chatUsecase.SaveNotification(requestUserId, notification.Type, notification.Data)
-// 		if err != nil {
-// 			log.Printf("알림 저장 실패: %v", err)
-// 			response := res.JsonResponse{
-// 				Success: false,
-// 				Message: "Failed to save notification",
-// 			}
-// 			conn.WriteJSON(response)
-// 			continue
-// 		}
+	// 연결이 종료될 때 WebSocket 정리
+	defer func() {
+		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
+		h.hub.BroadcastOnlineStatus() // 오프라인 상태 브로드캐스트
+		conn.Close()
+	}()
 
-// 		// 알림 전송 성공 응답 및 브로드캐스트
-// 		response = res.JsonResponse{
-// 			Success: true,
-// 			Message: "Notification sent successfully",
-// 		}
-// 		h.hub.BroadcastMessage(response)
-// 	}
-// }
+	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
+	for {
+		_, messageBytes, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("예기치 않은 WebSocket 종료: %v", err)
+			}
+			break
+		}
+
+		// 수신된 메시지를 처리
+		var message req.NotificationRequest
+		if err := json.Unmarshal(messageBytes, &message); err != nil {
+			log.Printf("메시지 디코딩 실패: %v", err)
+			conn.WriteJSON(res.JsonResponse{
+				Success: false,
+				Message: "메시지 형식이 올바르지 않습니다",
+				Type:    "notification",
+			})
+			continue
+		}
+
+		// 알림 저장
+		response, err := h.notificationUsecase.CreateNotification(message.SenderId, message.ReceiverId, message.AlarmType)
+		if err != nil {
+			log.Printf("알림 저장 실패: %v", err)
+			conn.WriteJSON(res.JsonResponse{
+				Success: false,
+				Message: "알림 저장 실패",
+				Type:    "notification",
+			})
+			continue
+		}
+
+		h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
+			Success: true,
+			Type:    "notification",
+			Payload: &res.NotificationPayload{
+				SenderID:   response.SenderId,
+				ReceiverID: response.ReceiverId,
+				Content:    response.Content,
+				CreatedAt:  response.CreatedAt.Format(time.RFC3339),
+				AlarmType:  response.AlarmType,
+				Title:      response.Title,
+				IsRead:     response.IsRead,
+				Status:     response.Status,
+			},
+		})
+	}
+}

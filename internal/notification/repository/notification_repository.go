@@ -5,6 +5,6 @@ import (
 )
 
 type NotificationRepository interface {
-	CreateNotification(notification *entity.Notification) error
+	CreateNotification(notification *entity.Notification) (*entity.Notification, error)
 	GetNotificationsByReceiverId(receiverId uint) ([]*entity.Notification, error)
 }
