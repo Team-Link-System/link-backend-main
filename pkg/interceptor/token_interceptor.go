@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,10 +26,15 @@ func NewTokenInterceptor(authUsecase usecase.AuthUsecase) *TokenInterceptor {
 func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// OPTIONS 요청은 인증 없이 바로 처리
-		accessToken, _ := c.Cookie("accessToken")
-		if accessToken != "" {
+		// accessToken, _ := c.Cookie("accessToken")
+		authorization := c.GetHeader("Authorization")
+
+		//TODO Bearer 제거
+		token := strings.TrimPrefix(authorization, "Bearer ")
+
+		if token != "" {
 			// Access Token 검증
-			claims, err := util.ValidateAccessToken(accessToken)
+			claims, err := util.ValidateAccessToken(token)
 			if err == nil {
 				// Access Token이 유효한 경우 email과 userId를 Context에 설정
 				c.Set("email", claims.Email)
