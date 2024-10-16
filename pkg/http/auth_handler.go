@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -43,8 +44,10 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	}
 
 	//! 도메인 다를 때 사용
+	authorization := fmt.Sprintf("Bearer %s", token.AccessToken)
 
-	c.SetCookie("accessToken", token.AccessToken, 1200, "/", "", false, true)
+	// c.SetCookie("accessToken", token.AccessToken, 1200, "/", "", false, true)
+	c.Header("Authorization", authorization)
 	c.JSON(http.StatusOK, interceptor.Success("로그인 성공", response))
 }
 
@@ -71,6 +74,7 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 	}
 
 	// accessToken 쿠키 삭제
+	// TODO 리프레시 토큰은 레디스에 저장되어 있음
 	c.SetCookie("accessToken", "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, interceptor.Success("로그아웃 되었습니다", nil))
 }
@@ -120,7 +124,9 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	//TODO 재발급 된 accessToken을 쿠키에 저장
-	c.SetCookie("accessToken", newAccessToken, 1200, "/", "", false, true)
+	//TODO 재발급 된 accessToken을 헤더로 전송
+	authorization := fmt.Sprintf("Bearer %s", newAccessToken)
+	c.Header("Authorization", authorization)
+	// c.SetCookie("accessToken", newAccessToken, 1200, "/", "", false, true)
 	c.JSON(http.StatusOK, interceptor.Success("액세스 토큰 재발급 성공", nil))
 }

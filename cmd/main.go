@@ -85,7 +85,7 @@ func main() {
 			auth := protectedRoute.Group("auth")
 			{
 				auth.POST("/signout", authHandler.SignOut)
-				auth.POST("/refresh", authHandler.RefreshToken) //TODO accessToken 재발급
+				auth.GET("/refresh", authHandler.RefreshToken) //TODO accessToken 재발급
 			}
 
 			chat := protectedRoute.Group("chat")
