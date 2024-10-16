@@ -10,5 +10,3 @@ type ChatRoom struct {
 	UpdatedAt time.Time
 	Users     []*User `gorm:"many2many:chat_room_users;"` // 다대다 관계 설정
 }
-
-//채팅방이 지워지면, 채팅방에 참여한 중간테이블은 지워져야함

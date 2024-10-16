@@ -17,6 +17,8 @@ type User struct {
 	ID           uint      `json:"id" gorm:"primaryKey"`
 	Name         string    `json:"name" binding:"required"`
 	Email        string    `json:"email" binding:"required,email" gorm:"unique"`
+	Nickname     string    `json:"nickname"`
+	Birthday     time.Time `json:"birthday"`
 	Password     string    `json:"password" binding:"required"`
 	Phone        string    `json:"phone"`
 	DepartmentID *uint     `json:"department_id" gorm:"default:null"` // 부서에 속하지 않을 수 있음

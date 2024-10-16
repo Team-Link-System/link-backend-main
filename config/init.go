@@ -37,6 +37,7 @@ func InitAdminUser(db *gorm.DB) {
 					Password: hashedPassword,
 					Role:     model.RoleAdmin, // 시스템 관리자 권한 설정
 					Phone:    "",
+					Nickname: "시스템 관리자",
 					// DepartmentID, TeamID, Group 필드를 설정하지 않음 (NULL 허용)
 				}
 
@@ -63,7 +64,7 @@ func InitAdminUser(db *gorm.DB) {
 func AutoMigrate(db *gorm.DB) {
 
 	//TODO postgres 테이블 자동 생성
-	if err := db.AutoMigrate(&model.Department{}, &model.ChatRoom{}); err != nil {
+	if err := db.AutoMigrate(&model.Department{}, &model.ChatRoom{}, &model.Post{}, &model.Comment{}, &model.Like{}); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
 }

@@ -1,13 +1,14 @@
 package usecase
 
 import (
-	"fmt"
 	_departmentEntity "link/internal/department/entity"
 	_departmentRepo "link/internal/department/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
+	"link/pkg/common"
 	"link/pkg/dto/req"
 	"log"
+	"net/http"
 )
 
 type DepartmentUsecase interface {
@@ -34,17 +35,17 @@ func (du *departmentUsecase) CreateDepartment(department *_departmentEntity.Depa
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("사용자 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusNotFound, "사용자 조회에 실패했습니다")
 	}
 
 	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 생성하려 했습니다: 사용자 ID %d", requestUserId)
-		return nil, fmt.Errorf("권한이 없습니다")
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	if err := du.departmentRepository.CreateDepartment(department); err != nil {
 		log.Printf("department 생성 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("department 생성에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "department 생성에 실패했습니다")
 	}
 
 	return department, nil
@@ -55,7 +56,7 @@ func (du *departmentUsecase) GetDepartments() ([]_departmentEntity.Department, e
 	departments, err := du.departmentRepository.GetDepartments()
 	if err != nil {
 		log.Printf("부서 목록 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("부서 목록 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "부서 목록 조회에 실패했습니다")
 	}
 
 	return departments, nil
@@ -66,7 +67,7 @@ func (du *departmentUsecase) GetDepartment(departmentID uint) (*_departmentEntit
 	department, err := du.departmentRepository.GetDepartment(departmentID)
 	if err != nil {
 		log.Printf("부서 상세 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("부서 상세 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "부서 상세 조회에 실패했습니다")
 	}
 
 	return department, nil
@@ -77,18 +78,18 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("요청 사용자를 찾을 수 없습니다")
+		return nil, common.NewError(http.StatusNotFound, "요청 사용자를 찾을 수 없습니다")
 	}
 
 	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 수정하려 했습니다: 사용자 ID %d", requestUserId)
-		return nil, fmt.Errorf("권한이 없습니다")
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	_, err = du.departmentRepository.GetDepartment(targetDepartmentID)
 	if err != nil {
 		log.Printf("업데이트가 불가능한 부서입니다: %v", err)
-		return nil, fmt.Errorf("존재하지 않는 부서입니다")
+		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 부서입니다")
 	}
 
 	updates := make(map[string]interface{})
@@ -102,7 +103,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 	err = du.departmentRepository.UpdateDepartment(targetDepartmentID, updates)
 	if err != nil {
 		log.Printf("부서 수정에 실패했습니다: %v", err)
-		return nil, fmt.Errorf("부서 수정에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "부서 수정에 실패했습니다")
 	}
 
 	return nil, nil
@@ -114,25 +115,25 @@ func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId u
 	_, err := du.departmentRepository.GetDepartment(departmentID)
 	if err != nil {
 		log.Printf("부서 조회에 실패했습니다: %v", err)
-		return fmt.Errorf("부서 조회에 실패했습니다")
+		return common.NewError(http.StatusNotFound, "부서 조회에 실패했습니다")
 	}
 
 	//TODO 요청하는 계정이 관리자 계정인지 확인
 	requestUser, err := du.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return fmt.Errorf("사용자 조회에 실패했습니다")
+		return common.NewError(http.StatusNotFound, "사용자 조회에 실패했습니다")
 	}
 
 	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 사용자 ID %d", requestUserId)
-		return fmt.Errorf("권한이 없습니다")
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	err = du.departmentRepository.DeleteDepartment(departmentID)
 	if err != nil {
 		log.Printf("부서 삭제에 실패했습니다: %v", err)
-		return fmt.Errorf("부서 삭제에 실패했습니다")
+		return common.NewError(http.StatusInternalServerError, "부서 삭제에 실패했습니다")
 	}
 
 	return nil
