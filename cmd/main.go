@@ -103,7 +103,6 @@ func main() {
 				user.GET("/:id", userHandler.GetUserInfo)
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
-
 				user.GET("/search", userHandler.SearchUser)
 
 			}
