@@ -55,6 +55,9 @@ func main() {
 		chatHandler *handlerHttp.ChatHandler,
 		notificationHandler *handlerHttp.NotificationHandler,
 		tokenInterceptor *interceptor.TokenInterceptor,
+
+		postHandler *handlerHttp.PostHandler,
+
 		wsHandler *ws.WsHandler,
 	) {
 		// WebSocket 관련 라우팅 그룹
@@ -115,6 +118,11 @@ func main() {
 			{
 				// notification.POST("", notificationHandler.CreateNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
+			}
+
+			post := protectedRoute.Group("post")
+			{
+				post.POST("", postHandler.CreatePost)
 			}
 		}
 	})

@@ -15,6 +15,7 @@ import (
 	chatUsecase "link/internal/chat/usecase"
 	departmentUsecase "link/internal/department/usecase"
 	notificationUsecase "link/internal/notification/usecase"
+	postUsecase "link/internal/post/usecase"
 	userUsecase "link/internal/user/usecase"
 
 	"github.com/go-redis/redis/v8"
@@ -50,6 +51,7 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(departmentUsecase.NewDepartmentUsecase)
 	container.Provide(chatUsecase.NewChatUsecase)
 	container.Provide(notificationUsecase.NewNotificationUsecase)
+	container.Provide(postUsecase.NewPostUsecase)
 
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
@@ -57,6 +59,7 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(http.NewDepartmentHandler)
 	container.Provide(http.NewChatHandler)
 	container.Provide(http.NewNotificationHandler)
+	container.Provide(http.NewPostHandler)
 
 	return container
 }
