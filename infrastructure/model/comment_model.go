@@ -12,4 +12,6 @@ type Comment struct {
 	IsAnonymous bool      `gorm:"not null; default:false"`
 	CreatedAt   time.Time `gorm:"not null, autoCreateTime"`
 	UpdatedAt   time.Time
+
+	Replies []Comment `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE"` // 대댓글
 }

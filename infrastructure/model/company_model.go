@@ -15,8 +15,8 @@ type Company struct {
 	RepresentativeAddressDetail string       `gorm:"size:255" default:""` //대표 주소 상세
 	RepresentativePostalCode    string       `gorm:"size:255" default:""` //대표 주소 우편번호
 	IsVerified                  bool         `gorm:"default:false"`       // 서비스에 가입한 회사인지 여부
-	Departments                 []Department `gorm:"foreignKey:CompanyID"`
-	Teams                       []Team       `gorm:"foreignKey:CompanyID"`
+	Departments                 []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Teams                       []Team       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time
 }

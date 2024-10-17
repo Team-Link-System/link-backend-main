@@ -56,9 +56,7 @@ func main() {
 		notificationHandler *handlerHttp.NotificationHandler,
 		tokenInterceptor *interceptor.TokenInterceptor,
 		wsHandler *ws.WsHandler,
-
 	) {
-
 		// WebSocket 관련 라우팅 그룹
 		wsGroup := r.Group("/ws")
 		{
@@ -73,7 +71,6 @@ func main() {
 			publicRoute.POST("user/signup", userHandler.RegisterUser)
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
 			publicRoute.GET("user/validate-nickname", userHandler.CheckNickname)
-
 			publicRoute.POST("auth/signin", authHandler.SignIn)
 
 		}
@@ -100,11 +97,10 @@ func main() {
 			user := protectedRoute.Group("user")
 			{
 				user.GET("/list", userHandler.GetAllUsers)
-				user.GET("/:id", userHandler.GetUserInfo)
-				user.PUT("/:id", userHandler.UpdateUserInfo)
-				user.DELETE("/:id", userHandler.DeleteUser)
-				user.GET("/search", userHandler.SearchUser)
-
+				user.GET("/:id", userHandler.GetUserInfo)    // TODO 수정해야함
+				user.PUT("/:id", userHandler.UpdateUserInfo) // TODO 수정해야함
+				user.DELETE("/:id", userHandler.DeleteUser)  // TODO 수정해야함
+				user.GET("/search", userHandler.SearchUser)  // TODO 검색 조건 추가 (수정해야함)
 			}
 			department := protectedRoute.Group("department")
 			{
