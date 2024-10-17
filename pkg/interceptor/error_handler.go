@@ -1,18 +1,28 @@
 package interceptor
 
 import (
+	"log"
+	"net/http"
+
+	"link/pkg/common"
+
 	"github.com/gin-gonic/gin"
 )
 
+// 에러 미들웨어 (사용 안함)
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next() // 요청 처리 진행
-
-		// 에러 발생 시 처리
 		err := c.Errors.Last()
 		if err != nil {
-			// 글로벌 응답 처리와 연동하여 에러 응답 반환
-			c.JSON(c.Writer.Status(), Error(c.Writer.Status(), err.Error()))
+			statusCode, ok := err.Meta.(int)
+			if !ok {
+				statusCode = http.StatusInternalServerError
+			}
+
+			// 에러 응답을 Response 구조체로 처리하여 JSON으로 반환
+			log.Printf("에러 발생: %v", err.Error())
+			c.JSON(statusCode, common.NewError(statusCode, err.Error()))
 		}
 	}
 }

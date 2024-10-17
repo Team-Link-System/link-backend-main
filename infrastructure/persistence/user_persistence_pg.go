@@ -161,3 +161,16 @@ func (r *userPersistencePostgres) UpdateUserOnlineStatus(userId uint, online boo
 		Omit("updated_at").
 		Update("is_online", online).Error
 }
+
+// 닉네임 중복확인
+func (r *userPersistencePostgres) GetUserByNickname(nickname string) (*entity.User, error) {
+	var user entity.User
+	err := r.db.Select("id,nickname").Where("nickname = ?", nickname).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	}
+	return &user, nil
+}

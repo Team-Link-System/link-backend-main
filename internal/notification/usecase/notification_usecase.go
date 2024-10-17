@@ -2,11 +2,13 @@ package usecase
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"link/internal/notification/entity"
 	_notificationRepo "link/internal/notification/repository"
 	_userRepo "link/internal/user/repository"
+	"link/pkg/common"
 )
 
 type NotificationUsecase interface {
@@ -29,10 +31,10 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 	//SenderId, ReceiverId 존재하는지 확인 Ids로 조회
 	users, err := n.userRepo.GetUserByIds([]uint{senderId, receiverId})
 	if err != nil {
-		return nil, err
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
 	}
 	if len(users) != 2 {
-		return nil, fmt.Errorf("senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
 	}
 
 	//alarmType에 따른 처리
@@ -63,12 +65,12 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 		}
 
 	default:
-		return nil, fmt.Errorf("알림 타입이 존재하지 않습니다: %s", notificationType)
+		return nil, common.NewError(http.StatusBadRequest, "알림 타입이 존재하지 않습니다")
 	}
 
 	notification, err = n.notificationRepo.CreateNotification(notification)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
 	}
 
 	return notification, nil
@@ -79,16 +81,16 @@ func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notificat
 	//TODO 수신자 id가 존재하는지 확인
 	user, err := n.userRepo.GetUserByID(userId)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다")
 	}
 	if user == nil {
-		return nil, fmt.Errorf("수신자가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다")
 	}
 
 	//TODO 수신자 id로 알림 조회
 	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(user.ID)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다")
 	}
 
 	return notifications, nil

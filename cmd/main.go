@@ -42,7 +42,6 @@ func main() {
 
 	// 프록시 신뢰 설정 (프록시를 사용하지 않으면 nil 설정)
 	r.SetTrustedProxies(nil)
-	// 글로벌 에러 처리 미들웨어 적용
 	r.Use(interceptor.ErrorHandler())
 
 	wsHub := ws.NewWebSocketHub()
@@ -73,9 +72,9 @@ func main() {
 		{
 			publicRoute.POST("user/signup", userHandler.RegisterUser)
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
-			publicRoute.POST("auth/signin", authHandler.SignIn)
+			publicRoute.GET("user/validate-nickname", userHandler.CheckNickname)
 
-			// WebSocket 핸들러 추가
+			publicRoute.POST("auth/signin", authHandler.SignIn)
 
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor())
@@ -104,8 +103,9 @@ func main() {
 				user.GET("/:id", userHandler.GetUserInfo)
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
+
 				user.GET("/search", userHandler.SearchUser)
-				// user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
+
 			}
 			department := protectedRoute.Group("department")
 			{

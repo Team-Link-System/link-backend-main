@@ -3,11 +3,13 @@ package usecase
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"link/internal/chat/entity"
 	_chatRepo "link/internal/chat/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
+	"link/pkg/common"
 	"link/pkg/dto/req"
 )
 
@@ -35,7 +37,7 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomReq
 	users, err := uc.userRepository.GetUserByIds(request.UserIDs)
 	if err != nil {
 		log.Printf("채팅방 생성 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("채팅방 생성에 실패했습니다: %w", err)
+		return nil, common.NewError(http.StatusInternalServerError, "채팅방 생성에 실패했습니다")
 	}
 
 	//TODO 요청 사용자 리스트 갯수와 db에 있는 사용자 리스트 갯수가 맞는지 확인
@@ -43,7 +45,7 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomReq
 	// users 목록이 길이가 2명 이상인지 확인
 	if len(users) < 2 {
 		log.Printf("채팅방 생성 중 오류: 최소 2명의 사용자가 필요합니다")
-		return nil, fmt.Errorf("채팅방 생성에 실패했습니다: 최소 2명의 사용자가 필요합니다")
+		return nil, common.NewError(http.StatusBadRequest, "채팅방 생성에 실패했습니다: 최소 2명의 사용자가 필요합니다")
 	}
 
 	// 사용자가 3명 이상일 경우 그룹 채팅으로 설정
@@ -61,11 +63,11 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomReq
 		existingChatRoom, err := uc.chatRepository.FindPrivateChatRoomByUsers(request.UserIDs[0], request.UserIDs[1])
 		if err != nil {
 			log.Printf("채팅방 조회 중 오류: %v", err)
-			return nil, fmt.Errorf("채팅방 조회 중 오류 발생")
+			return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회 중 오류 발생")
 		}
 		if existingChatRoom != nil {
 			log.Printf("이미 존재하는 1:1 채팅방이 있습니다")
-			return nil, fmt.Errorf("이미 존재하는 1:1 채팅방이 있습니다")
+			return nil, common.NewError(http.StatusBadRequest, "이미 존재하는 1:1 채팅방이 있습니다")
 		}
 	}
 
@@ -85,7 +87,7 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomReq
 	err = uc.chatRepository.CreateChatRoom(chatRoom)
 	if err != nil {
 		log.Printf("채팅방 생성 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("채팅방 생성에 실패했습니다: %w", err)
+		return nil, common.NewError(http.StatusInternalServerError, "채팅방 생성에 실패했습니다")
 	}
 
 	return chatRoom, nil
@@ -97,7 +99,7 @@ func (uc *chatUsecase) GetChatRoomById(roomId uint) (*entity.ChatRoom, error) {
 	fmt.Println(chatRoom)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("채팅방 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회에 실패했습니다")
 	}
 	return chatRoom, nil
 }
@@ -107,7 +109,7 @@ func (uc *chatUsecase) GetChatRoomList(userId uint) ([]*entity.ChatRoom, error) 
 	chatRooms, err := uc.chatRepository.GetChatRoomList(userId)
 	if err != nil {
 		log.Printf("채팅방 리스트 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("채팅방 리스트 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "채팅방 리스트 조회에 실패했습니다")
 	}
 	return chatRooms, nil
 }
@@ -124,20 +126,20 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 	_, err := uc.userRepository.GetUserByID(senderID)
 	if err != nil {
 		log.Printf("송신자 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("존재하지 않는 사용자입니다")
+		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다")
 	}
 
 	//TODO 채팅방 조회
 	_, err = uc.chatRepository.GetChatRoomById(chatRoomID)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("존재하지 않는 채팅방입니다")
+		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 채팅방입니다")
 	}
 
 	err = uc.chatRepository.SaveMessage(chat)
 	if err != nil {
 		log.Printf("메시지 저장 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("메시지 저장에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "메시지 저장에 실패했습니다")
 	}
 
 	return chat, nil
@@ -148,7 +150,7 @@ func (uc *chatUsecase) GetChatMessages(chatRoomID uint) ([]*entity.Chat, error) 
 	chatMessages, err := uc.chatRepository.GetChatMessages(chatRoomID)
 	if err != nil {
 		log.Printf("채팅 내용 조회 중 DB 오류: %v", err)
-		return nil, fmt.Errorf("채팅 내용 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "채팅 내용 조회에 실패했습니다")
 	}
 	return chatMessages, nil
 }

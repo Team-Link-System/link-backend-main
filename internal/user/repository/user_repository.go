@@ -17,4 +17,5 @@ type UserRepository interface {
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 	UpdateUserOnlineStatus(userId uint, online bool) error
+	GetUserByNickname(nickname string) (*entity.User, error)
 }

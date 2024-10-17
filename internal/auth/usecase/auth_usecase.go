@@ -6,8 +6,10 @@ import (
 	_authRepo "link/internal/auth/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
+	"link/pkg/common"
 	"link/pkg/util"
 	"log"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -35,24 +37,24 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 	user, err := u.userRepo.GetUserByEmail(email)
 	if err != nil {
 		log.Printf("사용자 조회 오류: %v", err)
-		return nil, nil, fmt.Errorf("이메일 또는 비밀번호가 존재하지 않습니다")
+		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 존재하지 않습니다")
 	}
 
 	if !util.CheckPasswordHash(password, user.Password) {
 		log.Printf("비밀번호 불일치: %s", email)
-		return nil, nil, fmt.Errorf("이메일 또는 비밀번호가 일치하지 않습니다")
+		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 일치하지 않습니다")
 	}
 
 	accessToken, err := util.GenerateAccessToken(user.Name, user.Email, user.ID)
 	if err != nil {
 		log.Printf("액세스 토큰 생성 오류: %v", err)
-		return nil, nil, fmt.Errorf("액세스 토큰 생성에 실패했습니다")
+		return nil, nil, common.NewError(http.StatusInternalServerError, "액세스 토큰 생성에 실패했습니다")
 	}
 
 	refreshToken, err := util.GenerateRefreshToken(user.Name, user.Email, user.ID)
 	if err != nil {
 		log.Printf("리프레시 토큰 생성 오류: %v", err)
-		return nil, nil, fmt.Errorf("리프레시 토큰 생성에 실패했습니다")
+		return nil, nil, common.NewError(http.StatusInternalServerError, "리프레시 토큰 생성에 실패했습니다")
 	}
 
 	userIdStr := strconv.FormatUint(uint64(user.ID), 10)
@@ -61,7 +63,7 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 	err = u.authRepo.StoreRefreshToken(mergeKey, refreshToken)
 	if err != nil {
 		log.Printf("리프레시 토큰 저장 오류: %v", err)
-		return nil, nil, fmt.Errorf("리프레시 토큰 저장에 실패했습니다")
+		return nil, nil, common.NewError(http.StatusInternalServerError, "리프레시 토큰 저장에 실패했습니다")
 	}
 
 	return user, &entity.Token{
@@ -74,7 +76,7 @@ func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity
 func (u *authUsecase) SignOut(userId uint, email string) error {
 	userIdStr := strconv.FormatUint(uint64(userId), 10)
 	if userIdStr == "" {
-		return fmt.Errorf("userId가 유효하지 않습니다")
+		return common.NewError(http.StatusBadRequest, "userId가 유효하지 않습니다")
 	}
 
 	mergeKey := fmt.Sprintf("%s:%s", userIdStr, email)
@@ -82,7 +84,7 @@ func (u *authUsecase) SignOut(userId uint, email string) error {
 	err := u.authRepo.DeleteRefreshToken(mergeKey)
 	if err != nil {
 		log.Printf("로그아웃 처리 오류: %v", err)
-		return fmt.Errorf("로그아웃 처리에 실패했습니다")
+		return common.NewError(http.StatusInternalServerError, "로그아웃 처리에 실패했습니다")
 	}
 	return nil
 }
@@ -92,7 +94,7 @@ func (u *authUsecase) GetRefreshToken(userId uint, email string) (string, error)
 	userIdStr := strconv.FormatUint(uint64(userId), 10)
 	fmt.Println("userIdStr:", userIdStr)
 	if userIdStr == "" {
-		return "", fmt.Errorf("userId가 유효하지 않습니다")
+		return "", common.NewError(http.StatusBadRequest, "userId가 유효하지 않습니다")
 	}
 
 	mergeKey := fmt.Sprintf("%s:%s", userIdStr, email)
@@ -100,7 +102,7 @@ func (u *authUsecase) GetRefreshToken(userId uint, email string) (string, error)
 	refreshToken, err := u.authRepo.GetRefreshToken(mergeKey)
 	if err != nil {
 		log.Printf("리프레시 토큰 조회 오류: %v", err)
-		return "", fmt.Errorf("로그인 필요")
+		return "", common.NewError(http.StatusInternalServerError, "로그인 필요")
 	}
 	return refreshToken, nil
 }
