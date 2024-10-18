@@ -128,9 +128,10 @@ func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 	return users, nil
 }
 
-// TODO 사용자 정보 업데이트
+// TODO 사용자 정보 업데이트 -> 확인해야함
 // ! 본인 정보 업데이트 - 시스템 관리자는 전부가능
 // ! 사용자는 본인거 전부가능
+// ! 루트 관리자 절대 변경 불가
 func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error {
 	// 요청 사용자 조회
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
@@ -151,6 +152,13 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
+
+	//TODO 루트 관리자는 절대 변경 불가
+	if *requestUser.Role == entity.RoleAdmin {
+		log.Printf("루트 관리자는 변경할 수 없습니다")
+		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
+	}
+
 	// 업데이트할 필드 준비
 	userUpdates := make(map[string]interface{})
 	profileUpdates := make(map[string]interface{})
@@ -281,3 +289,5 @@ func (u *userUsecase) CheckNickname(nickname string) (*entity.User, error) {
 
 	return user, nil
 }
+
+//TODO 회사 관리자가 부서나 팀이나 직급 변경 가능

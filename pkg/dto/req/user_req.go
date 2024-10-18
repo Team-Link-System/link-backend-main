@@ -1,7 +1,6 @@
 package req
 
 type UserProfile struct {
-	ID           *uint   `json:"id"`
 	Image        *string `json:"image"`
 	Birthday     *string `json:"birthday"`
 	CompanyID    *uint   `json:"company_id"`
@@ -20,7 +19,6 @@ type RegisterUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	ID           uint         `json:"id"`
 	Name         *string      `json:"name,omitempty"`          // 선택적 필드는 포인터로 처리
 	Email        *string      `json:"email,omitempty"`         // 선택적 필드
 	Phone        *string      `json:"phone,omitempty"`         // 선택적 필드

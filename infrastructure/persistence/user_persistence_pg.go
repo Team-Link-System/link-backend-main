@@ -151,7 +151,7 @@ func (r *userPersistencePostgres) UpdateUser(id uint, updates map[string]interfa
 
 	// UserProfile 업데이트
 	if len(profileUpdates) > 0 {
-		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(updates).Error; err != nil {
+		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
 		}
