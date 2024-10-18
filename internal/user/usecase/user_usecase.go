@@ -136,41 +136,58 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다")
 	}
 
-	// null이 아닌 값만 포함하는 맵 생성
-	updates := make(map[string]interface{})
+	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
+	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+	// 업데이트할 필드 준비
+	userUpdates := make(map[string]interface{})
+	profileUpdates := make(map[string]interface{})
+
 	if request.Name != nil {
-		updates["name"] = *request.Name
+		userUpdates["name"] = *request.Name
 	}
 	if request.Email != nil {
-		updates["email"] = *request.Email
+		userUpdates["email"] = *request.Email
 	}
 	if request.Phone != nil {
-		updates["phone"] = *request.Phone
+		userUpdates["phone"] = *request.Phone
 	}
 	if request.Password != nil {
 		hashedPassword, err := utils.HashPassword(*request.Password)
 		if err != nil {
 			return common.NewError(http.StatusInternalServerError, "비밀번호 해싱 실패")
 		}
-		updates["password"] = hashedPassword
+		userUpdates["password"] = hashedPassword
 	}
 	if request.Role != nil {
-		updates["role"] = *request.Role
-	}
-	if request.DepartmentID != nil {
-		updates["department_id"] = *request.DepartmentID
-	}
-	if request.TeamID != nil {
-		updates["team_id"] = *request.TeamID
+		userUpdates["role"] = *request.Role
 	}
 
-	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
-	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	if request.UserProfile != nil {
+		if request.UserProfile.Image != nil {
+			profileUpdates["image"] = *request.UserProfile.Image
+		}
+		if request.UserProfile.Birthday != nil {
+			profileUpdates["birthday"] = *request.UserProfile.Birthday
+		}
+		if request.UserProfile.CompanyID != nil {
+			profileUpdates["company_id"] = *request.UserProfile.CompanyID
+		}
+		if request.UserProfile.DepartmentID != nil {
+			profileUpdates["department_id"] = *request.UserProfile.DepartmentID
+		}
+		if request.UserProfile.TeamID != nil {
+			profileUpdates["team_id"] = *request.UserProfile.TeamID
+		}
+		if request.UserProfile.PositionID != nil {
+			profileUpdates["position_id"] = *request.UserProfile.PositionID
+		}
 	}
 
-	return u.userRepo.UpdateUser(targetUserId, updates)
+	// Persistence 레이어로 업데이트 요청 전달
+	return u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
 }
 
 // TODO 사용자 정보 삭제

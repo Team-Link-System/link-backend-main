@@ -64,7 +64,9 @@ func (r *userPersistencePostgres) GetUserByEmail(email string) (*entity.User, er
 
 func (r *userPersistencePostgres) GetUserByID(id uint) (*entity.User, error) {
 	var user entity.User
-	err := r.db.Where("id = ?", id).First(&user).Error
+
+	//TODO UserProfile 조인 추가
+	err := r.db.Preload("UserProfile").Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %d", id)
@@ -121,12 +123,30 @@ func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User
 	return users, nil
 }
 
-func (r *userPersistencePostgres) UpdateUser(id uint, updates map[string]interface{}) error {
-	// 업데이트할 값이 있는 경우에만 업데이트 실행
+func (r *userPersistencePostgres) UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error {
+
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
+	}
+
 	if len(updates) > 0 {
-		if err := r.db.Model(&entity.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if err := tx.Model(&entity.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			tx.Rollback()
 			return fmt.Errorf("사용자 업데이트 중 DB 오류: %w", err)
 		}
+	}
+
+	// UserProfile 업데이트
+	if len(profileUpdates) > 0 {
+		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(updates).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
 	}
 
 	return nil

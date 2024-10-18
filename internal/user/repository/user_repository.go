@@ -12,7 +12,7 @@ type UserRepository interface {
 	GetAllUsers(requestUserId uint) ([]entity.User, error)
 	GetUserByID(id uint) (*entity.User, error)
 	GetUserByIds(ids []uint) ([]entity.User, error)
-	UpdateUser(id uint, updates map[string]interface{}) error
+	UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error
 	DeleteUser(id uint) error
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
