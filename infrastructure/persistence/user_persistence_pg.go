@@ -84,8 +84,7 @@ func (r *userPersistencePostgres) GetUserByIds(ids []uint) ([]entity.User, error
 		return nil, fmt.Errorf("유효하지 않은 사용자 ID 목록")
 	}
 
-	// GORM에서 IN 조건을 사용하여 사용자 조회
-	if err := r.db.Where("id IN ?", ids).Find(&users).Error; err != nil {
+	if err := r.db.Preload("UserProfile").Where("id IN ?", ids).Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
 	return users, nil
@@ -152,6 +151,7 @@ func (r *userPersistencePostgres) UpdateUser(id uint, updates map[string]interfa
 	return nil
 }
 
+// TODO CasCade 되는지 확인
 func (r *userPersistencePostgres) DeleteUser(id uint) error {
 	if err := r.db.Delete(&entity.User{}, id).Error; err != nil {
 		return fmt.Errorf("사용자 삭제 중 DB 오류: %w", err)
@@ -175,8 +175,10 @@ func (r *userPersistencePostgres) SearchUser(request req.SearchUserRequest) ([]e
 		query = query.Where("name LIKE ?", "%"+request.Name+"%")
 	}
 
+	//TODO 닉네임 검색 추가
+
 	// 최종 쿼리 실행
-	if err := query.Find(&users).Error; err != nil {
+	if err := query.Preload("UserProfile").Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("사용자 검색 중 DB 오류: %w", err)
 	}
 

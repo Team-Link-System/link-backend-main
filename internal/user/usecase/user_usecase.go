@@ -95,6 +95,16 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	return user, nil
 }
 
+// TODO 본인 정보 가져오기
+func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
+	user, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+	}
+	return user, nil
+}
+
 // TODO 전체 사용자 정보 가져오기 - 관리자만 가능
 func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 
@@ -221,7 +231,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	return u.userRepo.DeleteUser(targetUserId)
 }
 
-// TODO 사용자 검색
+// TODO 사용자 검색 (수정)
 func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
 	// 사용자 저장소에서 검색
 	users, err := u.userRepo.SearchUser(request)
@@ -232,6 +242,16 @@ func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, 
 	return users, nil
 }
 
+// TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
+// func (u *userUsecase) GetUsersByCompany(companyId uint) ([]entity.User, error) {
+// 	users, err := u.userRepo.GetUsersByCompany(companyId)
+// 	if err != nil {
+// 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
+// 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
+// 	}
+// 	return users, nil
+// }
+
 // TODO 해당 부서에 속한 사용자 리스트 가져오기
 func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
 	users, err := u.userRepo.GetUsersByDepartment(departmentId)
@@ -240,16 +260,6 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 		return nil, common.NewError(http.StatusInternalServerError, "부서 사용자 조회에 실패했습니다")
 	}
 	return users, nil
-}
-
-// TODO 본인 정보 가져오기
-func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
-	user, err := u.userRepo.GetUserByID(userId)
-	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
-	}
-	return user, nil
 }
 
 // TODO 유저 상태 업데이트
