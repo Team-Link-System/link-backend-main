@@ -128,10 +128,7 @@ func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 	return users, nil
 }
 
-// TODO 사용자 정보 업데이트 -> 확인해야함
-// ! 본인 정보 업데이트 - 시스템 관리자는 전부가능
-// ! 사용자는 본인거 전부가능
-// ! 루트 관리자 절대 변경 불가
+// TODO 사용자 정보 업데이트 -> 확인해야함 (관리자용으로 나중에 빼기)
 func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error {
 	// 요청 사용자 조회
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
@@ -207,6 +204,8 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	// Persistence 레이어로 업데이트 요청 전달
 	return u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
 }
+
+//TODO 본인 프로필 업데이트(권한은 수정할 수 없음)
 
 // TODO 사용자 정보 삭제
 // !시스템관리자랑 본인만가능
