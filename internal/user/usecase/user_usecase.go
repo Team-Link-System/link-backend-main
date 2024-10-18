@@ -243,14 +243,14 @@ func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, 
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
-// func (u *userUsecase) GetUsersByCompany(companyId uint) ([]entity.User, error) {
-// 	users, err := u.userRepo.GetUsersByCompany(companyId)
-// 	if err != nil {
-// 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
-// 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
-// 	}
-// 	return users, nil
-// }
+func (u *userUsecase) GetUsersByCompany(companyId uint) ([]entity.User, error) {
+	users, err := u.userRepo.GetUsersByCompany(companyId)
+	if err != nil {
+		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
+	}
+	return users, nil
+}
 
 // TODO 해당 부서에 속한 사용자 리스트 가져오기
 func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {

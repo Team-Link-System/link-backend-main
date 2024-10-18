@@ -9,13 +9,16 @@ import (
 type UserRepository interface {
 	CreateUser(user *entity.User) error
 	GetUserByEmail(email string) (*entity.User, error)
+	GetUserByNickname(nickname string) (*entity.User, error)
 	GetAllUsers(requestUserId uint) ([]entity.User, error)
 	GetUserByID(id uint) (*entity.User, error)
 	GetUserByIds(ids []uint) ([]entity.User, error)
 	UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error
 	DeleteUser(id uint) error
 	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
-	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+
 	UpdateUserOnlineStatus(userId uint, online bool) error
-	GetUserByNickname(nickname string) (*entity.User, error)
+
+	GetUsersByCompany(companyId uint) ([]entity.User, error)
+	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 }

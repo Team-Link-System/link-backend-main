@@ -62,6 +62,19 @@ func (r *userPersistencePostgres) GetUserByEmail(email string) (*entity.User, er
 	return &user, nil
 }
 
+// 닉네임 중복확인
+func (r *userPersistencePostgres) GetUserByNickname(nickname string) (*entity.User, error) {
+	var user entity.User
+	err := r.db.Select("id,nickname").Where("nickname = ?", nickname).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	}
+	return &user, nil
+}
+
 func (r *userPersistencePostgres) GetUserByID(id uint) (*entity.User, error) {
 	var user entity.User
 
@@ -203,15 +216,12 @@ func (r *userPersistencePostgres) UpdateUserOnlineStatus(userId uint, online boo
 		Update("is_online", online).Error
 }
 
-// 닉네임 중복확인
-func (r *userPersistencePostgres) GetUserByNickname(nickname string) (*entity.User, error) {
-	var user entity.User
-	err := r.db.Select("id,nickname").Where("nickname = ?", nickname).First(&user).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+func (r *userPersistencePostgres) GetUsersByCompany(companyId uint) ([]entity.User, error) {
+	var users []entity.User
+
+	if err := r.db.Preload("UserProfile").Where("company_id = ?", companyId).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("회사 사용자 조회 중 DB 오류: %w", err)
 	}
-	return &user, nil
+
+	return users, nil
 }
