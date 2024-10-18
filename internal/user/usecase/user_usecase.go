@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -45,6 +46,12 @@ func (u *userUsecase) RegisterUser(user *entity.User) (*entity.User, error) {
 	}
 	user.Password = hashedPassword
 
+	fmt.Println("user.Role", user.Role)
+	if user.Role == nil {
+		role := entity.RoleUser
+		user.Role = &role
+	}
+
 	if err := u.userRepo.CreateUser(user); err != nil {
 		log.Printf("사용자 생성 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 생성에 실패했습니다")
@@ -80,7 +87,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	}
 
 	//TODO 일반 사용자 혹은 그룹 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (requestUser.Role == entity.RoleUser || requestUser.Role == entity.RoleGroupManager) && user.Role <= entity.RoleAdmin {
+	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleGroupManager) && *user.Role <= entity.RoleAdmin {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -88,8 +95,20 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	return user, nil
 }
 
-// TODO 전체 사용자 정보 가져오기
+// TODO 전체 사용자 정보 가져오기 - 관리자만 가능
 func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
+
+	requestUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
+	}
+
+	// 관리자만 가능
+	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 전체 사용자 정보를 조회하려 했습니다: 요청자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
 
 	users, err := u.userRepo.GetAllUsers(requestUserId)
 	if err != nil {
@@ -146,7 +165,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
-	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
+	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -171,13 +190,13 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 삭제 불가
-	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
+	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	//TODO 삭제하려는 대상에 시스템관리자는 불가능함
-	if targetUser.Role == entity.RoleAdmin {
+	if *targetUser.Role == entity.RoleAdmin {
 		log.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "시스템 관리자 계정은 삭제가 불가능합니다")
 	}

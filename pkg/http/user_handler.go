@@ -24,6 +24,8 @@ func NewUserHandler(userUsecase usecase.UserUsecase) *UserHandler {
 }
 
 // ! 회원가입 핸들러
+
+// TODO 회원가입할 때 userProfile 빈값들로 일단 생성
 func (h *UserHandler) RegisterUser(c *gin.Context) {
 	var request req.RegisterUserRequest
 
@@ -32,11 +34,11 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
-
 	// 유스케이스에 엔티티 전달
 	user := &entity.User{
 		Name:     request.Name,
 		Email:    request.Email,
+		Nickname: request.Nickname,
 		Password: request.Password,
 		Phone:    request.Phone,
 	}
@@ -53,10 +55,11 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 
 	// 유스케이스에서 반환된 엔티티를 응답 DTO로 변환
 	response := res.RegisterUserResponse{
-		ID:    createdUser.ID,
-		Name:  createdUser.Name,
-		Email: createdUser.Email,
-		Phone: createdUser.Phone,
+		ID:       createdUser.ID,
+		Name:     createdUser.Name,
+		Email:    createdUser.Email,
+		Phone:    createdUser.Phone,
+		Nickname: createdUser.Nickname,
 	}
 
 	// 성공 응답
@@ -113,21 +116,27 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	// 응답 구조체로 변환
 	var response []res.GetAllUsersResponse
 	// 그룹 이름 또는 ID를 문자열 배열로 변환
-	var groupNames []string
 	for _, user := range users {
 		// User 정보를 GetAllUsersResponse로 변환
 		log.Printf("user: %v", user)
 		userResponse := res.GetAllUsersResponse{
-			ID:           user.ID,
-			Name:         user.Name,
-			Email:        user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone:        user.Phone,
-			Groups:       groupNames,        // 그룹 이름 배열
-			DepartmentID: user.DepartmentID, // DepartmentID가 없으면 0으로 처리
-			TeamID:       user.TeamID,       // TeamID가 없으면 0으로 처리
-			Role:         uint(user.Role),
-			CreatedAt:    user.CreatedAt,
-			UpdatedAt:    user.UpdatedAt,
+			ID:    user.ID,
+			Name:  user.Name,
+			Email: user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone: user.Phone,
+			Role:  uint(*user.Role),
+			UserProfile: res.UserProfile{
+				ID:           user.UserProfile.ID,
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				CompanyID:    user.UserProfile.CompanyID,
+				DepartmentID: user.UserProfile.DepartmentID,
+				TeamID:       user.UserProfile.TeamID,
+				PositionID:   user.UserProfile.PositionID,
+			},
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Nickname:  user.Nickname,
 		}
 
 		response = append(response, userResponse)
@@ -137,6 +146,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 목록 조회 성공", response))
 }
 
+// TODO UserProfile 있으면
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	//params 받아야지
 	userId, exists := c.Get("userId")
@@ -168,19 +178,14 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 		return
 	}
 
-	var groupNames []string //TODO 일단 임시적으로 그룹 부서 팀 도메인 만들면 지워야함
-
 	response := res.GetUserByIdResponse{
-		ID:           user.ID,
-		Email:        user.Email,
-		Name:         user.Name,
-		Phone:        user.Phone,
-		Groups:       groupNames,
-		DepartmentID: user.DepartmentID,
-		TeamID:       user.TeamID,
-		Role:         uint(user.Role),
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
+		ID:        user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		Phone:     user.Phone,
+		Role:      uint(*user.Role),
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 조회 성공", response))
@@ -295,20 +300,17 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 
 	var response []res.SearchUserResponse
 	// 그룹 이름 또는 ID를 문자열 배열로 변환
-	var groupNames []string
+
 	for _, user := range users {
 		log.Printf("user: %v", user)
 		userResponse := res.SearchUserResponse{
-			ID:           user.ID,
-			Name:         user.Name,
-			Email:        user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone:        user.Phone,
-			Groups:       groupNames,        // 그룹 이름 배열
-			DepartmentID: user.DepartmentID, // DepartmentID가 없으면 0으로 처리
-			TeamID:       user.TeamID,       // TeamID가 없으면 0으로 처리
-			Role:         uint(user.Role),
-			CreatedAt:    user.CreatedAt,
-			UpdatedAt:    user.UpdatedAt,
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone:     user.Phone,
+			Role:      uint(*user.Role),
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
 		}
 
 		response = append(response, userResponse)

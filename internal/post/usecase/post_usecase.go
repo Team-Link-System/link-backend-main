@@ -5,14 +5,19 @@ import (
 	"link/internal/post/repository"
 )
 
-type PostUsecase struct {
-	postRepository repository.PostRepository
+type PostUsecase interface {
+	CreatePost(post *entity.Post) error
 }
 
-func NewPostUsecase(postRepository repository.PostRepository) *PostUsecase {
-	return &PostUsecase{postRepository: postRepository}
+type postUsecase struct {
+	postRepo repository.PostRepository
 }
 
-func (uc *PostUsecase) CreatePost(post *entity.Post) error {
-	return uc.postRepository.CreatePost(post)
+func NewPostUsecase(postRepo repository.PostRepository) PostUsecase {
+	return &postUsecase{postRepo: postRepo}
+}
+
+func (uc *postUsecase) CreatePost(post *entity.Post) error {
+	uc.postRepo.CreatePost(post)
+	return nil
 }

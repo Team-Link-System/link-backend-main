@@ -17,5 +17,6 @@ func NewPostHandler(postUsecase usecase.PostUsecase) *PostHandler {
 
 // TODO 게시물 생성
 func (h *PostHandler) CreatePost(c *gin.Context) {
+
 	c.JSON(http.StatusOK, gin.H{"message": "게시물 생성"})
 }

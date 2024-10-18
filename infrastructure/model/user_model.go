@@ -9,7 +9,7 @@ type UserRole int
 const (
 	RoleAdmin        UserRole = iota + 1 // 1: 최고 관리자
 	RoleSubAdmin                         // 2: 부관리자
-	RoleGroupManager                     // 3: 그룹 관리자 (회사 관리자)
+	RoleGroupManager                     // 3: 그룹 관리자
 	RoleUser                             // 4: 일반 사용자
 )
 
@@ -19,9 +19,9 @@ type User struct {
 	Name      string       `json:"name" binding:"required"`
 	Email     string       `json:"email" binding:"required,email" gorm:"unique"`
 	Nickname  string       `json:"nickname" binding:"required,nickname" gorm:"unique"`
-	Phone     string       `json:"phone"`
 	Password  string       `json:"password"`
-	Role      UserRole     `json:"role" binding:"required" gorm:"type:integer;default:4"`
+	Phone     string       `json:"phone"`
+	Role      UserRole     `json:"role" binding:"required" gorm:"not null;default:4"`
 	CreatedAt time.Time    `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time    `json:"updated_at"`
 	IsOnline  bool         `json:"is_online" gorm:"default:false"`

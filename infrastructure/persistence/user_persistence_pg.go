@@ -21,9 +21,32 @@ func NewUserPersistencePostgres(db *gorm.DB) repository.UserRepository {
 }
 
 func (r *userPersistencePostgres) CreateUser(user *entity.User) error {
-	if err := r.db.Create(user).Error; err != nil {
+
+	//트랜잭션 시작
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
+	}
+
+	if err := tx.Create(user).Error; err != nil {
+		tx.Rollback()
 		return fmt.Errorf("사용자 생성 중 DB 오류: %w", err)
 	}
+
+	//TODO 초기 프로필은 User 테이블에서 생성한 userId 데이터만 생성 나머진 빈값
+	userProfile := &entity.UserProfile{
+		UserID: user.ID,
+	}
+
+	if err := tx.Create(userProfile).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("사용자 프로필 생성 중 DB 오류: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
+	}
+
 	return nil
 }
 
@@ -66,6 +89,7 @@ func (r *userPersistencePostgres) GetUserByIds(ids []uint) ([]entity.User, error
 	return users, nil
 }
 
+// TODO 모든 유저 가져오기 (관리자만 가능)
 func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 	var users []entity.User
 	var requestUser entity.User
@@ -77,20 +101,15 @@ func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User
 	}
 
 	// 관리자는 자기보다 권한이 낮은 사용자 리스트들을 가져옴
-	if requestUser.Role == entity.RoleAdmin {
-		if err := r.db.Find(&users).Error; err != nil {
+
+	// TODO UserProfile 조인 추가
+	if *requestUser.Role == entity.RoleAdmin {
+		if err := r.db.Preload("UserProfile").Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err
 		}
-	} else if requestUser.Role == entity.RoleSubAdmin {
-		// 부관리자는 부관리자 이하 (Role 2, 3, 4) 사용자만 볼 수 있음
-		if err := r.db.Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
-			log.Printf("사용자 조회 중 DB 오류: %v", err)
-			return nil, err
-		}
-	} else if requestUser.Role == entity.RoleGroupManager || requestUser.Role == entity.RoleUser {
-		// 부서 관리자와 일반 사용자는 부서 관리자 이하 (Role 3, 4) 사용자만 볼 수 있음
-		if err := r.db.Where("role >= ?", entity.RoleUser).Find(&users).Error; err != nil {
+	} else if *requestUser.Role == entity.RoleSubAdmin {
+		if err := r.db.Preload("Profile").Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err
 		}
