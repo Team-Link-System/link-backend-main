@@ -163,9 +163,9 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	// JSON 요청 바인딩
+	// multipart/form-data 요청 바인딩
 	var request req.UpdateUserRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err := c.ShouldBind(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
