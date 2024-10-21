@@ -242,7 +242,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
 	// 사용자 저장소에서 검색
 	//request를 entity.User로 변환
-	user := &entity.User{
+	user := entity.User{
 		Email:    request.Email,
 		Name:     request.Name,
 		Nickname: request.Nickname,
