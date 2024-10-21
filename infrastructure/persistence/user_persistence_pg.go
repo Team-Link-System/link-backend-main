@@ -222,8 +222,36 @@ func (r *userPersistencePostgres) UpdateUserOnlineStatus(userId uint, online boo
 func (r *userPersistencePostgres) GetUsersByCompany(companyId uint) ([]entity.User, error) {
 	var users []entity.User
 
-	if err := r.db.Preload("UserProfile").Where("company_id = ?", companyId).Find(&users).Error; err != nil {
+	// UserProfile의 company_id 필드를 사용하여 조건을 설정
+	rows, err := r.db.
+		Table("users").
+		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.is_online", "users.created_at", "users.updated_at", "user_profiles.company_id").
+		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
+		Where("user_profiles.company_id = ?", companyId).
+		Rows()
+
+	if err != nil {
 		return nil, fmt.Errorf("회사 사용자 조회 중 DB 오류: %w", err)
+	}
+	defer rows.Close()
+
+	// 조회된 행들을 처리하여 users 배열에 추가
+	for rows.Next() {
+		var user entity.User
+		var companyID uint
+
+		// users 테이블의 컬럼과 user_profiles의 company_id를 스캔
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.IsOnline, &user.CreatedAt, &user.UpdatedAt, &companyID); err != nil {
+			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
+		}
+
+		// UserProfile에 company_id 설정
+		user.UserProfile = entity.UserProfile{
+			CompanyID: &companyID,
+		}
+
+		// 사용자 목록에 추가
+		users = append(users, user)
 	}
 
 	return users, nil
@@ -242,16 +270,6 @@ func (r *userPersistencePostgres) CreateAdmin(admin *entity.User) error {
 	if err := tx.Create(admin).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("관리자 생성 중 DB 오류: %w", err)
-	}
-
-	adminProfile := &entity.UserProfile{
-		UserID:    admin.ID,
-		CompanyID: admin.UserProfile.CompanyID,
-	}
-
-	if err := tx.Create(adminProfile).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("관리자 프로필 생성 중 DB 오류: %w", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {

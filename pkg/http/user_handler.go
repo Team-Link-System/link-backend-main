@@ -88,65 +88,6 @@ func (h *UserHandler) ValidateEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "이메일 사용 가능", nil))
 }
 
-// ! 사용자 전체 조회 핸들러 - 관리자만
-func (h *UserHandler) GetAllUsers(c *gin.Context) {
-	// 사용자 정보를 데이터베이스에서 조회
-	userId, exists := c.Get("userId")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
-		return
-	}
-
-	requestUserID, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
-		return
-	}
-
-	// 사용자 정보를 데이터베이스에서 조회
-	users, err := h.userUsecase.GetAllUsers(requestUserID)
-	if err != nil {
-		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
-		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
-		}
-		return
-	}
-
-	// 응답 구조체로 변환
-	var response []res.GetAllUsersResponse
-	// 그룹 이름 또는 ID를 문자열 배열로 변환
-	for _, user := range users {
-		// User 정보를 GetAllUsersResponse로 변환
-
-		userResponse := res.GetAllUsersResponse{
-			ID:    user.ID,
-			Name:  user.Name,
-			Email: user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone: user.Phone,
-			Role:  uint(*user.Role),
-			UserProfile: res.UserProfile{
-				ID:           user.UserProfile.ID,
-				Image:        user.UserProfile.Image,
-				Birthday:     user.UserProfile.Birthday,
-				CompanyID:    user.UserProfile.CompanyID,
-				DepartmentID: user.UserProfile.DepartmentID,
-				TeamID:       user.UserProfile.TeamID,
-				PositionID:   user.UserProfile.PositionID,
-			},
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Nickname:  user.Nickname,
-		}
-
-		response = append(response, userResponse)
-	}
-
-	// 응답으로 JSON 반환
-	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 목록 조회 성공", response))
-}
-
 // TODO UserProfile 있으면
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	//params 받아야지
@@ -340,7 +281,59 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", response))
 }
 
-// TODO 해당 부서에 속한 사용자 리스트 가져오기
+// TODO 본인이 속한 회사 사용자 리스트 가져오기
+func (h *UserHandler) GetUserByCompany(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	requestUserId, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	users, err := h.userUsecase.GetUsersByCompany(requestUserId)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	var response []res.GetUserByIdResponse
+	for _, user := range users {
+		response = append(response, res.GetUserByIdResponse{
+			ID:       user.ID,
+			Email:    user.Email,
+			Name:     user.Name,
+			Nickname: user.Nickname,
+			Phone:    user.Phone,
+			Role:     uint(*user.Role),
+			UserProfile: res.UserProfile{
+				ID:           user.UserProfile.ID,
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				CompanyID:    user.UserProfile.CompanyID,
+				DepartmentID: user.UserProfile.DepartmentID,
+				TeamID:       user.UserProfile.TeamID,
+				PositionID:   user.UserProfile.PositionID,
+			},
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			IsOnline:  user.IsOnline,
+		})
+	}
+	// 회사 사용자 조회 성공 응답
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 사용자 조회 성공", response))
+}
+
+// TODO 해당 부서에 속한 사용자 리스트 가져오기 ()
 func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 	departmentId := c.Param("departmentId")
 

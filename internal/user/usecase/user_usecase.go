@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 
+	_companyRepo "link/internal/company/repository"
 	"link/internal/user/entity"
-	"link/internal/user/repository"
+	_userEntity "link/internal/user/entity"
+	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	utils "link/pkg/util"
@@ -13,28 +15,34 @@ import (
 
 // UserUsecase 인터페이스 정의
 type UserUsecase interface {
-	RegisterUser(request *entity.User) (*entity.User, error)
+	RegisterUser(request *_userEntity.User) (*_userEntity.User, error)
 	ValidateEmail(email string) error
-	GetAllUsers(requestUserId uint) ([]entity.User, error)
-	GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error)
+	GetUserInfo(targetUserId, requestUserId uint, role string) (*_userEntity.User, error)
 	UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
-	SearchUser(request req.SearchUserRequest) ([]entity.User, error)
-	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
-	GetUserByID(userId uint) (*entity.User, error)
-	UpdateUserOnlineStatus(userId uint, online bool) error
-	CheckNickname(nickname string) (*entity.User, error)
+	SearchUser(request req.SearchUserRequest) ([]_userEntity.User, error)
 
-	RegisterAdmin(requestUserId uint, request *entity.User) (*entity.User, error)
+	GetUserByID(userId uint) (*_userEntity.User, error)
+	UpdateUserOnlineStatus(userId uint, online bool) error
+	CheckNickname(nickname string) (*_userEntity.User, error)
+
+	//TODO Admin 관련
+	RegisterAdmin(requestUserId uint, request *_userEntity.User) (*_userEntity.User, error)
+	GetAllUsers(requestUserId uint) ([]_userEntity.User, error)
+
+	//TODO 복합 관련
+	GetUsersByCompany(requestUserId uint) ([]_userEntity.User, error)
+	GetUsersByDepartment(departmentId uint) ([]_userEntity.User, error)
 }
 
 type userUsecase struct {
-	userRepo repository.UserRepository
+	userRepo    _userRepo.UserRepository
+	companyRepo _companyRepo.CompanyRepository
 }
 
 // NewUserUsecase 생성자
-func NewUserUsecase(repo repository.UserRepository) UserUsecase {
-	return &userUsecase{userRepo: repo}
+func NewUserUsecase(repo _userRepo.UserRepository, companyRepo _companyRepo.CompanyRepository) UserUsecase {
+	return &userUsecase{userRepo: repo, companyRepo: companyRepo}
 }
 
 // TODO 사용자 생성 - 무조건 일반 사용자
@@ -234,12 +242,24 @@ func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, 
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
-func (u *userUsecase) GetUsersByCompany(companyId uint) ([]entity.User, error) {
-	users, err := u.userRepo.GetUsersByCompany(companyId)
+func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, error) {
+	user, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+	}
+
+	if user.UserProfile.CompanyID == nil {
+		log.Printf("사용자의 회사 ID가 없습니다: 사용자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다")
+	}
+
+	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID)
 	if err != nil {
 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
 	}
+
 	return users, nil
 }
 
@@ -301,8 +321,8 @@ func (u *userUsecase) RegisterAdmin(requestUserId uint, request *entity.User) (*
 		request.Role = &role
 	}
 	//TODO UserProfile은 link 소속으로 등록
-	if request.UserProfile.CompanyID != nil {
-		companyID := uint(1)
+	if request.UserProfile.CompanyID == nil {
+		var companyID uint = 1
 		request.UserProfile.CompanyID = &companyID
 	}
 

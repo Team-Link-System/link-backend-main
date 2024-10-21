@@ -106,6 +106,7 @@ func main() {
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
+				user.GET("/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 			}
 			department := protectedRoute.Group("department")
 			{
@@ -131,9 +132,8 @@ func main() {
 			admin := protectedRoute.Group("admin")
 			{
 				admin.POST("/signup", adminHandler.CreateAdmin)
-
 				admin.POST("/company", adminHandler.CreateCompany)
-				admin.GET("/user/list", adminHandler.GetAllUsers)
+				admin.GET("/user/list", adminHandler.GetAllUsers) //TODO 전체 사용자 조회
 			}
 		}
 	})
