@@ -6,3 +6,8 @@ type JsonResponse struct {
 	Type    string      `json:"type,omitempty"`
 	Payload interface{} `json:"payload,omitempty"`
 }
+
+type Ws_UserResponse struct {
+	UserID   uint `json:"user_id"`
+	IsOnline bool `json:"is_online"`
+}

@@ -56,11 +56,6 @@ type SearchUserResponse struct {
 	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
-type Ws_UserResponse struct {
-	UserID uint `json:"user_id"`
-	Online bool `json:"online"`
-}
-
 type CheckNicknameResponse struct {
 	Nickname string `json:"nickname"`
 }

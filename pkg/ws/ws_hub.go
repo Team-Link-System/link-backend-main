@@ -160,8 +160,8 @@ func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 		Message: fmt.Sprintf("User %d 연결상태 변경 알림: %v", userID, online),
 		Type:    "connection",
 		Payload: res.Ws_UserResponse{
-			UserID: userID,
-			Online: online,
+			UserID:   userID,
+			IsOnline: online,
 		},
 	}
 	hub.BroadcastToAllUsers(statusMessage)
