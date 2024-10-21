@@ -241,7 +241,14 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 // TODO 사용자 검색 (수정)
 func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
 	// 사용자 저장소에서 검색
-	users, err := u.userRepo.SearchUser(request)
+	//request를 entity.User로 변환
+	user := &entity.User{
+		Email:    request.Email,
+		Name:     request.Name,
+		Nickname: request.Nickname,
+	}
+
+	users, err := u.userRepo.SearchUser(&user)
 	if err != nil {
 		log.Printf("사용자 검색에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다")

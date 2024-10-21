@@ -179,11 +179,20 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	}
 
 	response := res.GetUserByIdResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Name:      user.Name,
-		Phone:     user.Phone,
-		Role:      uint(*user.Role),
+		ID:    user.ID,
+		Email: user.Email,
+		Name:  user.Name,
+		Phone: user.Phone,
+		Role:  uint(*user.Role),
+		UserProfile: res.UserProfile{
+			ID:           user.UserProfile.ID,
+			Image:        user.UserProfile.Image,
+			Birthday:     user.UserProfile.Birthday,
+			CompanyID:    user.UserProfile.CompanyID,
+			DepartmentID: user.UserProfile.DepartmentID,
+			TeamID:       user.UserProfile.TeamID,
+			PositionID:   user.UserProfile.PositionID,
+		},
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
@@ -272,13 +281,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 func (h *UserHandler) SearchUser(c *gin.Context) {
 	// 검색 요청 데이터 받기
 	searchReq := req.SearchUserRequest{
-		Email: c.Query("email"),
-		Name:  c.Query("name"),
+		Email:    c.Query("email"),
+		Name:     c.Query("name"),
+		Nickname: c.Query("nickname"),
 	}
 
 	// 쿼리 내용이 아무것도 없는 경우
-	if searchReq.Email == "" && searchReq.Name == "" {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 혹은 이름이 입력되지 않았습니다."))
+	if searchReq.Email == "" && searchReq.Name == "" && searchReq.Nickname == "" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다."))
 		return
 	}
 
@@ -304,11 +314,21 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	for _, user := range users {
 		log.Printf("user: %v", user)
 		userResponse := res.SearchUserResponse{
-			ID:        user.ID,
-			Name:      user.Name,
-			Email:     user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone:     user.Phone,
-			Role:      uint(*user.Role),
+			ID:       user.ID,
+			Name:     user.Name,
+			Email:    user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Nickname: user.Nickname,
+			Phone:    user.Phone,
+			Role:     uint(*user.Role),
+			UserProfile: res.UserProfile{
+				ID:           user.UserProfile.ID,
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				CompanyID:    user.UserProfile.CompanyID,
+				DepartmentID: user.UserProfile.DepartmentID,
+				TeamID:       user.UserProfile.TeamID,
+				PositionID:   user.UserProfile.PositionID,
+			},
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		}

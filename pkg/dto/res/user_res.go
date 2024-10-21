@@ -45,17 +45,15 @@ type GetUserByIdResponse struct {
 }
 
 type SearchUserResponse struct {
-	ID           uint      `json:"id"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	Nickname     string    `json:"nickname"`
-	Phone        string    `json:"phone"`
-	Groups       []string  `json:"groups"`
-	DepartmentID *uint     `json:"department_id"`
-	TeamID       *uint     `json:"team_id"`
-	Role         uint      `json:"role"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID          uint        `json:"id"`
+	Name        string      `json:"name"`
+	Email       string      `json:"email"`
+	Nickname    string      `json:"nickname"`
+	Phone       string      `json:"phone"`
+	UserProfile UserProfile `json:"user_profile"`
+	Role        uint        `json:"role"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
 type Ws_UserResponse struct {

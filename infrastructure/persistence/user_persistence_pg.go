@@ -8,7 +8,6 @@ import (
 
 	"link/internal/user/entity"
 	"link/internal/user/repository"
-	"link/pkg/dto/req"
 )
 
 type userPersistencePostgres struct {
@@ -172,23 +171,27 @@ func (r *userPersistencePostgres) DeleteUser(id uint) error {
 	return nil
 }
 
-func (r *userPersistencePostgres) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
+func (r *userPersistencePostgres) SearchUser(user *entity.User) ([]entity.User, error) {
 	var users []entity.User
 
 	// 기본 쿼리: 관리자를 제외함 (role != 1)
 	query := r.db.Where("role != ?", 1)
 
 	// 이메일이 입력된 경우 이메일로 검색 조건 추가
-	if request.Email != "" {
-		query = query.Where("email LIKE ?", "%"+request.Email+"%")
+	if user.Email != "" {
+		query = query.Where("email LIKE ?", "%"+user.Email+"%")
 	}
 
 	// 이름이 입력된 경우 이름으로 검색 조건 추가
-	if request.Name != "" {
-		query = query.Where("name LIKE ?", "%"+request.Name+"%")
+	if user.Name != "" {
+		query = query.Where("name LIKE ?", "%"+user.Name+"%")
 	}
 
-	//TODO 닉네임 검색 추가
+	if user.Nickname != "" {
+		query = query.Where("nickname LIKE ?", "%"+user.Nickname+"%")
+	}
+
+	//!TODO 입력된 것 토대로 조건
 
 	// 최종 쿼리 실행
 	if err := query.Preload("UserProfile").Find(&users).Error; err != nil {

@@ -100,10 +100,10 @@ func main() {
 			user := protectedRoute.Group("user")
 			{
 				user.GET("/list", userHandler.GetAllUsers)
-				user.GET("/:id", userHandler.GetUserInfo)    // TODO 수정해야함
-				user.PUT("/:id", userHandler.UpdateUserInfo) // TODO 수정해야함 (upsert로 회원가입한 User로 정보 수정 (없으면 upsert))
-				user.DELETE("/:id", userHandler.DeleteUser)  // TODO 수정해야함 ()
-				user.GET("/search", userHandler.SearchUser)  // TODO 검색 조건 추가 (수정해야함)
+				user.GET("/:id", userHandler.GetUserInfo)
+				user.PUT("/:id", userHandler.UpdateUserInfo)
+				user.DELETE("/:id", userHandler.DeleteUser)
+				user.GET("/search", userHandler.SearchUser)
 			}
 			department := protectedRoute.Group("department")
 			{
