@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -45,6 +46,12 @@ func (u *userUsecase) RegisterUser(user *entity.User) (*entity.User, error) {
 	}
 	user.Password = hashedPassword
 
+	fmt.Println("user.Role", user.Role)
+	if user.Role == nil {
+		role := entity.RoleUser
+		user.Role = &role
+	}
+
 	if err := u.userRepo.CreateUser(user); err != nil {
 		log.Printf("사용자 생성 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 생성에 실패했습니다")
@@ -80,7 +87,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	}
 
 	//TODO 일반 사용자 혹은 그룹 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (requestUser.Role == entity.RoleUser || requestUser.Role == entity.RoleGroupManager) && user.Role <= entity.RoleAdmin {
+	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleGroupManager) && *user.Role <= entity.RoleAdmin {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -88,8 +95,30 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	return user, nil
 }
 
-// TODO 전체 사용자 정보 가져오기
+// TODO 본인 정보 가져오기
+func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
+	user, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+	}
+	return user, nil
+}
+
+// TODO 전체 사용자 정보 가져오기 - 관리자만 가능
 func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
+
+	requestUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
+	}
+
+	// 관리자만 가능
+	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 전체 사용자 정보를 조회하려 했습니다: 요청자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
 
 	users, err := u.userRepo.GetAllUsers(requestUserId)
 	if err != nil {
@@ -99,9 +128,7 @@ func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 	return users, nil
 }
 
-// TODO 사용자 정보 업데이트
-// ! 본인 정보 업데이트 - 시스템 관리자는 전부가능
-// ! 사용자는 본인거 전부가능
+// TODO 사용자 정보 업데이트 -> 확인해야함 (관리자용으로 나중에 빼기)
 func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error {
 	// 요청 사용자 조회
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
@@ -117,42 +144,68 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다")
 	}
 
-	// null이 아닌 값만 포함하는 맵 생성
-	updates := make(map[string]interface{})
+	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
+	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
+	//TODO 루트 관리자는 절대 변경 불가
+	if *requestUser.Role == entity.RoleAdmin {
+		log.Printf("루트 관리자는 변경할 수 없습니다")
+		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
+	}
+
+	// 업데이트할 필드 준비
+	userUpdates := make(map[string]interface{})
+	profileUpdates := make(map[string]interface{})
+
 	if request.Name != nil {
-		updates["name"] = *request.Name
+		userUpdates["name"] = *request.Name
 	}
 	if request.Email != nil {
-		updates["email"] = *request.Email
+		userUpdates["email"] = *request.Email
 	}
 	if request.Phone != nil {
-		updates["phone"] = *request.Phone
+		userUpdates["phone"] = *request.Phone
 	}
 	if request.Password != nil {
 		hashedPassword, err := utils.HashPassword(*request.Password)
 		if err != nil {
 			return common.NewError(http.StatusInternalServerError, "비밀번호 해싱 실패")
 		}
-		updates["password"] = hashedPassword
+		userUpdates["password"] = hashedPassword
 	}
 	if request.Role != nil {
-		updates["role"] = *request.Role
-	}
-	if request.DepartmentID != nil {
-		updates["department_id"] = *request.DepartmentID
-	}
-	if request.TeamID != nil {
-		updates["team_id"] = *request.TeamID
+		userUpdates["role"] = *request.Role
 	}
 
-	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
-	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	if request.UserProfile != nil {
+		if request.UserProfile.Image != nil {
+			profileUpdates["image"] = *request.UserProfile.Image
+		}
+		if request.UserProfile.Birthday != nil {
+			profileUpdates["birthday"] = *request.UserProfile.Birthday
+		}
+		if request.UserProfile.CompanyID != nil {
+			profileUpdates["company_id"] = *request.UserProfile.CompanyID
+		}
+		if request.UserProfile.DepartmentID != nil {
+			profileUpdates["department_id"] = *request.UserProfile.DepartmentID
+		}
+		if request.UserProfile.TeamID != nil {
+			profileUpdates["team_id"] = *request.UserProfile.TeamID
+		}
+		if request.UserProfile.PositionID != nil {
+			profileUpdates["position_id"] = *request.UserProfile.PositionID
+		}
 	}
 
-	return u.userRepo.UpdateUser(targetUserId, updates)
+	// Persistence 레이어로 업데이트 요청 전달
+	return u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
 }
+
+//TODO 본인 프로필 업데이트(권한은 수정할 수 없음)
 
 // TODO 사용자 정보 삭제
 // !시스템관리자랑 본인만가능
@@ -171,13 +224,13 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 삭제 불가
-	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
+	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	//TODO 삭제하려는 대상에 시스템관리자는 불가능함
-	if targetUser.Role == entity.RoleAdmin {
+	if *targetUser.Role == entity.RoleAdmin {
 		log.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "시스템 관리자 계정은 삭제가 불가능합니다")
 	}
@@ -185,13 +238,30 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	return u.userRepo.DeleteUser(targetUserId)
 }
 
-// TODO 사용자 검색
+// TODO 사용자 검색 (수정)
 func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
 	// 사용자 저장소에서 검색
-	users, err := u.userRepo.SearchUser(request)
+	//request를 entity.User로 변환
+	user := entity.User{
+		Email:    request.Email,
+		Name:     request.Name,
+		Nickname: request.Nickname,
+	}
+
+	users, err := u.userRepo.SearchUser(&user)
 	if err != nil {
 		log.Printf("사용자 검색에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다")
+	}
+	return users, nil
+}
+
+// TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
+func (u *userUsecase) GetUsersByCompany(companyId uint) ([]entity.User, error) {
+	users, err := u.userRepo.GetUsersByCompany(companyId)
+	if err != nil {
+		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
 	}
 	return users, nil
 }
@@ -204,16 +274,6 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 		return nil, common.NewError(http.StatusInternalServerError, "부서 사용자 조회에 실패했습니다")
 	}
 	return users, nil
-}
-
-// TODO 본인 정보 가져오기
-func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
-	user, err := u.userRepo.GetUserByID(userId)
-	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
-	}
-	return user, nil
 }
 
 // TODO 유저 상태 업데이트
@@ -235,3 +295,5 @@ func (u *userUsecase) CheckNickname(nickname string) (*entity.User, error) {
 
 	return user, nil
 }
+
+//TODO 회사 관리자가 부서나 팀이나 직급 변경 가능

@@ -14,17 +14,17 @@ const (
 )
 
 type User struct {
-	ID           uint      `json:"id" binding:"required"`
-	Name         string    `json:"name,omitempty" binding:"required"`
-	Email        string    `json:"email,omitempty" binding:"required" `
-	Nickname     string    `json:"nickname,omitempty" binding:"required"`
-	Birthday     time.Time `json:"birthday,omitempty" binding:"required"`
-	Password     string    `json:"password,omitempty" binding:"required"`
-	Phone        string    `json:"phone,omitempty"`
-	DepartmentID *uint     `json:"department_id,omitempty"` // 부서에 속하지 않을 수 있음
-	TeamID       *uint     `json:"team_id,omitempty"`       // 팀에 속하지 않을 수 있음
-	Role         UserRole  `json:"role,omitempty" binding:"required"`
-	CreatedAt    time.Time `json:"created_at,omitempty"`
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
-	IsOnline     bool      `json:"is_online,omitempty"`
+	ID       uint      `json:"id" binding:"required"`
+	Name     string    `json:"name,omitempty" binding:"required"`
+	Email    string    `json:"email,omitempty" binding:"required" `
+	Nickname string    `json:"nickname,omitempty" binding:"required"`
+	Password string    `json:"password,omitempty" binding:"required"`
+	Phone    string    `json:"phone,omitempty"`
+	Role     *UserRole `json:"role,omitempty"`
+	// DepartmentID *uint     `json:"department_id,omitempty"` // 부서에 속하지 않을 수 있음
+	// TeamID       *uint     `json:"team_id,omitempty"`       // 팀에 속하지 않을 수 있음
+	UserProfile UserProfile `json:"user_profile,omitempty"`
+	CreatedAt   time.Time   `json:"created_at,omitempty"`
+	UpdatedAt   time.Time   `json:"updated_at,omitempty"`
+	IsOnline    bool        `json:"is_online,omitempty"`
 }
