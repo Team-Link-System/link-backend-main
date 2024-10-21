@@ -15,7 +15,6 @@ type RegisterUserRequest struct {
 	Nickname string `json:"nickname" binding:"required"`
 	Password string `json:"password" binding:"required"`
 	Phone    string `json:"phone" binding:"required"`
-	Role     uint   `json:"role,omitempty"`
 }
 
 type UpdateUserRequest struct {

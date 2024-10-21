@@ -63,6 +63,16 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 			IsRead:     false,
 			CreatedAt:  time.Now(),
 		}
+	case "request": //TODO 이거는 role이 1이거나 2인 사람만 받을 수 있음
+		notification = &entity.Notification{
+			SenderId:   users[0].ID,
+			ReceiverId: users[1].ID,
+			Title:      "Request",
+			Content:    fmt.Sprintf("%s님이 %s님에게 요청을 보냈습니다", users[0].Name, users[1].Name),
+			AlarmType:  notificationType,
+			IsRead:     false,
+			CreatedAt:  time.Now(),
+		}
 
 	default:
 		return nil, common.NewError(http.StatusBadRequest, "알림 타입이 존재하지 않습니다")

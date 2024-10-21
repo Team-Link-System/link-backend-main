@@ -20,4 +20,9 @@ type UserRepository interface {
 
 	GetUsersByCompany(companyId uint) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+
+	//TODO ADMIN 관련
+	CreateAdmin(admin *entity.User) error
+
+	//TODO Company 관련
 }
