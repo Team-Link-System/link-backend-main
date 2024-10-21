@@ -118,3 +118,11 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
+
+func EnsureDirectory(path string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			log.Fatalf("폴더 생성 실패: %s, 오류: %v", path, err)
+		}
+	}
+}

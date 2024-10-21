@@ -32,3 +32,6 @@ Thumbs.db
 
 # Go race detector logs
 *.race
+
+# static 폴더
+static/*

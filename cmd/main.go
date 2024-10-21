@@ -20,6 +20,8 @@ func main() {
 	config.InitCompany(cfg.DB)
 	config.AutoMigrate(cfg.DB)
 	config.UpdateAllUserOffline(cfg.DB)
+	config.EnsureDirectory("static/profiles")
+	config.EnsureDirectory("static/posts")
 
 	// TODO: Gin 모드 설정 (프로덕션일 경우)
 	// gin.SetMode(gin.ReleaseMode)
@@ -29,6 +31,11 @@ func main() {
 
 	// Gin 라우터 설정
 	r := gin.Default()
+
+	//TODO 이미지 정적 파일 제공
+
+	// r.Static("/static/posts", "./static/uploads/posts") 게시물
+	r.Static("/static/profiles", "./static/profiles") //프로필
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	r.Use(cors.New(cors.Config{
