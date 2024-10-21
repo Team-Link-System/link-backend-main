@@ -64,7 +64,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 
 	// 토큰 검증
-	_, err = util.ValidateAccessToken(token)
+	claims, err := util.ValidateAccessToken(token)
 	if err != nil {
 		log.Printf("토큰 검증 실패: %v", err)
 		conn.WriteJSON(res.JsonResponse{
@@ -176,10 +176,12 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			Success: true,
 			Type:    "chat",
 			Payload: &res.ChatPayload{
-				ChatRoomID: message.RoomID,
-				SenderID:   message.SenderID,
-				Content:    message.Content,
-				CreatedAt:  time.Now().Format(time.RFC3339),
+				ChatRoomID:  message.RoomID,
+				SenderID:    message.SenderID,
+				SenderName:  claims.Name,
+				SenderEmail: claims.Email,
+				Content:     message.Content,
+				CreatedAt:   time.Now().Format(time.RFC3339),
 			},
 		})
 	}

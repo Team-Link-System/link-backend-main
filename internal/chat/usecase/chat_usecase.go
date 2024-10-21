@@ -116,17 +116,22 @@ func (uc *chatUsecase) GetChatRoomList(userId uint) ([]*entity.ChatRoom, error) 
 
 // TODO 메시지 저장
 func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error) {
-	chat := &entity.Chat{
-		SenderID:   senderID,
-		ChatRoomID: chatRoomID,
-		Content:    content,
-	}
-
 	//TODO SenderID 조회
-	_, err := uc.userRepository.GetUserByID(senderID)
+	sender, err := uc.userRepository.GetUserByID(senderID)
 	if err != nil {
 		log.Printf("송신자 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다")
+	}
+
+	fmt.Println("sender")
+	fmt.Println(sender)
+
+	chat := &entity.Chat{
+		SenderID:    senderID,
+		ChatRoomID:  chatRoomID,
+		SenderName:  sender.Name,
+		SenderEmail: sender.Email,
+		Content:     content,
 	}
 
 	//TODO 채팅방 조회

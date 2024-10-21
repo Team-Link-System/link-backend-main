@@ -333,7 +333,7 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 사용자 조회 성공", response))
 }
 
-// TODO 해당 부서에 속한 사용자 리스트 가져오기 ()
+// TODO 해당 부서에 속한 사용자 리스트 가져오기 (이후 디테일 잡을때)
 func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 	departmentId := c.Param("departmentId")
 

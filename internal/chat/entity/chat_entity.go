@@ -18,6 +18,8 @@ type Chat struct {
 	ChatRoomID  uint              `json:"chat_room_id,omitempty"`
 	ChatRoom    ChatRoom          `json:"chat_room,omitempty"` // 채팅방 정보
 	SenderID    uint              `json:"sender_id,omitempty"`
+	SenderName  string            `json:"sender_name,omitempty"`
+	SenderEmail string            `json:"sender_email,omitempty"`
 	User        *_userEntity.User `json:"user,omitempty"` // 사용자 정보
 	UnreadBy    []uint            `json:"unread_by,omitempty"`
 	UnreadCount uint              `json:"unread_count,omitempty"`

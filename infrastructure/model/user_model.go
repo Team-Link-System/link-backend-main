@@ -7,10 +7,10 @@ import (
 type UserRole int
 
 const (
-	RoleAdmin        UserRole = iota + 1 // 1: 최고 관리자
-	RoleSubAdmin                         // 2: 부관리자
-	RoleGroupManager                     // 3: 그룹 관리자
-	RoleUser                             // 4: 일반 사용자
+	RoleAdmin          UserRole = iota + 1 // 1: 최고 관리자
+	RoleSubAdmin                           // 2: 부관리자
+	RoleCompanyManager                     // 3: 회사 관리자
+	RoleUser                               // 4: 일반 사용자
 )
 
 // User 모델: 사용자 핵심 정보
