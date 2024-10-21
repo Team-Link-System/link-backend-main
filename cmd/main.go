@@ -17,6 +17,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	config.InitAdminUser(cfg.DB)
+	config.InitCompany(cfg.DB)
 	config.AutoMigrate(cfg.DB)
 	config.UpdateAllUserOffline(cfg.DB)
 
@@ -55,6 +56,8 @@ func main() {
 		chatHandler *handlerHttp.ChatHandler,
 		notificationHandler *handlerHttp.NotificationHandler,
 		postHandler *handlerHttp.PostHandler,
+		companyHandler *handlerHttp.CompanyHandler,
+		adminHandler *handlerHttp.AdminHandler,
 
 		tokenInterceptor *interceptor.TokenInterceptor,
 
@@ -99,7 +102,6 @@ func main() {
 			}
 			user := protectedRoute.Group("user")
 			{
-				user.GET("/list", userHandler.GetAllUsers)
 				user.GET("/:id", userHandler.GetUserInfo)
 				user.PUT("/:id", userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
@@ -123,6 +125,15 @@ func main() {
 			post := protectedRoute.Group("post")
 			{
 				post.POST("", postHandler.CreatePost)
+			}
+
+			//TODO admin 요청
+			admin := protectedRoute.Group("admin")
+			{
+				admin.POST("/signup", adminHandler.CreateAdmin)
+
+				admin.POST("/company", adminHandler.CreateCompany)
+				admin.GET("/user/list", adminHandler.GetAllUsers)
 			}
 		}
 	})

@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -25,6 +24,8 @@ type UserUsecase interface {
 	GetUserByID(userId uint) (*entity.User, error)
 	UpdateUserOnlineStatus(userId uint, online bool) error
 	CheckNickname(nickname string) (*entity.User, error)
+
+	RegisterAdmin(requestUserId uint, request *entity.User) (*entity.User, error)
 }
 
 type userUsecase struct {
@@ -36,7 +37,7 @@ func NewUserUsecase(repo repository.UserRepository) UserUsecase {
 	return &userUsecase{userRepo: repo}
 }
 
-// TODO 사용자 생성
+// TODO 사용자 생성 - 무조건 일반 사용자
 func (u *userUsecase) RegisterUser(user *entity.User) (*entity.User, error) {
 
 	hashedPassword, err := utils.HashPassword(user.Password)
@@ -46,7 +47,6 @@ func (u *userUsecase) RegisterUser(user *entity.User) (*entity.User, error) {
 	}
 	user.Password = hashedPassword
 
-	fmt.Println("user.Role", user.Role)
 	if user.Role == nil {
 		role := entity.RoleUser
 		user.Role = &role
@@ -103,29 +103,6 @@ func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
 	return user, nil
-}
-
-// TODO 전체 사용자 정보 가져오기 - 관리자만 가능
-func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
-
-	requestUser, err := u.userRepo.GetUserByID(requestUserId)
-	if err != nil {
-		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
-	}
-
-	// 관리자만 가능
-	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 전체 사용자 정보를 조회하려 했습니다: 요청자 ID %d", requestUserId)
-		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
-	}
-
-	users, err := u.userRepo.GetAllUsers(requestUserId)
-	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
-	}
-	return users, nil
 }
 
 // TODO 사용자 정보 업데이트 -> 확인해야함 (관리자용으로 나중에 빼기)
@@ -296,4 +273,66 @@ func (u *userUsecase) CheckNickname(nickname string) (*entity.User, error) {
 	return user, nil
 }
 
-//TODO 회사 관리자가 부서나 팀이나 직급 변경 가능
+//!------------------------------
+
+// TODO 새로운 관리자 등록 -  ADMIN
+func (u *userUsecase) RegisterAdmin(requestUserId uint, request *entity.User) (*entity.User, error) {
+	//TODO 루트 관리자만 가능
+	rootUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("루트 관리자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "루트 관리자를 찾을 수 없습니다")
+	}
+
+	if *rootUser.Role != entity.RoleAdmin {
+		log.Printf("권한이 없는 사용자가 관리자를 등록하려 했습니다: 요청자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
+	hashedPassword, err := utils.HashPassword(request.Password)
+	if err != nil {
+		log.Printf("비밀번호 해싱 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
+	}
+	request.Password = hashedPassword
+
+	if request.Role == nil {
+		role := entity.RoleSubAdmin
+		request.Role = &role
+	}
+	//TODO UserProfile은 link 소속으로 등록
+	if request.UserProfile.CompanyID != nil {
+		companyID := uint(1)
+		request.UserProfile.CompanyID = &companyID
+	}
+
+	if err := u.userRepo.CreateAdmin(request); err != nil {
+		log.Printf("관리자 등록에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "관리자 등록에 실패했습니다")
+	}
+
+	return request, nil
+}
+
+// TODO 전체 사용자 정보 가져오기 - ADMIN
+func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
+
+	requestUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
+	}
+
+	// 관리자만 가능
+	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 전체 사용자 정보를 조회하려 했습니다: 요청자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
+	users, err := u.userRepo.GetAllUsers(requestUserId)
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+	}
+	return users, nil
+}

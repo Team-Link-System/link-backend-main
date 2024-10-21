@@ -13,6 +13,7 @@ import (
 
 	authUsecase "link/internal/auth/usecase"
 	chatUsecase "link/internal/chat/usecase"
+	companyUsecase "link/internal/company/usecase"
 	departmentUsecase "link/internal/department/usecase"
 	notificationUsecase "link/internal/notification/usecase"
 	postUsecase "link/internal/post/usecase"
@@ -46,6 +47,8 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(persistence.NewChatPersistencePostgres)
 	container.Provide(persistence.NewNotificationPersistenceMongo)
 	container.Provide(persistence.NewPostPersistencePostgres)
+	container.Provide(persistence.NewCompanyPersistence)
+
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)
 	container.Provide(userUsecase.NewUserUsecase)
@@ -53,6 +56,7 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(chatUsecase.NewChatUsecase)
 	container.Provide(notificationUsecase.NewNotificationUsecase)
 	container.Provide(postUsecase.NewPostUsecase)
+	container.Provide(companyUsecase.NewCompanyUsecase)
 
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
@@ -61,6 +65,9 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(http.NewChatHandler)
 	container.Provide(http.NewNotificationHandler)
 	container.Provide(http.NewPostHandler)
+	container.Provide(http.NewCompanyHandler)
+
+	container.Provide(http.NewAdminHandler)
 
 	return container
 }

@@ -60,6 +60,7 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		Email:    createdUser.Email,
 		Phone:    createdUser.Phone,
 		Nickname: createdUser.Nickname,
+		Role:     uint(*createdUser.Role),
 	}
 
 	// 성공 응답
@@ -118,7 +119,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	// 그룹 이름 또는 ID를 문자열 배열로 변환
 	for _, user := range users {
 		// User 정보를 GetAllUsersResponse로 변환
-		log.Printf("user: %v", user)
+
 		userResponse := res.GetAllUsersResponse{
 			ID:    user.ID,
 			Name:  user.Name,

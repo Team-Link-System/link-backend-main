@@ -18,6 +18,7 @@ type RegisterUserResponse struct {
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
 	Nickname string `json:"nickname"`
+	Role     uint   `json:"role"`
 }
 
 type GetAllUsersResponse struct {

@@ -59,6 +59,41 @@ func InitAdminUser(db *gorm.DB) {
 	}
 }
 
+// TODO 초기 회사 등록 link 등록
+func InitCompany(db *gorm.DB) {
+	if err := db.AutoMigrate(&model.Company{}); err != nil {
+		log.Fatalf("테이블 자동 생성 중 오류 발생: %v", err)
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+
+		var rootCompany model.Company
+		if err := tx.Where("name = ?", "Link").First(&rootCompany).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				rootCompany = model.Company{
+					Name:       "Link",
+					IsVerified: true,
+				}
+
+				if err := tx.Create(&rootCompany).Error; err != nil {
+					return err
+				}
+				log.Printf("생성된 회사 정보: Name=%s, IsVerified=%t", rootCompany.Name, rootCompany.IsVerified)
+				log.Println("초기 회사 등록이 성공적으로 완료되었습니다.")
+			} else {
+				return err
+			}
+		} else {
+			log.Println("회사가 이미 존재합니다.")
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Fatalf("초기 회사 등록 중 오류 발생: %v", err)
+	}
+}
+
 func AutoMigrate(db *gorm.DB) {
 
 	//TODO postgres 테이블 자동 생성

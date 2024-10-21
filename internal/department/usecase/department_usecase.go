@@ -28,6 +28,7 @@ func NewDepartmentUsecase(departmentRepository _departmentRepo.DepartmentReposit
 	return &departmentUsecase{departmentRepository: departmentRepository, userRepository: userRepository}
 }
 
+// TODO 모두 회사 관리자가 해야함
 // TODO 부서 생성
 func (du *departmentUsecase) CreateDepartment(department *_departmentEntity.Department, requestUserId uint) (*_departmentEntity.Department, error) {
 

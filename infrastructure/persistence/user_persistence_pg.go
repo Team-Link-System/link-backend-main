@@ -228,3 +228,35 @@ func (r *userPersistencePostgres) GetUsersByCompany(companyId uint) ([]entity.Us
 
 	return users, nil
 }
+
+//! ----------------------------------------------
+
+//TODO ADMIN 관련
+
+func (r *userPersistencePostgres) CreateAdmin(admin *entity.User) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
+	}
+
+	if err := tx.Create(admin).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("관리자 생성 중 DB 오류: %w", err)
+	}
+
+	adminProfile := &entity.UserProfile{
+		UserID:    admin.ID,
+		CompanyID: admin.UserProfile.CompanyID,
+	}
+
+	if err := tx.Create(adminProfile).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("관리자 프로필 생성 중 DB 오류: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
+	}
+
+	return nil
+}
