@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"link/internal/chat/entity"
 	_chatRepo "link/internal/chat/repository"
@@ -123,15 +124,13 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다")
 	}
 
-	fmt.Println("sender")
-	fmt.Println(sender)
-
 	chat := &entity.Chat{
 		SenderID:    senderID,
 		ChatRoomID:  chatRoomID,
 		SenderName:  sender.Name,
 		SenderEmail: sender.Email,
 		Content:     content,
+		CreatedAt:   time.Now(),
 	}
 
 	//TODO 채팅방 조회

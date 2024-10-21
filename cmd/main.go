@@ -9,6 +9,8 @@ import (
 	"link/config"
 	handlerHttp "link/pkg/http"
 	"link/pkg/interceptor"
+	"link/pkg/middleware"
+
 	ws "link/pkg/ws"
 )
 
@@ -66,6 +68,8 @@ func main() {
 		companyHandler *handlerHttp.CompanyHandler,
 		adminHandler *handlerHttp.AdminHandler,
 
+		imageUploadMiddleware *middleware.ImageUploadMiddleware,
+
 		tokenInterceptor *interceptor.TokenInterceptor,
 
 		wsHandler *ws.WsHandler,
@@ -110,7 +114,7 @@ func main() {
 			user := protectedRoute.Group("user")
 			{
 				user.GET("/:id", userHandler.GetUserInfo)
-				user.PUT("/:id", userHandler.UpdateUserInfo)
+				user.PUT("/:id", imageUploadMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
 				user.GET("/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회

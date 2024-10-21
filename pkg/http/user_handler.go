@@ -170,6 +170,12 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
+	profileImageUrl, exists := c.Get("profile_image_url")
+	if exists {
+		imageUrl := profileImageUrl.(string)
+		request.Image = &imageUrl
+	}
+
 	// DTO를 Usecase에 전달
 	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId, request)
 	if err != nil {
