@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -142,7 +143,6 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 조회 성공", response))
 }
 
-// 사용자 정보 수정 핸들러
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
@@ -163,18 +163,20 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	// multipart/form-data 요청 바인딩
 	var request req.UpdateUserRequest
 	if err := c.ShouldBind(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다: "+err.Error()))
 		return
 	}
 
+	// 미들웨어에서 처리한 이미지 URL 가져오기
 	profileImageUrl, exists := c.Get("profile_image_url")
 	if exists {
-		imageUrl := profileImageUrl.(string)
-		request.Image = &imageUrl
+		imageURL := profileImageUrl.(string)
+		request.Image = &imageURL
 	}
+
+	fmt.Printf("Received request: %+v\n", request)
 
 	// DTO를 Usecase에 전달
 	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId, request)
@@ -287,7 +289,7 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", response))
 }
 
-// TODO 본인이 속한 회사 사용자 리스트 가져오기
+// TODO 본인이 속한 회사 사용자 ���스트 가져오기
 func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
