@@ -132,6 +132,8 @@ func (r *chatPersistence) SaveMessage(chat *chatEntity.Chat) error {
 		Content:     chat.Content,
 		ChatRoomID:  chat.ChatRoomID,
 		SenderID:    chat.SenderID,
+		SenderName:  chat.SenderName,
+		SenderEmail: chat.SenderEmail,
 		CreatedAt:   chat.CreatedAt,
 		UnreadBy:    unreadBy,   // 모든 사용자를 UnreadBy에 추가
 		UnreadCount: len(users), // 처음엔 모든 사용자가 읽지 않았으므로 UnreadCount는 사용자 수와 동일

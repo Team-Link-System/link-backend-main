@@ -18,14 +18,17 @@ type RegisterUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Name         *string      `json:"name,omitempty"`          // 선택적 필드는 포인터로 처리
-	Email        *string      `json:"email,omitempty"`         // 선택적 필드
-	Phone        *string      `json:"phone,omitempty"`         // 선택적 필드
-	Password     *string      `json:"password,omitempty"`      // 선택적 필드
-	Role         *int         `json:"role,omitempty"`          // 선택적 필드
-	DepartmentID *uint        `json:"department_id,omitempty"` // 선택적 필드
-	TeamID       *uint        `json:"team_id,omitempty"`       // 선택적 필드
-	UserProfile  *UserProfile `json:"user_profile,omitempty"`
+	Name         *string `json:"name,omitempty"`          // 선택적 필드는 포인터로 처리
+	Email        *string `json:"email,omitempty"`         // 선택적 필드
+	Phone        *string `json:"phone,omitempty"`         // 선택적 필드
+	Password     *string `json:"password,omitempty"`      // 선택적 필드
+	Role         *int    `json:"role,omitempty"`          // 선택적 필드
+	Image        *string `json:"image,omitempty"`         // 선택적 필드
+	Birthday     *string `json:"birthday,omitempty"`      // 선택적 필드
+	CompanyID    *uint   `json:"company_id,omitempty"`    // 선택적 필드
+	DepartmentID *uint   `json:"department_id,omitempty"` // 선택적 필드
+	TeamID       *uint   `json:"team_id,omitempty"`       // 선택적 필드
+	PositionID   *uint   `json:"position_id,omitempty"`   // 선택적 필드
 }
 
 type SearchUserRequest struct {

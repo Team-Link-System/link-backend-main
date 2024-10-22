@@ -163,11 +163,17 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	// JSON 요청 바인딩
+	// multipart/form-data 요청 바인딩
 	var request req.UpdateUserRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err := c.ShouldBind(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
+	}
+
+	profileImageUrl, exists := c.Get("profile_image_url")
+	if exists {
+		imageUrl := profileImageUrl.(string)
+		request.Image = &imageUrl
 	}
 
 	// DTO를 Usecase에 전달
@@ -333,7 +339,7 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 사용자 조회 성공", response))
 }
 
-// TODO 해당 부서에 속한 사용자 리스트 가져오기 ()
+// TODO 해당 부서에 속한 사용자 리스트 가져오기 (이후 디테일 잡을때)
 func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 	departmentId := c.Param("departmentId")
 

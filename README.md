@@ -1,4 +1,3 @@
-
 ```
 link
 ├─ .dockerignore
@@ -23,6 +22,7 @@ link
 │  │  ├─ comment_model.go
 │  │  ├─ company_model.go
 │  │  ├─ department_model.go
+│  │  ├─ imogi_model.go
 │  │  ├─ like_model.go
 │  │  ├─ notification_model.go
 │  │  ├─ position_model.go
@@ -33,8 +33,10 @@ link
 │  └─ persistence
 │     ├─ auth_persistence_redis.go
 │     ├─ chat_persistence.go
+│     ├─ company_persistence.go
 │     ├─ depmartment_persistence_pg.go
 │     ├─ notification_persistence_mongo.go
+│     ├─ post_persistence.go
 │     └─ user_persistence_pg.go
 ├─ internal
 │  ├─ auth
@@ -51,6 +53,13 @@ link
 │  │  │  └─ chat_repository.go
 │  │  └─ usecase
 │  │     └─ chat_usecase.go
+│  ├─ company
+│  │  ├─ entity
+│  │  │  └─ company_entity.go
+│  │  ├─ repository
+│  │  │  └─ company_repository.go
+│  │  └─ usecase
+│  │     └─ company_usecase.go
 │  ├─ department
 │  │  ├─ entity
 │  │  │  └─ department.go
@@ -65,48 +74,64 @@ link
 │  │  │  └─ notification_repository.go
 │  │  └─ usecase
 │  │     └─ notification_usecase.go
+│  ├─ post
+│  │  ├─ entity
+│  │  │  └─ post_entity.go
+│  │  ├─ repository
+│  │  │  └─ post_repository.go
+│  │  └─ usecase
+│  │     └─ post_usecase.go
 │  ├─ team
 │  │  ├─ entity
 │  │  ├─ repository
 │  │  └─ usecase
 │  └─ user
 │     ├─ entity
-│     │  └─ user_entity.go
+│     │  ├─ user_entity.go
+│     │  └─ userprofile_entity.go
 │     ├─ repository
 │     │  └─ user_repository.go
 │     └─ usecase
 │        └─ user_usecase.go
-└─ pkg
-   ├─ common
-   │  └─ response.go
-   ├─ dto
-   │  ├─ req
-   │  │  ├─ auth_req.go
-   │  │  ├─ chat_req.go
-   │  │  ├─ department_req.go
-   │  │  ├─ notification_req.go
-   │  │  └─ user_req.go
-   │  └─ res
-   │     ├─ auth_res.go
-   │     ├─ chat_res.go
-   │     ├─ department_res.go
-   │     ├─ notification_res.go
-   │     ├─ user_res.go
-   │     └─ ws_res.go
-   ├─ http
-   │  ├─ auth_handler.go
-   │  ├─ chat_handler.go
-   │  ├─ department_handler.go
-   │  ├─ notification_handler.go
-   │  └─ user_handler.go
-   ├─ interceptor
-   │  ├─ error_handler.go
-   │  └─ token_interceptor.go
-   ├─ util
-   │  ├─ jwt.go
-   │  └─ password.go
-   └─ ws
-      ├─ ws_handler.go
-      └─ ws_hub.go
+├─ pkg
+│  ├─ common
+│  │  └─ response.go
+│  ├─ dto
+│  │  ├─ req
+│  │  │  ├─ admin_req.go
+│  │  │  ├─ auth_req.go
+│  │  │  ├─ chat_req.go
+│  │  │  ├─ company_req.go
+│  │  │  ├─ department_req.go
+│  │  │  ├─ notification_req.go
+│  │  │  └─ user_req.go
+│  │  └─ res
+│  │     ├─ admin_res.go
+│  │     ├─ auth_res.go
+│  │     ├─ chat_res.go
+│  │     ├─ department_res.go
+│  │     ├─ notification_res.go
+│  │     ├─ user_res.go
+│  │     └─ ws_res.go
+│  ├─ http
+│  │  ├─ admin_handler.go
+│  │  ├─ auth_handler.go
+│  │  ├─ chat_handler.go
+│  │  ├─ company_handler.go
+│  │  ├─ department_handler.go
+│  │  ├─ notification_handler.go
+│  │  ├─ post_handler.go
+│  │  └─ user_handler.go
+│  ├─ interceptor
+│  │  ├─ error_handler.go
+│  │  └─ token_interceptor.go
+│  ├─ util
+│  │  ├─ jwt.go
+│  │  └─ password.go
+│  └─ ws
+│     ├─ ws_handler.go
+│     └─ ws_hub.go
+├─ route
+└─ script
 
 ```

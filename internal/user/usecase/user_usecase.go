@@ -94,8 +94,8 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
 
-	//TODO 일반 사용자 혹은 그룹 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleGroupManager) && *user.Role <= entity.RoleAdmin {
+	//TODO 일반 사용자 혹은 회사 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
+	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleCompanyManager) && *user.Role <= entity.RoleAdmin {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -164,26 +164,23 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	if request.Role != nil {
 		userUpdates["role"] = *request.Role
 	}
-
-	if request.UserProfile != nil {
-		if request.UserProfile.Image != nil {
-			profileUpdates["image"] = *request.UserProfile.Image
-		}
-		if request.UserProfile.Birthday != nil {
-			profileUpdates["birthday"] = *request.UserProfile.Birthday
-		}
-		if request.UserProfile.CompanyID != nil {
-			profileUpdates["company_id"] = *request.UserProfile.CompanyID
-		}
-		if request.UserProfile.DepartmentID != nil {
-			profileUpdates["department_id"] = *request.UserProfile.DepartmentID
-		}
-		if request.UserProfile.TeamID != nil {
-			profileUpdates["team_id"] = *request.UserProfile.TeamID
-		}
-		if request.UserProfile.PositionID != nil {
-			profileUpdates["position_id"] = *request.UserProfile.PositionID
-		}
+	if request.Image != nil {
+		profileUpdates["image"] = *request.Image
+	}
+	if request.Birthday != nil {
+		profileUpdates["birthday"] = *request.Birthday
+	}
+	if request.CompanyID != nil {
+		profileUpdates["company_id"] = *request.CompanyID
+	}
+	if request.DepartmentID != nil {
+		profileUpdates["department_id"] = *request.DepartmentID
+	}
+	if request.TeamID != nil {
+		profileUpdates["team_id"] = *request.TeamID
+	}
+	if request.PositionID != nil {
+		profileUpdates["position_id"] = *request.PositionID
 	}
 
 	// Persistence 레이어로 업데이트 요청 전달

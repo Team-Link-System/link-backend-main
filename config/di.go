@@ -7,6 +7,7 @@ import (
 	"link/infrastructure/persistence"
 	"link/pkg/http"
 	"link/pkg/interceptor"
+	"link/pkg/middleware"
 	"link/pkg/ws"
 
 	// 새로 추가
@@ -39,6 +40,12 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 
 	//인터셉터 주입
 	container.Provide(interceptor.NewTokenInterceptor)
+
+	//미들웨어 주입
+	// config.go의 BuildContainer 함수에서 미들웨어 등록 부분을 수정
+	container.Provide(func() *middleware.ImageUploadMiddleware {
+		return middleware.NewImageUploadMiddleware("./static/profiles", "/static/profiles")
+	})
 
 	// Repository 계층 등록
 	container.Provide(persistence.NewAuthPersistenceRedis)

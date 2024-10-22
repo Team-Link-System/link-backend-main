@@ -102,38 +102,6 @@ func (r *userPersistencePostgres) GetUserByIds(ids []uint) ([]entity.User, error
 	return users, nil
 }
 
-// TODO 모든 유저 가져오기 (관리자만 가능)
-func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User, error) {
-	var users []entity.User
-	var requestUser entity.User
-
-	// 먼저 요청한 사용자의 정보를 가져옴
-	if err := r.db.First(&requestUser, requestUserId).Error; err != nil {
-		log.Printf("요청한 사용자 조회 중 DB 오류: %v", err)
-		return nil, err
-	}
-
-	// 관리자는 자기보다 권한이 낮은 사용자 리스트들을 가져옴
-
-	// TODO UserProfile 조인 추가
-	if *requestUser.Role == entity.RoleAdmin {
-		if err := r.db.Preload("UserProfile").Find(&users).Error; err != nil {
-			log.Printf("사용자 조회 중 DB 오류: %v", err)
-			return nil, err
-		}
-	} else if *requestUser.Role == entity.RoleSubAdmin {
-		if err := r.db.Preload("Profile").Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
-			log.Printf("사용자 조회 중 DB 오류: %v", err)
-			return nil, err
-		}
-	} else {
-		log.Printf("잘못된 사용자 권한: %d", requestUser.Role)
-		return nil, fmt.Errorf("잘못된 사용자 권한")
-	}
-
-	return users, nil
-}
-
 func (r *userPersistencePostgres) UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error {
 
 	tx := r.db.Begin()
@@ -219,6 +187,7 @@ func (r *userPersistencePostgres) UpdateUserOnlineStatus(userId uint, online boo
 		Update("is_online", online).Error
 }
 
+// TODO 회사 사용자 조회 (일반 사용자, 회사 관리자 포함)
 func (r *userPersistencePostgres) GetUsersByCompany(companyId uint) ([]entity.User, error) {
 	var users []entity.User
 
@@ -227,13 +196,15 @@ func (r *userPersistencePostgres) GetUsersByCompany(companyId uint) ([]entity.Us
 		Table("users").
 		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.is_online", "users.created_at", "users.updated_at", "user_profiles.company_id").
 		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
-		Where("user_profiles.company_id = ?", companyId).
+		Where("user_profiles.company_id = ? or users.role = ? or users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser). // Role 3,4 관리자 포함
 		Rows()
 
 	if err != nil {
 		return nil, fmt.Errorf("회사 사용자 조회 중 DB 오류: %w", err)
 	}
 	defer rows.Close()
+
+	//TODO 없으면, 그냥 응답
 
 	// 조회된 행들을 처리하여 users 배열에 추가
 	for rows.Next() {
@@ -277,4 +248,36 @@ func (r *userPersistencePostgres) CreateAdmin(admin *entity.User) error {
 	}
 
 	return nil
+}
+
+// TODO 모든 유저 가져오기 (관리자만 가능)
+func (r *userPersistencePostgres) GetAllUsers(requestUserId uint) ([]entity.User, error) {
+	var users []entity.User
+	var requestUser entity.User
+
+	// 먼저 요청한 사용자의 정보를 가져옴
+	if err := r.db.First(&requestUser, requestUserId).Error; err != nil {
+		log.Printf("요청한 사용자 조회 중 DB 오류: %v", err)
+		return nil, err
+	}
+
+	// 관리자는 자기보다 권한이 낮은 사용자 리스트들을 가져옴
+
+	// TODO UserProfile 조인 추가
+	if *requestUser.Role == entity.RoleAdmin {
+		if err := r.db.Preload("UserProfile").Find(&users).Error; err != nil {
+			log.Printf("사용자 조회 중 DB 오류: %v", err)
+			return nil, err
+		}
+	} else if *requestUser.Role == entity.RoleSubAdmin {
+		if err := r.db.Preload("UserProfile").Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
+			log.Printf("사용자 조회 중 DB 오류: %v", err)
+			return nil, err
+		}
+	} else {
+		log.Printf("잘못된 사용자 권한: %d", requestUser.Role)
+		return nil, fmt.Errorf("잘못된 사용자 권한")
+	}
+
+	return users, nil
 }
