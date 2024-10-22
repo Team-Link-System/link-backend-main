@@ -2,9 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"image"
-	"image/jpeg"
-	"image/png"
 	"link/pkg/common"
 	"net/http"
 	"os"
@@ -12,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anthonynsimon/bild/transform"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -30,7 +26,7 @@ func NewImageUploadMiddleware(directory, staticPrefix string) *ImageUploadMiddle
 	}
 }
 
-// UploadMiddleware는 이미지 업로드를 처리하는 미들웨어 함수입니다.
+// ProfileImageUploadMiddleware는 이미지 업로드를 처리하는 미들웨어 함수입니다.
 func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := c.FormFile("file")
@@ -60,68 +56,19 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 		}
 
 		// 파일 저장 경로 설정
-		// 파일 저장 경로 설정
 		uniqueFileName := uuid.New().String()
-		originalFileName := uniqueFileName + "-original" + ext
-		originalFilePath := filepath.Join(folderPath, originalFileName)
+		fileName := uniqueFileName + ext
+		filePath := filepath.Join(folderPath, fileName)
 
 		// 원본 파일 저장
-		if err := c.SaveUploadedFile(file, originalFilePath); err != nil {
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패"))
 			c.Abort()
 			return
 		}
 
-		// 이미지 파일 열기
-		srcFile, err := os.Open(originalFilePath)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 열기 실패"))
-			c.Abort()
-			return
-		}
-		defer srcFile.Close()
-
-		var img image.Image
-		switch ext {
-		case ".jpg", ".jpeg":
-			img, err = jpeg.Decode(srcFile)
-		case ".png":
-			img, err = png.Decode(srcFile)
-		}
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "이미지 디코딩 실패"))
-			c.Abort()
-			return
-		}
-
-		// 이미지 리사이징 (300x300으로 리사이징)
-		resizedImg := transform.Resize(img, 300, 300, transform.Linear)
-
-		// 리사이징된 이미지 저장
-		resizedFileName := uniqueFileName + ext
-		resizedFilePath := filepath.Join(folderPath, resizedFileName)
-		outFile, err := os.Create(resizedFilePath)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "리사이즈된 파일 생성 실패"))
-			c.Abort()
-			return
-		}
-		defer outFile.Close()
-
-		switch ext {
-		case ".jpg", ".jpeg":
-			err = jpeg.Encode(outFile, resizedImg, nil)
-		case ".png":
-			err = png.Encode(outFile, resizedImg)
-		}
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "리사이즈된 이미지 저장 실패"))
-			c.Abort()
-			return
-		}
-
 		// 이미지 URL 설정
-		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, uniqueFileName)
+		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName)
 		c.Set("profile_image_url", imageUrl)
 		c.Next()
 	}
