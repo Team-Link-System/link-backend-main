@@ -48,12 +48,12 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	})
 
 	// Repository 계층 등록
-	container.Provide(persistence.NewAuthPersistenceRedis)
-	container.Provide(persistence.NewUserPersistencePostgres)
-	container.Provide(persistence.NewDepartmentPersistencePostgres)
-	container.Provide(persistence.NewChatPersistencePostgres)
-	container.Provide(persistence.NewNotificationPersistenceMongo)
-	container.Provide(persistence.NewPostPersistencePostgres)
+	container.Provide(persistence.NewAuthPersistence)
+	container.Provide(persistence.NewUserPersistence)
+	container.Provide(persistence.NewDepartmentPersistence)
+	container.Provide(persistence.NewChatPersistence)
+	container.Provide(persistence.NewNotificationPersistence)
+	container.Provide(persistence.NewPostPersistence)
 	container.Provide(persistence.NewCompanyPersistence)
 
 	// Usecase 계층 등록

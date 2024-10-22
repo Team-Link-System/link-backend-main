@@ -12,7 +12,7 @@ type departmentPersistence struct {
 	db *gorm.DB
 }
 
-func NewDepartmentPersistencePostgres(db *gorm.DB) repository.DepartmentRepository {
+func NewDepartmentPersistence(db *gorm.DB) repository.DepartmentRepository {
 	return &departmentPersistence{db: db}
 }
 

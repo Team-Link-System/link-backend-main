@@ -31,13 +31,13 @@ link
 │  │  ├─ user_model.go
 │  │  └─ userprofile_model.go
 │  └─ persistence
-│     ├─ auth_persistence_redis.go
+│     ├─ auth_persistence.go
 │     ├─ chat_persistence.go
 │     ├─ company_persistence.go
-│     ├─ depmartment_persistence_pg.go
-│     ├─ notification_persistence_mongo.go
+│     ├─ depmartment_persistence.go
+│     ├─ notification_persistence.go
 │     ├─ post_persistence.go
-│     └─ user_persistence_pg.go
+│     └─ user_persistence.go
 ├─ internal
 │  ├─ auth
 │  │  ├─ entity
@@ -125,6 +125,8 @@ link
 │  ├─ interceptor
 │  │  ├─ error_handler.go
 │  │  └─ token_interceptor.go
+│  ├─ middleware
+│  │  └─ profileimage_middleware.go
 │  ├─ util
 │  │  ├─ jwt.go
 │  │  └─ password.go

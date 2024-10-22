@@ -245,7 +245,9 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
 		conn.Close()
 		//TODO 유저 상태 업데이트
-		h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false)
+		if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
+			log.Printf("유저 상태 업데이트 실패: %v", err)
+		}
 	}()
 
 	//TODO 메모리에 유저 상태 확인

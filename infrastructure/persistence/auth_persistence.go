@@ -10,16 +10,16 @@ import (
 	"link/internal/auth/repository"
 )
 
-type authPersistenceRedis struct {
+type authPersistence struct {
 	redisClient *redis.Client
 }
 
-func NewAuthPersistenceRedis(redisClient *redis.Client) repository.AuthRepository {
-	return &authPersistenceRedis{redisClient: redisClient}
+func NewAuthPersistence(redisClient *redis.Client) repository.AuthRepository {
+	return &authPersistence{redisClient: redisClient}
 }
 
 // refreshToken 저장
-func (r *authPersistenceRedis) StoreRefreshToken(mergeKey, refreshToken string) error {
+func (r *authPersistence) StoreRefreshToken(mergeKey, refreshToken string) error {
 	ctx := context.Background()
 
 	// Redis에 Refresh Token 저장
@@ -33,7 +33,7 @@ func (r *authPersistenceRedis) StoreRefreshToken(mergeKey, refreshToken string) 
 }
 
 // userId로 refreshToken 가져오기
-func (r *authPersistenceRedis) GetRefreshToken(mergeKey string) (string, error) {
+func (r *authPersistence) GetRefreshToken(mergeKey string) (string, error) {
 	ctx := context.Background()
 
 	refreshToken, err := r.redisClient.Get(ctx, mergeKey).Result()
@@ -45,7 +45,7 @@ func (r *authPersistenceRedis) GetRefreshToken(mergeKey string) (string, error) 
 }
 
 // refreshToken 삭제 (로그아웃)
-func (r *authPersistenceRedis) DeleteRefreshToken(mergeKey string) error {
+func (r *authPersistence) DeleteRefreshToken(mergeKey string) error {
 	ctx := context.Background()
 
 	// Redis에서 Refresh Token 삭제

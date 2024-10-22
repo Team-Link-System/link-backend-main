@@ -95,7 +95,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	}
 
 	//TODO 일반 사용자 혹은 회사 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleCompanyManager) && *user.Role <= entity.RoleAdmin {
+	if (*requestUser.Role >= entity.RoleCompanyManager) && *user.Role <= entity.RoleAdmin {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -110,6 +110,7 @@ func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
+
 	return user, nil
 }
 
@@ -192,8 +193,20 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		profileUpdates["image"] = *request.Image
 	}
 
+	//TODO db 업데이트 하고
+	err = u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
+	if err != nil {
+		log.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다")
+	}
+	//TODO redis 캐시 업데이트
+	err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
+	if err != nil {
+		log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다")
+	}
 	// Persistence 레이어로 업데이트 요청 전달
-	return u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
+	return nil
 }
 
 //TODO 본인 프로필 업데이트(권한은 수정할 수 없음)
@@ -281,7 +294,7 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 
 // TODO 유저 상태 업데이트
 func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return u.userRepo.UpdateUserOnlineStatus(userId, online)
+	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
 }
 
 // TODO 닉네임 중복확인

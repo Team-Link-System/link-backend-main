@@ -122,11 +122,12 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	}
 
 	response := res.GetUserByIdResponse{
-		ID:    user.ID,
-		Email: user.Email,
-		Name:  user.Name,
-		Phone: user.Phone,
-		Role:  uint(*user.Role),
+		ID:       user.ID,
+		Email:    user.Email,
+		Name:     user.Name,
+		Phone:    user.Phone,
+		Nickname: user.Nickname,
+		Role:     uint(*user.Role),
 		UserProfile: res.UserProfile{
 			ID:           user.UserProfile.ID,
 			Image:        user.UserProfile.Image,
@@ -289,7 +290,7 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", response))
 }
 
-// TODO 본인이 속한 회사 사용자 ���스트 가져오기
+// TODO 본인이 속한 회사 사용자 리스트 가져오기
 func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {

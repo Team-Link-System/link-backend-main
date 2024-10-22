@@ -10,15 +10,15 @@ import (
 
 //TODO postgres
 
-type postPersistencePostgres struct {
+type postPersistence struct {
 	db *gorm.DB
 }
 
-func NewPostPersistencePostgres(db *gorm.DB) repository.PostRepository {
-	return &postPersistencePostgres{db: db}
+func NewPostPersistence(db *gorm.DB) repository.PostRepository {
+	return &postPersistence{db: db}
 }
 
-func (r *postPersistencePostgres) CreatePost(post *entity.Post) error {
+func (r *postPersistence) CreatePost(post *entity.Post) error {
 	if err := r.db.Create(post).Error; err != nil {
 		return fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
 	}
