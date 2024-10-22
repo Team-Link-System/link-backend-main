@@ -220,6 +220,8 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
 		}
 
+		//TODO 캐시 is_online 정보 불러오기
+
 		// UserProfile에 company_id 설정
 		user.UserProfile = entity.UserProfile{
 			CompanyID: &companyID,
