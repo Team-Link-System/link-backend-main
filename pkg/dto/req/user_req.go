@@ -18,17 +18,18 @@ type RegisterUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Name         *string `json:"name,omitempty"`          // 선택적 필드는 포인터로 처리
-	Email        *string `json:"email,omitempty"`         // 선택적 필드
-	Phone        *string `json:"phone,omitempty"`         // 선택적 필드
-	Password     *string `json:"password,omitempty"`      // 선택적 필드
-	Role         *int    `json:"role,omitempty"`          // 선택적 필드
-	Image        *string `json:"image,omitempty"`         // 선택적 필드
-	Birthday     *string `json:"birthday,omitempty"`      // 선택적 필드
-	CompanyID    *uint   `json:"company_id,omitempty"`    // 선택적 필드
-	DepartmentID *uint   `json:"department_id,omitempty"` // 선택적 필드
-	TeamID       *uint   `json:"team_id,omitempty"`       // 선택적 필드
-	PositionID   *uint   `json:"position_id,omitempty"`   // 선택적 필드
+	Name         *string `form:"name,omitempty" json:"name,omitempty"`
+	Email        *string `form:"email,omitempty" json:"email,omitempty"`
+	Password     *string `form:"password,omitempty" json:"password,omitempty"`
+	Role         *int    `form:"role,omitempty" json:"role,omitempty"`
+	Nickname     *string `form:"nickname,omitempty" json:"nickname,omitempty"`
+	Phone        *string `form:"phone,omitempty" json:"phone,omitempty"`
+	Birthday     *string `form:"birthday,omitempty" json:"birthday,omitempty"`
+	CompanyID    *uint   `form:"company_id,omitempty" json:"company_id,omitempty"`
+	DepartmentID *uint   `form:"department_id,omitempty" json:"department_id,omitempty"`
+	TeamID       *uint   `form:"team_id,omitempty" json:"team_id,omitempty"`
+	PositionID   *uint   `form:"position_id,omitempty" json:"position_id,omitempty"`
+	Image        *string `form:"image,omitempty" json:"image,omitempty"`
 }
 
 type SearchUserRequest struct {

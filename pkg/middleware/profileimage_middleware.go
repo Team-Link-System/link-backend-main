@@ -26,10 +26,10 @@ func NewImageUploadMiddleware(directory, staticPrefix string) *ImageUploadMiddle
 	}
 }
 
-// UploadMiddleware는 이미지 업로드를 처리하는 미들웨어 함수입니다.
+// ProfileImageUploadMiddleware는 이미지 업로드를 처리하는 미들웨어 함수입니다.
 func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		file, err := c.FormFile("image")
+		file, err := c.FormFile("file")
 		if err != nil {
 			c.Next() // 이미지가 없으면 다음 핸들러로
 			return
@@ -56,17 +56,19 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 		}
 
 		// 파일 저장 경로 설정
-		uniqueFileName := uuid.New().String() + ext
-		savePath := filepath.Join(folderPath, uniqueFileName)
+		uniqueFileName := uuid.New().String()
+		fileName := uniqueFileName + ext
+		filePath := filepath.Join(folderPath, fileName)
 
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
+		// 원본 파일 저장
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패"))
 			c.Abort()
 			return
 		}
 
 		// 이미지 URL 설정
-		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, uniqueFileName)
+		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName)
 		c.Set("profile_image_url", imageUrl)
 		c.Next()
 	}

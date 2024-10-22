@@ -141,6 +141,12 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
 	}
 
+	//TODO 관리자가 아니면, Role 변경 불가
+	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin && request.Role != nil {
+		log.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
 	// 업데이트할 필드 준비
 	userUpdates := make(map[string]interface{})
 	profileUpdates := make(map[string]interface{})
@@ -150,9 +156,6 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	}
 	if request.Email != nil {
 		userUpdates["email"] = *request.Email
-	}
-	if request.Phone != nil {
-		userUpdates["phone"] = *request.Phone
 	}
 	if request.Password != nil {
 		hashedPassword, err := utils.HashPassword(*request.Password)
@@ -164,8 +167,11 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	if request.Role != nil {
 		userUpdates["role"] = *request.Role
 	}
-	if request.Image != nil {
-		profileUpdates["image"] = *request.Image
+	if request.Nickname != nil {
+		userUpdates["nickname"] = *request.Nickname
+	}
+	if request.Phone != nil {
+		userUpdates["phone"] = *request.Phone
 	}
 	if request.Birthday != nil {
 		profileUpdates["birthday"] = *request.Birthday
@@ -181,6 +187,9 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	}
 	if request.PositionID != nil {
 		profileUpdates["position_id"] = *request.PositionID
+	}
+	if request.Image != nil {
+		profileUpdates["image"] = *request.Image
 	}
 
 	// Persistence 레이어로 업데이트 요청 전달
