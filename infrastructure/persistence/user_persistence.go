@@ -286,7 +286,7 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 	return users, nil
 }
 
-// ! redis 캐시 관련
+// !--------------------------- ! redis 캐시 관련
 func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}) error {
 	cacheKey := fmt.Sprintf("user:%d", userId)
 	// HMSet 명령어로 여러 필드를 한 번에 업데이트
