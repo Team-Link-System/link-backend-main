@@ -30,7 +30,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.authUsecase.SignIn(request.Email, request.Password)
+	user, token, err := h.authUsecase.SignIn(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -44,7 +44,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		ID:    user.ID,
 		Email: user.Email,
 		Name:  user.Name,
-		Role:  uint(*user.Role),
+		Role:  uint(user.Role),
 	}
 
 	//! 도메인 다를 때 사용

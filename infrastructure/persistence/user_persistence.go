@@ -57,10 +57,11 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 	err := r.db.Select("id", "email", "password", "name", "role").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil
+			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %s", email)
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
+
 	return &user, nil
 }
 
@@ -270,12 +271,12 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 	// 관리자는 자기보다 권한이 낮은 사용자 리스트들을 가져옴
 
 	// TODO UserProfile 조인 추가
-	if *requestUser.Role == entity.RoleAdmin {
+	if requestUser.Role == entity.RoleAdmin {
 		if err := r.db.Preload("UserProfile").Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err
 		}
-	} else if *requestUser.Role == entity.RoleSubAdmin {
+	} else if requestUser.Role == entity.RoleSubAdmin {
 		if err := r.db.Preload("UserProfile").Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err

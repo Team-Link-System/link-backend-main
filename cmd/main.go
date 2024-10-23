@@ -18,9 +18,9 @@ func main() {
 
 	cfg := config.LoadConfig()
 
+	config.AutoMigrate(cfg.DB)
 	config.InitAdminUser(cfg.DB)
 	config.InitCompany(cfg.DB)
-	config.AutoMigrate(cfg.DB)
 	config.UpdateAllUserOffline(cfg.DB)
 	config.EnsureDirectory("static/profiles")
 	config.EnsureDirectory("static/posts")
@@ -139,11 +139,12 @@ func main() {
 				post.POST("", postHandler.CreatePost)
 			}
 
-			//TODO admin 요청
+			//TODO admin 요청 - 관리자 페이지
 			admin := protectedRoute.Group("admin")
 			{
 				admin.POST("/signup", adminHandler.CreateAdmin)
 				admin.POST("/company", adminHandler.CreateCompany)
+				admin.DELETE("/company/:company_id", adminHandler.DeleteCompany)
 				admin.GET("/user/list", adminHandler.GetAllUsers) //TODO 전체 사용자 조회
 			}
 		}

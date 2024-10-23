@@ -12,6 +12,7 @@ import (
 
 	// 새로 추가
 
+	adminUsecase "link/internal/admin/usecase"
 	authUsecase "link/internal/auth/usecase"
 	chatUsecase "link/internal/chat/usecase"
 	companyUsecase "link/internal/company/usecase"
@@ -64,6 +65,7 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(notificationUsecase.NewNotificationUsecase)
 	container.Provide(postUsecase.NewPostUsecase)
 	container.Provide(companyUsecase.NewCompanyUsecase)
+	container.Provide(adminUsecase.NewAdminUsecase)
 
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)

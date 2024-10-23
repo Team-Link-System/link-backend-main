@@ -2,21 +2,26 @@ package model
 
 import "time"
 
-// TODO 링크 프로젝트에서 쓸 회사 모델 - 얘는 먼저 db에 직접 넣어야함
-// TODO 공공 api에서 먼저 56만건 넣고, 직접 해야함
+type CompanyGrade int
+
+const (
+	CompanyGradeBasic CompanyGrade = iota + 1
+	CompanyGradePro
+)
+
 type Company struct {
-	ID                          uint         `gorm:"primaryKey"`
-	Name                        string       `gorm:"size:255" default:""` //회사이름
-	BusinessRegistrationNumber  string       `gorm:"size:255" default:""` //회사 사업자등록번호
-	RepresentativeName          string       `gorm:"size:255" default:""` //대표 이름
-	RepresentativeEmail         string       `gorm:"size:255" default:""` //대표 이메일
-	RepresentativePhoneNumber   string       `gorm:"size:255" default:""` //대표 전화번호
-	RepresentativeAddress       string       `gorm:"size:255" default:""` //대표 주소
-	RepresentativeAddressDetail string       `gorm:"size:255" default:""` //대표 주소 상세
-	RepresentativePostalCode    string       `gorm:"size:255" default:""` //대표 주소 우편번호
-	IsVerified                  bool         `gorm:"default:false"`       // 서비스에 가입한 회사인지 여부
-	Departments                 []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	Teams                       []Team       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	CreatedAt                   time.Time
-	UpdatedAt                   time.Time
+	ID                        uint         `gorm:"primaryKey"`
+	CpName                    string       `json:"cp_name" gorm:"size:255;unique;not null" default:""`               //회사이름 TODO unique
+	CpNumber                  string       `json:"cp_number,omitempty" gorm:"size:255;unique" default:""`            //회사 사업자등록번호 //unique null 허용
+	RepresentativeName        string       `json:"representative_name,omitempty" gorm:"size:255" default:""`         //대표 이름
+	RepresentativeEmail       string       `json:"representative_email,omitempty" gorm:"size:255" default:""`        //대표 이메일
+	RepresentativePhoneNumber string       `json:"representative_phone_number,omitempty" gorm:"size:255" default:""` //대표 전화번호
+	RepresentativeAddress     string       `json:"representative_address,omitempty" gorm:"size:255" default:""`      //대표 주소
+	RepresentativePostalCode  string       `json:"representative_postal_code,omitempty" gorm:"size:255" default:""`  //대표 주소 우편번호
+	IsVerified                bool         `json:"is_verified" gorm:"default:false"`                                 // 인증하게 되면 Basic 등급이 됨
+	Grade                     CompanyGrade `json:"grade,omitempty" gorm:"default:null"`                              // 인증 받으면 Basic 등급이 됨
+	Departments               []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Teams                     []Team       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	CreatedAt                 time.Time    `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt                 time.Time    `json:"updated_at"`
 }

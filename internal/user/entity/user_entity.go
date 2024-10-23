@@ -20,7 +20,7 @@ type User struct {
 	Nickname    string      `json:"nickname,omitempty"`
 	Password    string      `json:"password,omitempty"`
 	Phone       string      `json:"phone,omitempty"`
-	Role        *UserRole   `json:"role,omitempty"`
+	Role        UserRole    `json:"role,omitempty"`
 	UserProfile UserProfile `json:"user_profile,omitempty"`
 	CreatedAt   time.Time   `json:"created_at,omitempty"`
 	UpdatedAt   time.Time   `json:"updated_at,omitempty"`

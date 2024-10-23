@@ -1,12 +1,13 @@
 package entity
 
 type Company struct {
-	Name                        string `json:"name"`
-	BusinessRegistrationNumber  string `json:"business_registration_number"`
-	RepresentativeName          string `json:"representative_name"`
-	RepresentativePhoneNumber   string `json:"representative_phone_number"`
-	RepresentativeEmail         string `json:"representative_email"`
-	RepresentativeAddress       string `json:"representative_address"`
-	RepresentativeAddressDetail string `json:"representative_address_detail"`
-	RepresentativePostalCode    string `json:"representative_postal_code"`
+	CpName                    string `json:"cp_name" binding:"required"`
+	CpNumber                  string `json:"cp_number,omitempty"`
+	RepresentativeName        string `json:"representative_name,omitempty"`
+	RepresentativePhoneNumber string `json:"representative_phone_number,omitempty"`
+	RepresentativeEmail       string `json:"representative_email,omitempty"`
+	RepresentativeAddress     string `json:"representative_address,omitempty"`
+	RepresentativePostalCode  string `json:"representative_postal_code,omitempty"`
+	Grade                     int    `json:"grade,omitempty"`
+	IsVerified                bool   `json:"is_verified" binding:"required"`
 }
