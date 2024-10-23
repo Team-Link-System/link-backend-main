@@ -11,15 +11,15 @@ import (
 	"link/internal/notification/repository"
 )
 
-type notificationPersistenceMongo struct {
+type notificationPersistence struct {
 	db *mongo.Client
 }
 
-func NewNotificationPersistenceMongo(db *mongo.Client) repository.NotificationRepository {
-	return &notificationPersistenceMongo{db: db}
+func NewNotificationPersistence(db *mongo.Client) repository.NotificationRepository {
+	return &notificationPersistence{db: db}
 }
 
-func (r *notificationPersistenceMongo) CreateNotification(notification *entity.Notification) (*entity.Notification, error) {
+func (r *notificationPersistence) CreateNotification(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
 	_, err := collection.InsertOne(context.Background(), notification)
 	if err != nil {
@@ -29,7 +29,7 @@ func (r *notificationPersistenceMongo) CreateNotification(notification *entity.N
 	return notification, nil
 }
 
-func (r *notificationPersistenceMongo) GetNotificationsByReceiverId(receiverId uint) ([]*entity.Notification, error) {
+func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint) ([]*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
 	filter := bson.M{"receiverid": receiverId}
 	cursor, err := collection.Find(context.Background(), filter)

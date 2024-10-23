@@ -15,7 +15,7 @@ import (
 )
 
 type ChatUsecase interface {
-	CreateChatRoom(userId uint, request req.CreateChatRoomRequest) (*entity.ChatRoom, error)
+	CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*entity.ChatRoom, error)
 	GetChatRoomList(userId uint) ([]*entity.ChatRoom, error)
 	GetChatRoomById(roomId uint) (*entity.ChatRoom, error)
 
@@ -33,7 +33,7 @@ func NewChatUsecase(chatRepository _chatRepo.ChatRepository, userRepository _use
 }
 
 // TODO 채팅방 생성
-func (uc *chatUsecase) CreateChatRoom(userId uint, request req.CreateChatRoomRequest) (*entity.ChatRoom, error) {
+func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*entity.ChatRoom, error) {
 	// 해당 유저들이 실제로 존재하는지 확인
 	users, err := uc.userRepository.GetUserByIds(request.UserIDs)
 	if err != nil {

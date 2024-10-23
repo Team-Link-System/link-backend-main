@@ -20,7 +20,7 @@ type chatPersistence struct {
 	mongo *mongo.Client
 }
 
-func NewChatPersistencePostgres(db *gorm.DB, mongo *mongo.Client) repository.ChatRepository {
+func NewChatPersistence(db *gorm.DB, mongo *mongo.Client) repository.ChatRepository {
 	return &chatPersistence{db: db, mongo: mongo}
 }
 

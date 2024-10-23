@@ -46,7 +46,7 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 		return
 	}
 
-	chatRoom, err := h.chatUsecase.CreateChatRoom(requestUserId, request)
+	chatRoom, err := h.chatUsecase.CreateChatRoom(requestUserId, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))

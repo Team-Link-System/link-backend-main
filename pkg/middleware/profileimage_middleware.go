@@ -56,7 +56,7 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 		}
 
 		// 파일 저장 경로 설정
-		uniqueFileName := uuid.New().String()
+		uniqueFileName := uuid.New().String()[:15]
 		fileName := uniqueFileName + ext
 		filePath := filepath.Join(folderPath, fileName)
 

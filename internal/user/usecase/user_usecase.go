@@ -10,25 +10,22 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
-	utils "link/pkg/util"
+
+	_utils "link/pkg/util"
 )
 
 // UserUsecase 인터페이스 정의
 type UserUsecase interface {
-	RegisterUser(request *_userEntity.User) (*_userEntity.User, error)
+	RegisterUser(request *req.RegisterUserRequest) (*_userEntity.User, error)
 	ValidateEmail(email string) error
 	GetUserInfo(targetUserId, requestUserId uint, role string) (*_userEntity.User, error)
-	UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error
+	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
-	SearchUser(request req.SearchUserRequest) ([]_userEntity.User, error)
+	SearchUser(request *req.SearchUserRequest) ([]_userEntity.User, error)
 
 	GetUserByID(userId uint) (*_userEntity.User, error)
 	UpdateUserOnlineStatus(userId uint, online bool) error
 	CheckNickname(nickname string) (*_userEntity.User, error)
-
-	//TODO Admin 관련
-	RegisterAdmin(requestUserId uint, request *_userEntity.User) (*_userEntity.User, error)
-	GetAllUsers(requestUserId uint) ([]_userEntity.User, error)
 
 	//TODO 복합 관련
 	GetUsersByCompany(requestUserId uint) ([]_userEntity.User, error)
@@ -46,18 +43,20 @@ func NewUserUsecase(repo _userRepo.UserRepository, companyRepo _companyRepo.Comp
 }
 
 // TODO 사용자 생성 - 무조건 일반 사용자
-func (u *userUsecase) RegisterUser(user *entity.User) (*entity.User, error) {
+func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.User, error) {
 
-	hashedPassword, err := utils.HashPassword(user.Password)
+	hashedPassword, err := _utils.HashPassword(request.Password)
 	if err != nil {
 		log.Printf("비밀번호 해싱 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
 	}
-	user.Password = hashedPassword
-
-	if user.Role == nil {
-		role := entity.RoleUser
-		user.Role = &role
+	user := &entity.User{
+		Name:     request.Name,
+		Email:    request.Email,
+		Password: hashedPassword,
+		Nickname: request.Nickname,
+		Phone:    request.Phone,
+		Role:     entity.RoleUser,
 	}
 
 	if err := u.userRepo.CreateUser(user); err != nil {
@@ -95,7 +94,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	}
 
 	//TODO 일반 사용자 혹은 회사 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (*requestUser.Role == entity.RoleUser || *requestUser.Role == entity.RoleCompanyManager) && *user.Role <= entity.RoleAdmin {
+	if (requestUser.Role >= entity.RoleCompanyManager) && user.Role <= entity.RoleAdmin {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -110,11 +109,12 @@ func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
+
 	return user, nil
 }
 
 // TODO 사용자 정보 업데이트 -> 확인해야함 (관리자용으로 나중에 빼기)
-func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request req.UpdateUserRequest) error {
+func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error {
 	// 요청 사용자 조회
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
@@ -130,19 +130,19 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
-	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	//TODO 루트 관리자는 절대 변경 불가
-	if *requestUser.Role == entity.RoleAdmin {
+	if requestUser.Role == entity.RoleAdmin {
 		log.Printf("루트 관리자는 변경할 수 없습니다")
 		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
 	}
 
 	//TODO 관리자가 아니면, Role 변경 불가
-	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin && request.Role != nil {
+	if requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin && request.Role != nil {
 		log.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -158,7 +158,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		userUpdates["email"] = *request.Email
 	}
 	if request.Password != nil {
-		hashedPassword, err := utils.HashPassword(*request.Password)
+		hashedPassword, err := _utils.HashPassword(*request.Password)
 		if err != nil {
 			return common.NewError(http.StatusInternalServerError, "비밀번호 해싱 실패")
 		}
@@ -192,8 +192,20 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request r
 		profileUpdates["image"] = *request.Image
 	}
 
+	//TODO db 업데이트 하고
+	err = u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
+	if err != nil {
+		log.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다")
+	}
+	//TODO redis 캐시 업데이트
+	err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
+	if err != nil {
+		log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다")
+	}
 	// Persistence 레이어로 업데이트 요청 전달
-	return u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
+	return nil
 }
 
 //TODO 본인 프로필 업데이트(권한은 수정할 수 없음)
@@ -215,13 +227,13 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 삭제 불가
-	if requestUserId != targetUserId && *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
+	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
 	//TODO 삭제하려는 대상에 시스템관리자는 불가능함
-	if *targetUser.Role == entity.RoleAdmin {
+	if targetUser.Role == entity.RoleAdmin {
 		log.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "시스템 관리자 계정은 삭제가 불가능합니다")
 	}
@@ -230,7 +242,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 }
 
 // TODO 사용자 검색 (수정)
-func (u *userUsecase) SearchUser(request req.SearchUserRequest) ([]entity.User, error) {
+func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]entity.User, error) {
 	// 사용자 저장소에서 검색
 	//request를 entity.User로 변환
 	user := entity.User{
@@ -266,6 +278,18 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
 	}
 
+	//TODO 온라인 상태 가져오기
+	onlineStatus, err := u.userRepo.GetCacheUser(requestUserId, []string{"is_online"})
+	if err != nil {
+		log.Printf("온라인 상태 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
+	}
+
+	for i := range users {
+		users[i].IsOnline = onlineStatus.IsOnline
+		//TODO 없다면, 디폴트 값 false
+	}
+
 	return users, nil
 }
 
@@ -281,7 +305,7 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 
 // TODO 유저 상태 업데이트
 func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return u.userRepo.UpdateUserOnlineStatus(userId, online)
+	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
 }
 
 // TODO 닉네임 중복확인
@@ -300,65 +324,3 @@ func (u *userUsecase) CheckNickname(nickname string) (*entity.User, error) {
 }
 
 //!------------------------------
-
-// TODO 새로운 관리자 등록 -  ADMIN
-func (u *userUsecase) RegisterAdmin(requestUserId uint, request *entity.User) (*entity.User, error) {
-	//TODO 루트 관리자만 가능
-	rootUser, err := u.userRepo.GetUserByID(requestUserId)
-	if err != nil {
-		log.Printf("루트 관리자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "루트 관리자를 찾을 수 없습니다")
-	}
-
-	if *rootUser.Role != entity.RoleAdmin {
-		log.Printf("권한이 없는 사용자가 관리자를 등록하려 했습니다: 요청자 ID %d", requestUserId)
-		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
-	}
-
-	hashedPassword, err := utils.HashPassword(request.Password)
-	if err != nil {
-		log.Printf("비밀번호 해싱 오류: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
-	}
-	request.Password = hashedPassword
-
-	if request.Role == nil {
-		role := entity.RoleSubAdmin
-		request.Role = &role
-	}
-	//TODO UserProfile은 link 소속으로 등록
-	if request.UserProfile.CompanyID == nil {
-		var companyID uint = 1
-		request.UserProfile.CompanyID = &companyID
-	}
-
-	if err := u.userRepo.CreateAdmin(request); err != nil {
-		log.Printf("관리자 등록에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "관리자 등록에 실패했습니다")
-	}
-
-	return request, nil
-}
-
-// TODO 전체 사용자 정보 가져오기 - ADMIN
-func (u *userUsecase) GetAllUsers(requestUserId uint) ([]entity.User, error) {
-
-	requestUser, err := u.userRepo.GetUserByID(requestUserId)
-	if err != nil {
-		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
-	}
-
-	// 관리자만 가능
-	if *requestUser.Role != entity.RoleAdmin && *requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 전체 사용자 정보를 조회하려 했습니다: 요청자 ID %d", requestUserId)
-		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
-	}
-
-	users, err := u.userRepo.GetAllUsers(requestUserId)
-	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
-	}
-	return users, nil
-}

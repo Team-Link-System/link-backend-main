@@ -1,11 +1,9 @@
 package http
 
 import (
-	_companyUsecase "link/internal/company/usecase"
-	_userUsecase "link/internal/user/usecase"
+	_adminUsecase "link/internal/admin/usecase"
+	"strconv"
 
-	_companyEntity "link/internal/company/entity"
-	_userEntity "link/internal/user/entity"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
@@ -15,12 +13,11 @@ import (
 )
 
 type AdminHandler struct {
-	companyUsecase _companyUsecase.CompanyUsecase
-	userUsecase    _userUsecase.UserUsecase
+	adminUsecase _adminUsecase.AdminUsecase
 }
 
-func NewAdminHandler(companyUsecase _companyUsecase.CompanyUsecase, userUsecase _userUsecase.UserUsecase) *AdminHandler {
-	return &AdminHandler{companyUsecase: companyUsecase, userUsecase: userUsecase}
+func NewAdminHandler(adminUsecase _adminUsecase.AdminUsecase) *AdminHandler {
+	return &AdminHandler{adminUsecase: adminUsecase}
 }
 
 // TODO 운영자 등록 - 시스템 루트만 가능
@@ -32,24 +29,20 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 		return
 	}
 
-	var request req.CreateAdminRequest
+	var request req.AdminCreateAdminRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
 
-	requestAdmin := &_userEntity.User{
-		Email:    request.Email,
-		Password: request.Password,
-		Nickname: request.Nickname,
-		Name:     request.Name,
-		Phone:    request.Phone,
-	}
-
-	admin, err := h.userUsecase.RegisterAdmin(userId.(uint), requestAdmin)
+	admin, err := h.adminUsecase.RegisterAdmin(userId.(uint), &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "운영자 등록에 실패하였습니다."))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
 		return
 	}
 
@@ -59,7 +52,7 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 		Email:    admin.Email,
 		Phone:    admin.Phone,
 		Nickname: admin.Nickname,
-		Role:     uint(*admin.Role),
+		Role:     uint(admin.Role),
 	}
 
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "운영자 등록에 성공하였습니다.", adminResponse))
@@ -81,7 +74,7 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 	}
 
 	// 사용자 정보를 데이터베이스에서 조회
-	users, err := h.userUsecase.GetAllUsers(requestUserID)
+	users, err := h.adminUsecase.GetAllUsers(requestUserID)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -102,9 +95,8 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 			Name:  user.Name,
 			Email: user.Email, // 민감 정보 포함할지 여부에 따라 처리
 			Phone: user.Phone,
-			Role:  uint(*user.Role),
+			Role:  uint(user.Role),
 			UserProfile: res.UserProfile{
-				ID:           user.UserProfile.ID,
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
 				CompanyID:    user.UserProfile.CompanyID,
@@ -124,30 +116,68 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 목록 조회 성공", response))
 }
 
-// TODO 관리자 회사 등록
+// TODO 회사 생성 (관리자 isVerified = true)
 func (h *AdminHandler) CreateCompany(c *gin.Context) {
-	var request req.CreateCompanyRequest
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	requestUserID, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	var request req.AdminCreateCompanyRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
 
-	company := &_companyEntity.Company{
-		Name:                        request.Name,
-		BusinessRegistrationNumber:  request.BusinessRegistrationNumber,
-		RepresentativeName:          request.RepresentativeName,
-		RepresentativePhoneNumber:   request.RepresentativePhoneNumber,
-		RepresentativeEmail:         request.RepresentativeEmail,
-		RepresentativeAddress:       request.RepresentativeAddress,
-		RepresentativeAddressDetail: request.RepresentativeAddressDetail,
-		RepresentativePostalCode:    request.RepresentativePostalCode,
-	}
-
-	company, err := h.companyUsecase.CreateCompany(company)
+	company, err := h.adminUsecase.CreateCompany(requestUserID, &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "회사 등록에 실패하였습니다."))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
 		return
 	}
 
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "회사 등록에 성공하였습니다.", company))
+}
+
+// TODO 회사 삭제 - ADMIN
+func (h *AdminHandler) DeleteCompany(c *gin.Context) {
+	companyID, err := strconv.Atoi(c.Param("company_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		return
+	}
+
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	requestUserID, ok := userId.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		return
+	}
+
+	deletedCompany, err := h.adminUsecase.DeleteCompany(requestUserID, uint(companyID))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 삭제에 성공하였습니다.", deletedCompany))
 }

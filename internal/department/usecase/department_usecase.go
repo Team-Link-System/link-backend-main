@@ -39,7 +39,7 @@ func (du *departmentUsecase) CreateDepartment(department *_departmentEntity.Depa
 		return nil, common.NewError(http.StatusNotFound, "사용자 조회에 실패했습니다")
 	}
 
-	if *requestUser.Role != _userEntity.RoleAdmin && *requestUser.Role != _userEntity.RoleSubAdmin {
+	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 생성하려 했습니다: 사용자 ID %d", requestUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -82,7 +82,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 		return nil, common.NewError(http.StatusNotFound, "요청 사용자를 찾을 수 없습니다")
 	}
 
-	if *requestUser.Role != _userEntity.RoleAdmin && *requestUser.Role != _userEntity.RoleSubAdmin {
+	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 수정하려 했습니다: 사용자 ID %d", requestUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -126,7 +126,7 @@ func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId u
 		return common.NewError(http.StatusNotFound, "사용자 조회에 실패했습니다")
 	}
 
-	if *requestUser.Role != _userEntity.RoleAdmin && *requestUser.Role != _userEntity.RoleSubAdmin {
+	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 사용자 ID %d", requestUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}

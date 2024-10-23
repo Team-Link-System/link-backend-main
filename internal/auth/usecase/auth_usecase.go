@@ -7,6 +7,7 @@ import (
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
+	"link/pkg/dto/req"
 	"link/pkg/util"
 	"log"
 	"net/http"
@@ -16,8 +17,8 @@ import (
 
 // AuthUsecase 인터페이스 정의
 type AuthUsecase interface {
-	SignIn(email, password string) (*_userEntity.User, *entity.Token, error) // 로그인 처리
-	SignOut(userId uint, email string) error                                 // 로그아웃 처리
+	SignIn(request *req.LoginRequest) (*_userEntity.User, *entity.Token, error) // 로그인 처리
+	SignOut(userId uint, email string) error                                    // 로그아웃 처리
 	GetRefreshToken(userId uint, email string) (string, error)
 }
 
@@ -33,15 +34,19 @@ func NewAuthUsecase(authRepo _authRepo.AuthRepository, userRepo _userRepo.UserRe
 	return &authUsecase{authRepo: authRepo, userRepo: userRepo} //TODO 사용자 정보 저장소 주입
 }
 
-func (u *authUsecase) SignIn(email, password string) (*_userEntity.User, *entity.Token, error) {
-	user, err := u.userRepo.GetUserByEmail(email)
+func (u *authUsecase) SignIn(request *req.LoginRequest) (*_userEntity.User, *entity.Token, error) {
+	fmt.Println("request:", request)
+
+	user, err := u.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
 		log.Printf("사용자 조회 오류: %v", err)
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 존재하지 않습니다")
 	}
 
-	if !util.CheckPasswordHash(password, user.Password) {
-		log.Printf("비밀번호 불일치: %s", email)
+	fmt.Println("user:", user)
+
+	if !util.CheckPasswordHash(request.Password, user.Password) {
+		log.Printf("비밀번호 불일치: %s", request.Email)
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 일치하지 않습니다")
 	}
 

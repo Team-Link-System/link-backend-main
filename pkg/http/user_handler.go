@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"link/internal/user/entity"
 	"link/internal/user/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -35,16 +34,8 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
-	// 유스케이스에 엔티티 전달
-	user := &entity.User{
-		Name:     request.Name,
-		Email:    request.Email,
-		Nickname: request.Nickname,
-		Password: request.Password,
-		Phone:    request.Phone,
-	}
 
-	createdUser, err := h.userUsecase.RegisterUser(user)
+	createdUser, err := h.userUsecase.RegisterUser(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -61,7 +52,7 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		Email:    createdUser.Email,
 		Phone:    createdUser.Phone,
 		Nickname: createdUser.Nickname,
-		Role:     uint(*createdUser.Role),
+		Role:     uint(createdUser.Role),
 	}
 
 	// 성공 응답
@@ -122,13 +113,13 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	}
 
 	response := res.GetUserByIdResponse{
-		ID:    user.ID,
-		Email: user.Email,
-		Name:  user.Name,
-		Phone: user.Phone,
-		Role:  uint(*user.Role),
+		ID:       user.ID,
+		Email:    user.Email,
+		Name:     user.Name,
+		Phone:    user.Phone,
+		Nickname: user.Nickname,
+		Role:     uint(user.Role),
 		UserProfile: res.UserProfile{
-			ID:           user.UserProfile.ID,
 			Image:        user.UserProfile.Image,
 			Birthday:     user.UserProfile.Birthday,
 			CompanyID:    user.UserProfile.CompanyID,
@@ -179,7 +170,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	fmt.Printf("Received request: %+v\n", request)
 
 	// DTO를 Usecase에 전달
-	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId, request)
+	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -243,7 +234,7 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	}
 
 	// 사용자 검색
-	users, err := h.userUsecase.SearchUser(searchReq)
+	users, err := h.userUsecase.SearchUser(&searchReq)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -269,9 +260,8 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 			Email:    user.Email, // 민감 정보 포함할지 여부에 따라 처리
 			Nickname: user.Nickname,
 			Phone:    user.Phone,
-			Role:     uint(*user.Role),
+			Role:     uint(user.Role),
 			UserProfile: res.UserProfile{
-				ID:           user.UserProfile.ID,
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
 				CompanyID:    user.UserProfile.CompanyID,
@@ -289,7 +279,7 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", response))
 }
 
-// TODO 본인이 속한 회사 사용자 ���스트 가져오기
+// TODO 본인이 속한 회사 사용자 리스트 가져오기
 func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
@@ -321,9 +311,8 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 			Name:     user.Name,
 			Nickname: user.Nickname,
 			Phone:    user.Phone,
-			Role:     uint(*user.Role),
+			Role:     uint(user.Role),
 			UserProfile: res.UserProfile{
-				ID:           user.UserProfile.ID,
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
 				CompanyID:    user.UserProfile.CompanyID,

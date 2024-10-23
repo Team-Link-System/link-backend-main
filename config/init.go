@@ -38,10 +38,10 @@ func InitAdminUser(db *gorm.DB) {
 					Role:     model.RoleAdmin, // 시스템 관리자 권한 설정
 					// DepartmentID, TeamID, Group 필드를 설정하지 않음 (NULL 허용)
 				}
-
 				if err := tx.Create(&admin).Error; err != nil {
 					return err
 				}
+
 				log.Printf("생성된 관리자 정보: Email=%s, Role=%d", admin.Email, admin.Role)
 				log.Println("초기 관리자 계정이 성공적으로 생성되었습니다.")
 			} else {
@@ -68,17 +68,18 @@ func InitCompany(db *gorm.DB) {
 	err := db.Transaction(func(tx *gorm.DB) error {
 
 		var rootCompany model.Company
-		if err := tx.Where("name = ?", "Link").First(&rootCompany).Error; err != nil {
+		if err := tx.Where("cp_name = ?", "Link").First(&rootCompany).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				rootCompany = model.Company{
-					Name:       "Link",
+					CpName:     "Link",
 					IsVerified: true,
+					Grade:      model.CompanyGradePro,
 				}
 
 				if err := tx.Create(&rootCompany).Error; err != nil {
 					return err
 				}
-				log.Printf("생성된 회사 정보: Name=%s, IsVerified=%t", rootCompany.Name, rootCompany.IsVerified)
+				log.Printf("생성된 회사 정보: Name=%s, IsVerified=%t", rootCompany.CpName, rootCompany.IsVerified)
 				log.Println("초기 회사 등록이 성공적으로 완료되었습니다.")
 			} else {
 				return err
@@ -104,7 +105,6 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Post{},
 		&model.Comment{},
 		&model.Like{},
-
 		&model.Company{},
 		&model.Team{},
 		&model.Position{},
