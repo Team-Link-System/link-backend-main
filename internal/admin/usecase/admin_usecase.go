@@ -55,10 +55,17 @@ func (u *adminUsecase) RegisterAdmin(requestUserId uint, request *req.AdminCreat
 		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
 	}
 
+	companyID := uint(1)
+
 	admin := &_userEntity.User{
+		Name:     request.Name,
+		Nickname: request.Nickname,
 		Email:    request.Email,
 		Password: hashedPassword,
 		Role:     _userEntity.RoleSubAdmin,
+		UserProfile: _userEntity.UserProfile{
+			CompanyID: &companyID,
+		},
 	}
 
 	if err := u.userRepository.CreateUser(admin); err != nil {

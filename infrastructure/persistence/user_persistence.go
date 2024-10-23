@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 
+	"link/infrastructure/model"
 	"link/internal/user/entity"
 	"link/internal/user/repository"
 )
@@ -23,6 +25,27 @@ func NewUserPersistence(db *gorm.DB, redisClient *redis.Client) repository.UserR
 }
 
 func (r *userPersistence) CreateUser(user *entity.User) error {
+	// Entity -> Model 변경
+	modelUser := &model.User{
+		Name:     user.Name,
+		Email:    user.Email,
+		Nickname: user.Nickname,
+		Password: user.Password,
+		Phone:    user.Phone,
+		Role:     model.UserRole(user.Role),
+	}
+
+	var userOmitFields []string
+	val := reflect.ValueOf(modelUser).Elem()
+	typ := reflect.TypeOf(*modelUser)
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldValue := val.Field(i).Interface()
+		fieldName := typ.Field(i).Name
+		if fieldValue == nil || fieldValue == "" || fieldValue == 0 {
+			userOmitFields = append(userOmitFields, fieldName)
+		}
+	}
 
 	//트랜잭션 시작
 	tx := r.db.Begin()
@@ -30,17 +53,48 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
 	}
 
-	if err := tx.Create(user).Error; err != nil {
+	// 오류 발생 시 롤백
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 사용자 생성
+	if err := tx.Omit(userOmitFields...).Create(modelUser).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("사용자 생성 중 DB 오류: %w", err)
 	}
 
-	//TODO 초기 프로필은 User 테이블에서 생성한 userId 데이터만 생성 나머진 빈값
-	userProfile := &entity.UserProfile{
-		UserID: user.ID,
+	// //TODO 초기 프로필은 User 테이블에서 생성한 userId 데이터만 생성 나머진 빈값
+
+	// 초기 프로필 생성
+	modelUserProfile := &model.UserProfile{
+		UserID:       modelUser.ID, // 생성된 사용자 ID 사용
+		Image:        user.UserProfile.Image,
+		Birthday:     user.UserProfile.Birthday,
+		IsSubscribed: user.UserProfile.IsSubscribed,
+		CompanyID:    user.UserProfile.CompanyID,
+		DepartmentID: user.UserProfile.DepartmentID,
+		TeamID:       user.UserProfile.TeamID,
+		PositionID:   user.UserProfile.PositionID,
 	}
 
-	if err := tx.Create(userProfile).Error; err != nil {
+	// 프로필 정보를 Omit할 필드를 찾기 위한 로직
+	var profileOmitFields []string
+	valProfile := reflect.ValueOf(modelUserProfile).Elem()
+	typProfile := reflect.TypeOf(*modelUserProfile)
+
+	for i := 0; i < valProfile.NumField(); i++ {
+		fieldValue := valProfile.Field(i).Interface()
+		fieldName := typProfile.Field(i).Name
+		if fieldValue == nil || fieldValue == "" || fieldValue == 0 {
+			profileOmitFields = append(profileOmitFields, fieldName)
+		}
+	}
+
+	// 프로필 생성
+	if err := tx.Omit(profileOmitFields...).Create(modelUserProfile).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("사용자 프로필 생성 중 DB 오류: %w", err)
 	}
@@ -192,6 +246,7 @@ func (r *userPersistence) UpdateUserOnlineStatus(userId uint, online bool) error
 		Update("is_online", online).Error
 }
 
+// !---------------------------------------------- 관리자 관련
 // TODO 회사 사용자 조회 (일반 사용자, 회사 관리자 포함)
 func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, error) {
 	var users []entity.User
@@ -233,28 +288,6 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	}
 
 	return users, nil
-}
-
-//! ----------------------------------------------
-
-//TODO ADMIN 관련
-
-func (r *userPersistence) CreateAdmin(admin *entity.User) error {
-	tx := r.db.Begin()
-	if tx.Error != nil {
-		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
-	}
-
-	if err := tx.Create(admin).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("관리자 생성 중 DB 오류: %w", err)
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
-	}
-
-	return nil
 }
 
 // TODO 모든 유저 가져오기 (관리자만 가능)

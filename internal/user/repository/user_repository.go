@@ -19,11 +19,6 @@ type UserRepository interface {
 	GetUsersByCompany(companyId uint) ([]entity.User, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 
-	//TODO ADMIN 관련
-	CreateAdmin(admin *entity.User) error
-
-	//TODO Company 관련
-
 	//TODO redis 캐시 관련
 	UpdateCacheUser(userId uint, fields map[string]interface{}) error
 	GetCacheUser(userId uint, fields []string) (*entity.User, error)

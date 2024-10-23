@@ -51,6 +51,7 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.Us
 		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
 	}
 	user := &entity.User{
+		Name:     request.Name,
 		Email:    request.Email,
 		Password: hashedPassword,
 		Nickname: request.Nickname,
@@ -275,6 +276,18 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 	if err != nil {
 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
+	}
+
+	//TODO 온라인 상태 가져오기
+	onlineStatus, err := u.userRepo.GetCacheUser(requestUserId, []string{"is_online"})
+	if err != nil {
+		log.Printf("온라인 상태 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
+	}
+
+	for i := range users {
+		users[i].IsOnline = onlineStatus.IsOnline
+		//TODO 없다면, 디폴트 값 false
 	}
 
 	return users, nil
