@@ -58,10 +58,11 @@ func (u *adminUsecase) RegisterAdmin(requestUserId uint, request *req.AdminCreat
 	companyID := uint(1)
 
 	admin := &_userEntity.User{
-		Name:     request.Name,
-		Nickname: request.Nickname,
 		Email:    request.Email,
 		Password: hashedPassword,
+		Name:     request.Name,
+		Nickname: request.Nickname,
+		Phone:    request.Phone,
 		Role:     _userEntity.RoleSubAdmin,
 		UserProfile: _userEntity.UserProfile{
 			CompanyID: &companyID,
