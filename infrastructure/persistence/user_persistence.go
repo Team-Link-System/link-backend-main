@@ -252,6 +252,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	var users []entity.User
 
 	// UserProfile의 company_id 필드를 사용하여 조건을 설정
+	//TODO 트랜잭션을 통해서 조회
 	rows, err := r.db.
 		Table("users").
 		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at", "user_profiles.company_id").
@@ -366,5 +367,39 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 			user.UserProfile.Birthday = values[i].(string)
 		}
 	}
+
+	fmt.Println("user", user)
+
 	return user, nil
+}
+
+// TODO 여러명의 캐시 내용 가져오기
+func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[uint]map[string]interface{}, error) {
+	userCacheMap := make(map[uint]map[string]interface{})
+
+	if len(userIds) == 0 {
+		return userCacheMap, nil
+	}
+
+	for _, userId := range userIds {
+		cacheKey := fmt.Sprintf("user:%d", userId)
+		values, err := r.redisClient.HMGet(context.Background(), cacheKey, fields...).Result()
+		if err != nil {
+			return nil, fmt.Errorf("redis에서 사용자 %d의 데이터를 조회하는 중 오류 발생: %w", userId, err)
+		}
+
+		if len(values) == 0 {
+			continue
+		}
+
+		fieldMap := make(map[string]interface{})
+		for i, field := range fields {
+			if values[i] != nil {
+				fieldMap[field] = values[i]
+			}
+		}
+		userCacheMap[userId] = fieldMap
+	}
+
+	return userCacheMap, nil
 }

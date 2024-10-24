@@ -26,16 +26,16 @@ type GetUsersByCompanyResponse struct {
 }
 
 type GetUserByIdResponse struct {
-	ID          uint        `json:"id,omitempty"`
-	Email       string      `json:"email,omitempty"`
-	Name        string      `json:"name,omitempty"`
-	Phone       string      `json:"phone,omitempty"`
-	Nickname    string      `json:"nickname,omitempty"`
-	IsOnline    bool        `json:"is_online,omitempty"`
-	UserProfile UserProfile `json:"user_profile,omitempty"`
-	Role        uint        `json:"role,omitempty"`
-	CreatedAt   time.Time   `json:"created_at,omitempty"`
-	UpdatedAt   time.Time   `json:"updated_at,omitempty"`
+	ID          uint        `json:"id"`
+	Email       string      `json:"email"`
+	Name        string      `json:"name"`
+	Phone       string      `json:"phone"`
+	Nickname    string      `json:"nickname"`
+	IsOnline    bool        `json:"is_online"`
+	UserProfile UserProfile `json:"user_profile"`
+	Role        uint        `json:"role"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
 type SearchUserResponse struct {

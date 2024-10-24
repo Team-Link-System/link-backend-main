@@ -21,7 +21,7 @@ func main() {
 	config.AutoMigrate(cfg.DB)
 	config.InitAdminUser(cfg.DB)
 	config.InitCompany(cfg.DB)
-	config.UpdateAllUserOffline(cfg.DB)
+	// config.UpdateAllUserOffline(cfg.DB)
 	config.EnsureDirectory("static/profiles")
 	config.EnsureDirectory("static/posts")
 
