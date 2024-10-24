@@ -3,13 +3,16 @@ package res
 import "time"
 
 type UserProfile struct {
-	ID           uint   `json:"id,omitempty"`
-	Image        string `json:"image,omitempty"`
-	Birthday     string `json:"birthday,omitempty"`
-	CompanyID    *uint  `json:"company_id,omitempty"`
-	DepartmentID *uint  `json:"department_id,omitempty"`
-	TeamID       *uint  `json:"team_id,omitempty"`
-	PositionID   *uint  `json:"position_id,omitempty"`
+	Image           *string   `json:"image,omitempty"`
+	Birthday        string    `json:"birthday,omitempty"`
+	CompanyID       *uint     `json:"company_id,omitempty"`
+	CompanyName     string    `json:"company_name,omitempty"`
+	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
+	DepartmentNames []*string `json:"department_names,omitempty"`
+	TeamIds         []*uint   `json:"team_ids,omitempty"`
+	TeamNames       []*string `json:"team_names,omitempty"`
+	PositionId      *uint     `json:"position_id,omitempty"`
+	PositionName    *string   `json:"position_name,omitempty"`
 }
 
 type RegisterUserResponse struct {
@@ -26,28 +29,47 @@ type GetUsersByCompanyResponse struct {
 }
 
 type GetUserByIdResponse struct {
-	ID          uint        `json:"id"`
-	Email       string      `json:"email"`
-	Name        string      `json:"name"`
-	Phone       string      `json:"phone"`
-	Nickname    string      `json:"nickname"`
-	IsOnline    bool        `json:"is_online"`
-	UserProfile UserProfile `json:"user_profile"`
-	Role        uint        `json:"role"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID              uint      `json:"id"`
+	Email           string    `json:"email"`
+	Name            string    `json:"name"`
+	Phone           string    `json:"phone"`
+	Nickname        string    `json:"nickname,omitempty"`
+	IsOnline        bool      `json:"is_online,omitempty"`
+	Role            uint      `json:"role,omitempty"`
+	Image           *string   `json:"image,omitempty"`
+	Birthday        string    `json:"birthday,omitempty"`
+	CompanyID       *uint     `json:"company_id,omitempty"`
+	CompanyName     string    `json:"company_name,omitempty"`
+	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
+	DepartmentNames []*string `json:"department_names,omitempty"`
+	TeamIds         []*uint   `json:"team_ids,omitempty"`
+	TeamNames       []*string `json:"team_names,omitempty"`
+	PositionId      *uint     `json:"position_id,omitempty"`
+	PositionName    *string   `json:"position_name,omitempty"`
+	CreatedAt       time.Time `json:"created_at,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at,omitempty"`
 }
 
 type SearchUserResponse struct {
-	ID          uint        `json:"id,omitempty"`
-	Name        string      `json:"name,omitempty"`
-	Email       string      `json:"email,omitempty"`
-	Nickname    string      `json:"nickname,omitempty"`
-	Phone       string      `json:"phone,omitempty"`
-	UserProfile UserProfile `json:"user_profile,omitempty"`
-	Role        uint        `json:"role,omitempty"`
-	CreatedAt   time.Time   `json:"created_at,omitempty"`
-	UpdatedAt   time.Time   `json:"updated_at,omitempty"`
+	ID              uint      `json:"id"`
+	Email           string    `json:"email"`
+	Name            string    `json:"name"`
+	Phone           string    `json:"phone,omitempty"`
+	Nickname        string    `json:"nickname,omitempty"`
+	IsOnline        bool      `json:"is_online,omitempty"`
+	Role            uint      `json:"role,omitempty"`
+	Image           *string   `json:"image,omitempty"`
+	Birthday        string    `json:"birthday,omitempty"`
+	CompanyID       *uint     `json:"company_id,omitempty"`
+	CompanyName     string    `json:"company_name,omitempty"`
+	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
+	DepartmentNames []*string `json:"department_names,omitempty"`
+	TeamIds         []*uint   `json:"team_ids,omitempty"`
+	TeamNames       []*string `json:"team_names,omitempty"`
+	PositionId      *uint     `json:"position_id,omitempty"`
+	PositionName    *string   `json:"position_name,omitempty"`
+	CreatedAt       time.Time `json:"created_at,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at,omitempty"`
 }
 
 type CheckNicknameResponse struct {

@@ -56,6 +56,7 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	container.Provide(persistence.NewNotificationPersistence)
 	container.Provide(persistence.NewPostPersistence)
 	container.Provide(persistence.NewCompanyPersistence)
+	container.Provide(persistence.NewTeamPersistence)
 
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)

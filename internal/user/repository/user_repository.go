@@ -7,8 +7,10 @@ import (
 // TODO 추상화
 type UserRepository interface {
 	CreateUser(user *entity.User) error
+	ValidateEmail(email string) (*entity.User, error)
+	ValidateNickname(nickname string) (*entity.User, error)
+
 	GetUserByEmail(email string) (*entity.User, error)
-	GetUserByNickname(nickname string) (*entity.User, error)
 	GetAllUsers(requestUserId uint) ([]entity.User, error)
 	GetUserByID(id uint) (*entity.User, error)
 	GetUserByIds(ids []uint) ([]entity.User, error)

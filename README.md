@@ -27,6 +27,7 @@ link
 │  │  ├─ notification_model.go
 │  │  ├─ position_model.go
 │  │  ├─ post_model.go
+│  │  ├─ postimage_model.go
 │  │  ├─ team_model.go
 │  │  ├─ user_model.go
 │  │  └─ userprofile_model.go
@@ -39,6 +40,11 @@ link
 │     ├─ post_persistence.go
 │     └─ user_persistence.go
 ├─ internal
+│  ├─ admin
+│  │  ├─ entity
+│  │  ├─ repository
+│  │  └─ usecase
+│  │     └─ admin_usecase.go
 │  ├─ auth
 │  │  ├─ entity
 │  │  │  └─ token_entity.go

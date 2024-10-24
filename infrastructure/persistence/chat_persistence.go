@@ -35,7 +35,7 @@ func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
 
 	for i, user := range chatRoom.Users {
 		modelChatRoom.Users[i] = &model.User{
-			ID: user.ID,
+			ID: *user.ID,
 		}
 	}
 	// 저장 전 IsPrivate 값 확인
@@ -66,9 +66,9 @@ func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, 
 		users := make([]*userEntity.User, len(chatRoom.Users))
 		for j, user := range chatRoom.Users {
 			users[j] = &userEntity.User{
-				ID:    user.ID,
-				Name:  user.Name,
-				Email: user.Email,
+				ID:    &user.ID,
+				Name:  &user.Name,
+				Email: &user.Email,
 			}
 		}
 		result[i] = &chatEntity.ChatRoom{
@@ -166,9 +166,9 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 	users := make([]*userEntity.User, len(chatRoom.Users))
 	for i, user := range chatRoom.Users {
 		users[i] = &userEntity.User{
-			ID:    user.ID,
-			Name:  user.Name,
-			Email: user.Email,
+			ID:    &user.ID,
+			Name:  &user.Name,
+			Email: &user.Email,
 			// 필요한 필드를 추가
 		}
 	}

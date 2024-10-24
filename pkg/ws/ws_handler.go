@@ -264,8 +264,8 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			})
 			return
 		}
-		h.hub.RegisterClient(conn, user.ID, 0)
-		h.userUsecase.UpdateUserOnlineStatus(user.ID, true)
+		h.hub.RegisterClient(conn, *user.ID, 0)
+		h.userUsecase.UpdateUserOnlineStatus(*user.ID, true)
 	}
 	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
 	for {

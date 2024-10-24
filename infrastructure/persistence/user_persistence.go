@@ -27,11 +27,11 @@ func NewUserPersistence(db *gorm.DB, redisClient *redis.Client) repository.UserR
 func (r *userPersistence) CreateUser(user *entity.User) error {
 	// Entity -> Model 변경
 	modelUser := &model.User{
-		Name:     user.Name,
-		Email:    user.Email,
-		Nickname: user.Nickname,
-		Password: user.Password,
-		Phone:    user.Phone,
+		Name:     *user.Name,
+		Email:    *user.Email,
+		Nickname: *user.Nickname,
+		Password: *user.Password,
+		Phone:    *user.Phone,
 		Role:     model.UserRole(user.Role),
 	}
 
@@ -71,13 +71,10 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 	// 초기 프로필 생성
 	modelUserProfile := &model.UserProfile{
 		UserID:       modelUser.ID, // 생성된 사용자 ID 사용
+		CompanyID:    user.UserProfile.CompanyID,
 		Image:        user.UserProfile.Image,
 		Birthday:     user.UserProfile.Birthday,
 		IsSubscribed: user.UserProfile.IsSubscribed,
-		CompanyID:    user.UserProfile.CompanyID,
-		DepartmentID: user.UserProfile.DepartmentID,
-		TeamID:       user.UserProfile.TeamID,
-		PositionID:   user.UserProfile.PositionID,
 	}
 
 	// 프로필 정보를 Omit할 필드를 찾기 위한 로직
@@ -106,34 +103,71 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 	return nil
 }
 
+func (r *userPersistence) ValidateEmail(email string) (*entity.User, error) {
+	var user model.User
+
+	err := r.db.Select("id", "email", "nickname", "name", "role").Where("email = ?", email).First(&user).Error
+	//TODO 못찾았으면, 응답 해야함
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	}
+
+	entityUser := &entity.User{
+		ID:       &user.ID,
+		Email:    &user.Email,
+		Nickname: &user.Nickname,
+		Name:     &user.Name,
+		Role:     entity.UserRole(user.Role),
+	}
+
+	return entityUser, nil
+}
+
+// 닉네임 중복확인
+func (r *userPersistence) ValidateNickname(nickname string) (*entity.User, error) {
+	var user model.User
+	err := r.db.Select("id,nickname").Where("nickname = ?", nickname).First(&user).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	}
+
+	entityUser := &entity.User{
+		ID:       &user.ID,
+		Nickname: &user.Nickname,
+	}
+
+	return entityUser, nil
+}
+
 func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
-	var user entity.User
-	err := r.db.Select("id", "email", "password", "name", "role").Where("email = ?", email).First(&user).Error
+	var user model.User
+	err := r.db.Select("id", "email", "nickname", "name", "role", "password").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %s", email)
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
-
-	return &user, nil
-}
-
-// 닉네임 중복확인
-func (r *userPersistence) GetUserByNickname(nickname string) (*entity.User, error) {
-	var user entity.User
-	err := r.db.Select("id,nickname").Where("nickname = ?", nickname).First(&user).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
+	entityUser := &entity.User{
+		ID:       &user.ID,
+		Email:    &user.Email,
+		Nickname: &user.Nickname,
+		Name:     &user.Name,
+		Role:     entity.UserRole(user.Role),
+		Password: &user.Password,
 	}
-	return &user, nil
+	return entityUser, nil
 }
 
 func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
-	var user entity.User
+	var user model.User
 
 	//TODO UserProfile 조인 추가
 	err := r.db.Preload("UserProfile").Where("id = ?", id).First(&user).Error
@@ -143,21 +177,118 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
-	return &user, nil
+	entityUser := &entity.User{
+		ID:       &user.ID,
+		Email:    &user.Email,
+		Nickname: &user.Nickname,
+		Name:     &user.Name,
+		Role:     entity.UserRole(user.Role),
+		UserProfile: &entity.UserProfile{
+			Image:        user.UserProfile.Image,
+			Birthday:     user.UserProfile.Birthday,
+			IsSubscribed: user.UserProfile.IsSubscribed,
+			CompanyID:    user.UserProfile.CompanyID,
+			// Departments:  user.UserProfile.Departments,
+			// Teams:        user.UserProfile.Teams,
+			// PositionId:   user.UserProfile.PositionID,
+			// Position:     user.UserProfile.Position,
+		},
+	}
+	return entityUser, nil
 }
 
 func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
-	var users []entity.User
+	var users []model.User
 
 	// ids 슬라이스가 비어있는지 확인
 	if len(ids) == 0 {
 		return nil, fmt.Errorf("유효하지 않은 사용자 ID 목록")
 	}
 
-	if err := r.db.Preload("UserProfile").Where("id IN ?", ids).Find(&users).Error; err != nil {
+	// 관련 데이터를 Preload하여 로드
+	if err := r.db.Preload("UserProfile.Company").
+		Preload("UserProfile.Departments").
+		Preload("UserProfile.Teams").
+		Preload("UserProfile.Position").
+		Where("id IN ?", ids).
+		Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
-	return users, nil
+
+	// Entity 변환
+	entityUsers := make([]entity.User, len(users))
+	for i, user := range users {
+		// DepartmentIds 변환
+		var departmentIds []*uint
+		for _, dept := range user.UserProfile.Departments {
+			departmentIds = append(departmentIds, &dept.ID)
+		}
+
+		// Departments 변환
+		var departmentMaps []*map[uint]interface{}
+		for _, dept := range user.UserProfile.Departments {
+			deptMap := map[uint]interface{}{
+				dept.ID: map[string]interface{}{
+					"name": dept.Name,
+				},
+			}
+			departmentMaps = append(departmentMaps, &deptMap)
+		}
+
+		// TeamIds 변환
+		var teamIds []*uint
+		for _, team := range user.UserProfile.Teams {
+			teamIds = append(teamIds, &team.ID)
+		}
+
+		// Teams 변환
+		var teamMaps []*map[uint]interface{}
+		for _, team := range user.UserProfile.Teams {
+			teamMap := map[uint]interface{}{
+				team.ID: map[string]interface{}{
+					"name": team.Name,
+				},
+			}
+			teamMaps = append(teamMaps, &teamMap)
+		}
+
+		// Position 변환
+		var positionMap *map[uint]interface{}
+		if user.UserProfile.Position != nil {
+			posMap := map[uint]interface{}{
+				user.UserProfile.Position.ID: map[string]interface{}{
+					"name": user.UserProfile.Position.Name,
+				},
+			}
+			positionMap = &posMap
+		}
+
+		// Entity User 변환
+		entityUsers[i] = entity.User{
+			ID:       &user.ID,
+			Email:    &user.Email,
+			Nickname: &user.Nickname,
+			Name:     &user.Name,
+			Role:     entity.UserRole(user.Role),
+			UserProfile: &entity.UserProfile{
+				UserId:        user.ID,
+				CompanyID:     user.UserProfile.CompanyID,
+				DepartmentIds: departmentIds,
+				Departments:   departmentMaps,
+				TeamIds:       teamIds,
+				Teams:         teamMaps,
+				Image:         user.UserProfile.Image,
+				Birthday:      user.UserProfile.Birthday,
+				IsSubscribed:  user.UserProfile.IsSubscribed,
+				PositionId:    user.UserProfile.PositionID,
+				Position:      positionMap,
+				CreatedAt:     user.UserProfile.CreatedAt,
+				UpdatedAt:     user.UserProfile.UpdatedAt,
+			},
+		}
+	}
+
+	return entityUsers, nil
 }
 
 func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error {
@@ -179,7 +310,7 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 	if len(profileUpdates) > 0 {
 		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
+			return fmt.Errorf("사용��� 프로필 업데이트 중 DB 오류: %w", err)
 		}
 	}
 
@@ -199,23 +330,23 @@ func (r *userPersistence) DeleteUser(id uint) error {
 }
 
 func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
-	var users []entity.User
+	var users []model.User
 
 	// 기본 쿼리: 관리자를 제외함 (role != 1)
 	query := r.db.Where("role != ?", 1)
 
 	// 이메일이 입력된 경우 이메일로 검색 조건 추가
-	if user.Email != "" {
-		query = query.Where("email LIKE ?", "%"+user.Email+"%")
+	if user.Email != nil {
+		query = query.Where("email LIKE ?", "%"+*user.Email+"%")
 	}
 
 	// 이름이 입력된 경우 이름으로 검색 조건 추가
-	if user.Name != "" {
-		query = query.Where("name LIKE ?", "%"+user.Name+"%")
+	if user.Name != nil {
+		query = query.Where("name LIKE ?", "%"+*user.Name+"%")
 	}
 
-	if user.Nickname != "" {
-		query = query.Where("nickname LIKE ?", "%"+user.Nickname+"%")
+	if user.Nickname != nil {
+		query = query.Where("nickname LIKE ?", "%"+*user.Nickname+"%")
 	}
 
 	//!TODO 입력된 것 토대로 조건
@@ -225,7 +356,26 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 		return nil, fmt.Errorf("사용자 검색 중 DB 오류: %w", err)
 	}
 
-	return users, nil
+	entityUsers := make([]entity.User, len(users))
+	for i, user := range users {
+		entityUsers[i] = entity.User{
+			ID:       &user.ID,
+			Email:    &user.Email,
+			Nickname: &user.Nickname,
+			Name:     &user.Name,
+			Role:     entity.UserRole(user.Role),
+			UserProfile: &entity.UserProfile{
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				IsSubscribed: user.UserProfile.IsSubscribed,
+				CompanyID:    user.UserProfile.CompanyID,
+			},
+			CreatedAt: &user.CreatedAt,
+			UpdatedAt: &user.UpdatedAt,
+		}
+	}
+
+	return entityUsers, nil
 }
 
 func (r *userPersistence) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
@@ -280,7 +430,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 		//TODO 캐시 is_online 정보 불러오기
 
 		// UserProfile에 company_id 설정
-		user.UserProfile = entity.UserProfile{
+		user.UserProfile = &entity.UserProfile{
 			CompanyID: &companyID,
 		}
 
@@ -349,7 +499,7 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 	}
 	// 해시셋 데이터를 User 구조체로 매핑
 	user := &entity.User{
-		ID: userId,
+		ID: &userId,
 	}
 
 	// 필드 값 매핑
@@ -360,9 +510,11 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 
 		switch field {
 		case "is_online":
-			user.IsOnline = values[i].(string) == "true"
+			isOnline := values[i].(string) == "true"
+			user.IsOnline = &isOnline
 		case "image":
-			user.UserProfile.Image = values[i].(string)
+			image := values[i].(string)
+			user.UserProfile.Image = &image
 		case "birthday":
 			user.UserProfile.Birthday = values[i].(string)
 		}

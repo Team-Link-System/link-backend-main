@@ -12,7 +12,8 @@ type Department struct {
 	Leader    *User     `gorm:"foreignKey:LeaderID"`           // GORM 관계 설정 (nullable)
 	CompanyID uint      `json:"company_id"`                    // 회사에 무조건 속함
 	Company   Company   `gorm:"foreignKey:CompanyID"`
-	Teams     []Team    `gorm:"foreignKey:DepartmentID"`
+	Teams     []*Team   `gorm:"foreignKey:DepartmentID"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"` // 메시지를 보낸 시간
 	UpdatedAt time.Time `json:"updated_at"`                       // 메시지를 보낸 시간
+	Posts     []*Post   `gorm:"many2many:post_departments;constraint:OnDelete:CASCADE"`
 }

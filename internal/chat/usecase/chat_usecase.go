@@ -127,8 +127,8 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 	chat := &entity.Chat{
 		SenderID:    senderID,
 		ChatRoomID:  chatRoomID,
-		SenderName:  sender.Name,
-		SenderEmail: sender.Email,
+		SenderName:  *sender.Name,
+		SenderEmail: *sender.Email,
 		Content:     content,
 		CreatedAt:   time.Now(),
 	}

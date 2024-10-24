@@ -43,10 +43,10 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 	switch notificationType {
 	case "mention":
 		notification = &entity.Notification{
-			SenderId:   users[0].ID,
-			ReceiverId: users[1].ID,
+			SenderId:   *users[0].ID,
+			ReceiverId: *users[1].ID,
 			Title:      "Mention",
-			Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", users[0].Name, users[1].Name),
+			Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
 			AlarmType:  notificationType,
 			IsRead:     false,
 			CreatedAt:  time.Now(),
@@ -54,21 +54,21 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 
 	case "invite":
 		notification = &entity.Notification{
-			SenderId:   users[0].ID,
-			ReceiverId: users[1].ID,
+			SenderId:   *users[0].ID,
+			ReceiverId: *users[1].ID,
 			Title:      "Invite",
 			Status:     "pending",
-			Content:    fmt.Sprintf("%s님이 %s님을 초대했습니다", users[0].Name, users[1].Name),
+			Content:    fmt.Sprintf("%s님이 %s님을 초대했습니다", *users[0].Name, *users[1].Name),
 			AlarmType:  notificationType,
 			IsRead:     false,
 			CreatedAt:  time.Now(),
 		}
 	case "request": //TODO 이거는 role이 1이거나 2인 사람만 받을 수 있음
 		notification = &entity.Notification{
-			SenderId:   users[0].ID,
-			ReceiverId: users[1].ID,
+			SenderId:   *users[0].ID,
+			ReceiverId: *users[1].ID,
 			Title:      "Request",
-			Content:    fmt.Sprintf("%s님이 %s님에게 요청을 보냈습니다", users[0].Name, users[1].Name),
+			Content:    fmt.Sprintf("%s님이 %s님에게 요청을 보냈습니다", *users[0].Name, *users[1].Name),
 			AlarmType:  notificationType,
 			IsRead:     false,
 			CreatedAt:  time.Now(),
@@ -98,7 +98,7 @@ func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notificat
 	}
 
 	//TODO 수신자 id로 알림 조회
-	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(user.ID)
+	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID)
 	if err != nil {
 		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다")
 	}
