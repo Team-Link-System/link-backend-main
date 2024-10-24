@@ -43,7 +43,7 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*_userEntity.User, *ent
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 존재하지 않습니다")
 	}
 
-	fmt.Println("user:", user)
+	fmt.Println("user:", user.Password)
 
 	if !util.CheckPasswordHash(request.Password, *user.Password) {
 		log.Printf("비밀번호 불일치: %s", request.Email)
@@ -64,7 +64,7 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*_userEntity.User, *ent
 
 	userIdStr := strconv.FormatUint(uint64(*user.ID), 10)
 	//TODO userId:email 키값으로 레디스 저장
-	mergeKey := fmt.Sprintf("%s:%s", userIdStr, user.Email)
+	mergeKey := fmt.Sprintf("%s:%s", userIdStr, *user.Email)
 	err = u.authRepo.StoreRefreshToken(mergeKey, refreshToken)
 	if err != nil {
 		log.Printf("리프레시 토큰 저장 오류: %v", err)

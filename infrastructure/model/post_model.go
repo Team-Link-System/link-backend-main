@@ -13,8 +13,8 @@ type Post struct {
 	Content     string        `gorm:"type:text"`
 	CompanyID   *uint         `json:"company_id"`
 	Company     *Company      `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	Departments []*Department `gorm:"many2many:post_departments,constraint:OnDelete:CASCADE"` // N:N 관계 설정
-	Teams       []*Team       `gorm:"many2many:post_teams,constraint:OnDelete:CASCADE"`       // N:N 관계 설정
+	Departments []*Department `gorm:"many2many:post_departments;constraint:OnDelete:CASCADE"` // N:N 관계 설정
+	Teams       []*Team       `gorm:"many2many:post_teams;constraint:OnDelete:CASCADE"`       // N:N 관계 설정
 	IsAnonymous bool          `gorm:"not null; default:false"`                                // 익명 체크 익명 체크하면, author는 비어 있음
 	Visibility  string        `gorm:"not null; default:PUBLIC"`                               // PUBLIC(전체 게시물 - 익명설정 가능), PRIVATE(회사에만 공개 - 익명 설정가능), DEPARTMENT(부서에만 공개), TEAM(팀에만 공개)
 	CreatedAt   time.Time     `gorm:"not null, autoCreateTime"`

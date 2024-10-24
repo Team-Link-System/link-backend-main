@@ -47,7 +47,6 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 	}
 
 	adminResponse := res.RegisterUserResponse{
-		ID:       *admin.ID,
 		Name:     *admin.Name,
 		Email:    *admin.Email,
 		Phone:    *admin.Phone,

@@ -87,7 +87,7 @@ func main() {
 		{
 			publicRoute.POST("user/signup", userHandler.RegisterUser)
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
-			publicRoute.GET("user/validate-nickname", userHandler.CheckNickname)
+			publicRoute.GET("user/validate-nickname", userHandler.ValidateNickname)
 			publicRoute.POST("auth/signin", authHandler.SignIn)
 
 		}

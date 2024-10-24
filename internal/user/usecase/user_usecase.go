@@ -18,14 +18,15 @@ import (
 type UserUsecase interface {
 	RegisterUser(request *req.RegisterUserRequest) (*_userEntity.User, error)
 	ValidateEmail(email string) error
+	ValidateNickname(nickname string) error
 	GetUserInfo(targetUserId, requestUserId uint, role string) (*_userEntity.User, error)
+	GetUserByID(userId uint) (*_userEntity.User, error)
+
 	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
 	SearchUser(request *req.SearchUserRequest) ([]_userEntity.User, error)
 
-	GetUserByID(userId uint) (*_userEntity.User, error)
 	UpdateUserOnlineStatus(userId uint, online bool) error
-	CheckNickname(nickname string) (*_userEntity.User, error)
 
 	//TODO 복합 관련
 	GetUsersByCompany(requestUserId uint) ([]_userEntity.User, error)
@@ -69,13 +70,30 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.Us
 
 // TODO 이메일 중복 체크
 func (u *userUsecase) ValidateEmail(email string) error {
-	user, err := u.userRepo.GetUserByEmail(email)
+	user, err := u.userRepo.ValidateEmail(email)
 	if err != nil {
+		//TODO ErrRecordNotFound면 오류 안나게 하기
 		return common.NewError(http.StatusInternalServerError, "이메일 확인 중 오류가 발생했습니다")
 	}
 	if user != nil {
 		return common.NewError(http.StatusBadRequest, "이미 사용 중인 이메일입니다")
 	}
+	return nil
+}
+
+// TODO 닉네임 중복확인
+func (u *userUsecase) ValidateNickname(nickname string) error {
+	user, err := u.userRepo.ValidateNickname(nickname)
+	if err != nil {
+		//TODO ErrRecordNotFound면 오류 안나게 하기
+		log.Printf("닉네임 중복확인에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "닉네임 중복확인에 실패했습니다")
+	}
+
+	if user != nil {
+		return common.NewError(http.StatusBadRequest, "이미 사용 중인 닉네임입니다")
+	}
+
 	return nil
 }
 
@@ -208,8 +226,6 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	return nil
 }
 
-//TODO 본인 프로필 업데이트(권한은 수정할 수 없음)
-
 // TODO 사용자 정보 삭제
 // !시스템관리자랑 본인만가능
 func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
@@ -257,6 +273,11 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]entity.User,
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다")
 	}
 	return users, nil
+}
+
+// TODO 유저 상태 업데이트
+func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
+	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
@@ -315,25 +336,3 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 	}
 	return users, nil
 }
-
-// TODO 유저 상태 업데이트
-func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
-}
-
-// TODO 닉네임 중복확인
-func (u *userUsecase) CheckNickname(nickname string) (*entity.User, error) {
-	user, err := u.userRepo.GetUserByNickname(nickname)
-	if err != nil {
-		log.Printf("닉네임 중복확인에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "닉네임 중복확인에 실패했습니다")
-	}
-
-	if user != nil {
-		return nil, common.NewError(http.StatusBadRequest, "이미 사용 중인 닉네임입니다")
-	}
-
-	return user, nil
-}
-
-//!------------------------------

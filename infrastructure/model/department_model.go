@@ -15,5 +15,5 @@ type Department struct {
 	Teams     []*Team   `gorm:"foreignKey:DepartmentID"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"` // 메시지를 보낸 시간
 	UpdatedAt time.Time `json:"updated_at"`                       // 메시지를 보낸 시간
-	Posts     []*Post   `gorm:"many2many:post_departments,constraint:OnDelete:CASCADE"`
+	Posts     []*Post   `gorm:"many2many:post_departments;constraint:OnDelete:CASCADE"`
 }

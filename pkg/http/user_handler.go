@@ -72,12 +72,38 @@ func (h *UserHandler) ValidateEmail(c *gin.Context) {
 
 	// 이메일 유효성 검증 처리
 	if err := h.userUsecase.ValidateEmail(email); err != nil {
-		c.JSON(http.StatusConflict, common.NewError(http.StatusConflict, err.Error()))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
 		return
 	}
 
 	// 검증 성공 응답
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "이메일 사용 가능", nil))
+}
+
+// TODO 닉네임 중복확인
+func (h *UserHandler) ValidateNickname(c *gin.Context) {
+	nickname := c.Query("nickname")
+
+	if nickname == "" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임이 입력되지 않았습니다"))
+		return
+	}
+
+	err := h.userUsecase.ValidateNickname(nickname)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용 가능한 닉네임입니다", nil))
 }
 
 // TODO UserProfile 있으면
@@ -332,28 +358,4 @@ func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 사용자 조회 성공", users))
-}
-
-// TODO 닉네임 중복확인
-func (h *UserHandler) CheckNickname(c *gin.Context) {
-	nickname := c.Query("nickname")
-
-	if nickname == "" {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임이 입력되지 않았습니다"))
-		return
-	}
-
-	user, err := h.userUsecase.CheckNickname(nickname)
-	if err != nil {
-		if user != nil {
-			c.JSON(http.StatusConflict, common.NewError(http.StatusConflict, "이미 존재하는 닉네임입니다"))
-			return
-		}
-		return
-	}
-	if user == nil {
-		c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용 가능한 닉네임입니다", nil))
-		return
-	}
-
 }
