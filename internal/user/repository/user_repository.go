@@ -22,4 +22,5 @@ type UserRepository interface {
 	//TODO redis 캐시 관련
 	UpdateCacheUser(userId uint, fields map[string]interface{}) error
 	GetCacheUser(userId uint, fields []string) (*entity.User, error)
+	GetCacheUsers(userIds []uint, fields []string) (map[uint]map[string]interface{}, error)
 }

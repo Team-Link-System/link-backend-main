@@ -278,16 +278,25 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
 	}
 
+	userIds := make([]uint, len(users))
+	for i, user := range users {
+		userIds[i] = user.ID
+	}
+
 	//TODO 온라인 상태 가져오기
-	onlineStatus, err := u.userRepo.GetCacheUser(requestUserId, []string{"is_online"})
+	onlineStatusMap, err := u.userRepo.GetCacheUsers(userIds, []string{"is_online"})
 	if err != nil {
 		log.Printf("온라인 상태 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
 	}
 
+	// 사용자 리스트를 순회하며 온라인 상태를 업데이트
 	for i := range users {
-		users[i].IsOnline = onlineStatus.IsOnline
-		//TODO 없다면, 디폴트 값 false
+		if isOnline, ok := onlineStatusMap[users[i].ID]["is_online"]; ok {
+			users[i].IsOnline = isOnline.(string) == "1"
+		} else {
+			users[i].IsOnline = false // Redis에 정보가 없으면 기본값 false로 설정
+		}
 	}
 
 	return users, nil

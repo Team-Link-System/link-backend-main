@@ -305,6 +305,10 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 
 	var response []res.GetUserByIdResponse
 	for _, user := range users {
+
+		fmt.Println("response")
+		fmt.Println(user.IsOnline)
+
 		response = append(response, res.GetUserByIdResponse{
 			ID:       user.ID,
 			Email:    user.Email,
@@ -312,6 +316,7 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 			Nickname: user.Nickname,
 			Phone:    user.Phone,
 			Role:     uint(user.Role),
+			IsOnline: bool(user.IsOnline),
 			UserProfile: res.UserProfile{
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
@@ -322,8 +327,8 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 			},
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
-			IsOnline:  user.IsOnline,
 		})
+
 	}
 	// 회사 사용자 조회 성공 응답
 
