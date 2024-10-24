@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"reflect"
@@ -225,12 +226,11 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 		}
 
 		// Departments 변환
-		var departmentMaps []*map[uint]interface{}
+		var departmentMaps []*map[string]interface{}
 		for _, dept := range user.UserProfile.Departments {
-			deptMap := map[uint]interface{}{
-				dept.ID: map[string]interface{}{
-					"name": dept.Name,
-				},
+			deptMap := map[string]interface{}{
+				"id":   dept.ID,
+				"name": dept.Name,
 			}
 			departmentMaps = append(departmentMaps, &deptMap)
 		}
@@ -242,23 +242,21 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 		}
 
 		// Teams 변환
-		var teamMaps []*map[uint]interface{}
+		var teamMaps []*map[string]interface{}
 		for _, team := range user.UserProfile.Teams {
-			teamMap := map[uint]interface{}{
-				team.ID: map[string]interface{}{
-					"name": team.Name,
-				},
+			teamMap := map[string]interface{}{
+				"id":   team.ID,
+				"name": team.Name,
 			}
 			teamMaps = append(teamMaps, &teamMap)
 		}
 
 		// Position 변환
-		var positionMap *map[uint]interface{}
+		var positionMap *map[string]interface{}
 		if user.UserProfile.Position != nil {
-			posMap := map[uint]interface{}{
-				user.UserProfile.Position.ID: map[string]interface{}{
-					"name": user.UserProfile.Position.Name,
-				},
+			posMap := map[string]interface{}{
+				"id":   user.UserProfile.Position.ID,
+				"name": user.UserProfile.Position.Name,
 			}
 			positionMap = &posMap
 		}
@@ -299,7 +297,7 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 	}
 
 	if len(updates) > 0 {
-		if err := tx.Model(&entity.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if err := tx.Model(&model.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("사용자 업데이트 중 DB 오류: %w", err)
 		}
@@ -308,9 +306,9 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 
 	// UserProfile 업데이트
 	if len(profileUpdates) > 0 {
-		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
+		if err := tx.Model(&model.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("사용��� 프로필 업데이트 중 DB 오류: %w", err)
+			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
 		}
 	}
 
@@ -405,9 +403,20 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	//TODO 트랜잭션을 통해서 조회
 	rows, err := r.db.
 		Table("users").
-		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at", "user_profiles.company_id").
+		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
+			"user_profiles.birthday", "user_profiles.image",
+			"companies.id as company_id", "companies.cp_name as company_name",
+			"departments.id as department_id", "departments.name as department_name",
+			"teams.id as team_id", "teams.name as team_name",
+			"positions.id as position_id", "positions.name as position_name").
 		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
-		Where("user_profiles.company_id = ? or users.role = ? or users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser). // Role 3,4 관리자 포함
+		Joins("JOIN companies ON companies.id = user_profiles.company_id").
+		Joins("LEFT JOIN user_departments ON user_departments.user_profile_user_id = users.id").
+		Joins("LEFT JOIN departments ON departments.id = user_departments.department_id").
+		Joins("LEFT JOIN user_teams ON user_teams.user_profile_user_id = users.id").
+		Joins("LEFT JOIN teams ON teams.id = user_teams.team_id").
+		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
+		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser). // Role 3,4 관리자 포함
 		Rows()
 
 	if err != nil {
@@ -417,22 +426,62 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 
 	//TODO 없으면, 그냥 응답
 
-	// 조회된 행들을 처리하여 users 배열에 추가
 	for rows.Next() {
 		var user entity.User
-		var companyID uint
+		var userProfile entity.UserProfile
+		var companyName, departmentName, teamName, positionName *string
+		var companyID, departmentID, teamID, positionID *uint
+		var birthday sql.NullString
 
-		// users 테이블의 컬럼과 user_profiles의 company_id를 스캔
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt, &companyID); err != nil {
+		// 데이터베이스에서 조회된 데이터를 변수에 스캔
+		if err := rows.Scan(
+			&user.ID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
+			&birthday, &userProfile.Image,
+			&companyID, &companyName, &departmentID, &departmentName, &teamID, &teamName, &positionID, &positionName,
+		); err != nil {
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
 		}
-
-		//TODO 캐시 is_online 정보 불러오기
-
-		// UserProfile에 company_id 설정
-		user.UserProfile = &entity.UserProfile{
-			CompanyID: &companyID,
+		// UserProfile 설정
+		if birthday.Valid {
+			userProfile.Birthday = birthday.String
+		} else {
+			userProfile.Birthday = ""
 		}
+
+		if companyName != nil {
+			companyMap := map[string]interface{}{
+				"id":   *companyID,
+				"name": *companyName,
+			}
+			userProfile.Company = &companyMap
+		}
+
+		if departmentID != nil {
+			department := map[string]interface{}{
+				"id":   *departmentID,
+				"name": *departmentName,
+			}
+			userProfile.Departments = append(userProfile.Departments, &department)
+		}
+
+		if teamID != nil {
+			team := map[string]interface{}{
+				"id":   *teamID,
+				"name": *teamName,
+			}
+			userProfile.Teams = append(userProfile.Teams, &team)
+		}
+
+		if positionID != nil {
+			position := map[string]interface{}{
+				"id":   *positionID,
+				"name": *positionName,
+			}
+			userProfile.Position = &position
+		}
+
+		// 사용자에 프로필 정보 추가
+		user.UserProfile = &userProfile
 
 		// 사용자 목록에 추가
 		users = append(users, user)
