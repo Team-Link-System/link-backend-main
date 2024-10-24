@@ -4,7 +4,7 @@ import "time"
 
 type UserProfile struct {
 	UserId        uint                    `json:"user_id"`
-	Image         string                  `json:"image,omitempty"`
+	Image         *string                 `json:"image,omitempty"`
 	Birthday      string                  `json:"birthday,omitempty"`
 	IsSubscribed  bool                    `json:"is_subscribed,omitempty"`
 	CompanyID     *uint                   `json:"company_id,omitempty"`

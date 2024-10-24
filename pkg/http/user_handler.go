@@ -2,8 +2,8 @@ package http
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -133,22 +133,20 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	}
 
 	response := res.GetUserByIdResponse{
-		ID:       *user.ID,
-		Email:    *user.Email,
-		Name:     *user.Name,
-		Phone:    *user.Phone,
-		Nickname: *user.Nickname,
-		Role:     uint(user.Role),
-		UserProfile: res.UserProfile{
-			Image:         user.UserProfile.Image,
-			Birthday:      user.UserProfile.Birthday,
-			CompanyID:     user.UserProfile.CompanyID,
-			DepartmentIds: user.UserProfile.DepartmentIds,
-			TeamIds:       user.UserProfile.TeamIds,
-			PositionId:    user.UserProfile.PositionId,
-		},
-		CreatedAt: *user.CreatedAt,
-		UpdatedAt: *user.UpdatedAt,
+		ID:            *user.ID,
+		Email:         *user.Email,
+		Name:          *user.Name,
+		Phone:         *user.Phone,
+		Nickname:      *user.Nickname,
+		Role:          uint(user.Role),
+		Image:         user.UserProfile.Image,
+		Birthday:      user.UserProfile.Birthday,
+		CompanyID:     user.UserProfile.CompanyID,
+		DepartmentIds: user.UserProfile.DepartmentIds,
+		TeamIds:       user.UserProfile.TeamIds,
+		PositionId:    user.UserProfile.PositionId,
+		CreatedAt:     *user.CreatedAt,
+		UpdatedAt:     *user.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 조회 성공", response))
@@ -241,6 +239,20 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 		return
 	}
 
+	decodedName, err := url.QueryUnescape(searchReq.Name)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이름 인코딩 오류"))
+		return
+	}
+	searchReq.Name = decodedName
+
+	decodedNickname, err := url.QueryUnescape(searchReq.Nickname)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임 인코딩 오류"))
+		return
+	}
+	searchReq.Nickname = decodedNickname
+
 	// 사용자 검색
 	users, err := h.userUsecase.SearchUser(&searchReq)
 	if err != nil {
@@ -252,39 +264,15 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 		return
 	}
 
+	fmt.Println("usersasdasdasdasd")
+	fmt.Println(users)
+
 	if len(users) == 0 {
 		c.JSON(http.StatusNotFound, common.NewError(http.StatusNotFound, "사용자를 찾을 수 없습니다"))
 		return
 	}
 
-	var response []res.SearchUserResponse
-	// 그룹 이름 또는 ID를 문자열 배열로 변환
-
-	for _, user := range users {
-		log.Printf("user: %v", user)
-		userResponse := res.SearchUserResponse{
-			ID:       *user.ID,
-			Name:     *user.Name,
-			Email:    *user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Nickname: *user.Nickname,
-			Phone:    *user.Phone,
-			Role:     uint(user.Role),
-			UserProfile: res.UserProfile{
-				Image:         user.UserProfile.Image,
-				Birthday:      user.UserProfile.Birthday,
-				CompanyID:     user.UserProfile.CompanyID,
-				DepartmentIds: user.UserProfile.DepartmentIds,
-				TeamIds:       user.UserProfile.TeamIds,
-				PositionId:    user.UserProfile.PositionId,
-			},
-			CreatedAt: *user.CreatedAt,
-			UpdatedAt: *user.UpdatedAt,
-		}
-
-		response = append(response, userResponse)
-	}
-
-	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", response))
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", users))
 }
 
 // TODO 본인이 속한 회사 사용자 리스트 가져오기
@@ -308,27 +296,22 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	var response []res.GetUserByIdResponse
 	for _, user := range users {
 
-		fmt.Println("response")
-		fmt.Println(user.IsOnline)
-
 		response = append(response, res.GetUserByIdResponse{
-			ID:       *user.ID,
-			Email:    *user.Email,
-			Name:     *user.Name,
-			Nickname: *user.Nickname,
-			Phone:    *user.Phone,
-			Role:     uint(user.Role),
-			IsOnline: *user.IsOnline,
-			UserProfile: res.UserProfile{
-				Image:         user.UserProfile.Image,
-				Birthday:      user.UserProfile.Birthday,
-				CompanyID:     user.UserProfile.CompanyID,
-				DepartmentIds: user.UserProfile.DepartmentIds,
-				TeamIds:       user.UserProfile.TeamIds,
-				PositionId:    user.UserProfile.PositionId,
-			},
-			CreatedAt: *user.CreatedAt,
-			UpdatedAt: *user.UpdatedAt,
+			ID:            *user.ID,
+			Email:         *user.Email,
+			Name:          *user.Name,
+			Nickname:      *user.Nickname,
+			Phone:         *user.Phone,
+			Role:          uint(user.Role),
+			IsOnline:      *user.IsOnline,
+			Image:         user.UserProfile.Image,
+			Birthday:      user.UserProfile.Birthday,
+			CompanyID:     user.UserProfile.CompanyID,
+			DepartmentIds: user.UserProfile.DepartmentIds,
+			TeamIds:       user.UserProfile.TeamIds,
+			PositionId:    user.UserProfile.PositionId,
+			CreatedAt:     *user.CreatedAt,
+			UpdatedAt:     *user.UpdatedAt,
 		})
 
 	}

@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 
 	_utils "link/pkg/util"
 )
@@ -24,7 +26,7 @@ type UserUsecase interface {
 
 	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
-	SearchUser(request *req.SearchUserRequest) ([]_userEntity.User, error)
+	SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error)
 
 	UpdateUserOnlineStatus(userId uint, online bool) error
 
@@ -258,7 +260,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 }
 
 // TODO 사용자 검색 (수정)
-func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]entity.User, error) {
+func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error) {
 	// 사용자 저장소에서 검색
 	//request를 entity.User로 변환
 	user := entity.User{
@@ -272,7 +274,35 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]entity.User,
 		log.Printf("사용자 검색에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다")
 	}
-	return users, nil
+
+	var response []res.SearchUserResponse
+
+	for _, user := range users {
+
+		fmt.Println("user.ID: ", user.ID)
+		fmt.Println("user.Name: ", *user.Name)
+		fmt.Println("user.Email: ", *user.Email)
+		fmt.Println("user.Nickname: ", *user.Nickname)
+		fmt.Println("user.Role: ", uint(user.Role))
+		fmt.Println("user.UserProfile.Image: ", user.UserProfile.Image)
+		fmt.Println("user.CreatedAt: ", user.CreatedAt)
+		fmt.Println("user.UpdatedAt: ", user.UpdatedAt)
+
+		userResponse := res.SearchUserResponse{
+			ID:        *user.ID,
+			Name:      *user.Name,
+			Email:     *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Nickname:  *user.Nickname,
+			Role:      uint(user.Role),
+			Image:     user.UserProfile.Image,
+			CreatedAt: *user.CreatedAt,
+			UpdatedAt: *user.UpdatedAt,
+		}
+
+		response = append(response, userResponse)
+	}
+
+	return response, nil
 }
 
 // TODO 유저 상태 업데이트
@@ -288,7 +318,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
 
-	if user.UserProfile.CompanyID == nil {
+	if user.UserProfile == nil || user.UserProfile.CompanyID == nil || *user.UserProfile.CompanyID == 0 {
 		log.Printf("사용자의 회사 ID가 없습니다: 사용자 ID %d", requestUserId)
 		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다")
 	}

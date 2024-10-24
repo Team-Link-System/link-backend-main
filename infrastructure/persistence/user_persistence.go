@@ -183,6 +183,16 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		Nickname: &user.Nickname,
 		Name:     &user.Name,
 		Role:     entity.UserRole(user.Role),
+		UserProfile: &entity.UserProfile{
+			Image:        user.UserProfile.Image,
+			Birthday:     user.UserProfile.Birthday,
+			IsSubscribed: user.UserProfile.IsSubscribed,
+			CompanyID:    user.UserProfile.CompanyID,
+			// Departments:  user.UserProfile.Departments,
+			// Teams:        user.UserProfile.Teams,
+			// PositionId:   user.UserProfile.PositionID,
+			// Position:     user.UserProfile.Position,
+		},
 	}
 	return entityUser, nil
 }
@@ -320,7 +330,7 @@ func (r *userPersistence) DeleteUser(id uint) error {
 }
 
 func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
-	var users []entity.User
+	var users []model.User
 
 	// 기본 쿼리: 관리자를 제외함 (role != 1)
 	query := r.db.Where("role != ?", 1)
@@ -346,7 +356,26 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 		return nil, fmt.Errorf("사용자 검색 중 DB 오류: %w", err)
 	}
 
-	return users, nil
+	entityUsers := make([]entity.User, len(users))
+	for i, user := range users {
+		entityUsers[i] = entity.User{
+			ID:       &user.ID,
+			Email:    &user.Email,
+			Nickname: &user.Nickname,
+			Name:     &user.Name,
+			Role:     entity.UserRole(user.Role),
+			UserProfile: &entity.UserProfile{
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				IsSubscribed: user.UserProfile.IsSubscribed,
+				CompanyID:    user.UserProfile.CompanyID,
+			},
+			CreatedAt: &user.CreatedAt,
+			UpdatedAt: &user.UpdatedAt,
+		}
+	}
+
+	return entityUsers, nil
 }
 
 func (r *userPersistence) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
@@ -484,7 +513,8 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 			isOnline := values[i].(string) == "true"
 			user.IsOnline = &isOnline
 		case "image":
-			user.UserProfile.Image = values[i].(string)
+			image := values[i].(string)
+			user.UserProfile.Image = &image
 		case "birthday":
 			user.UserProfile.Birthday = values[i].(string)
 		}

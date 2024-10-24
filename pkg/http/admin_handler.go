@@ -88,24 +88,21 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 	// 그룹 이름 또는 ID를 문자열 배열로 변환
 	for _, user := range users {
 		// User 정보를 GetAllUsersResponse로 변환
-
 		userResponse := res.GetAllUsersResponse{
-			ID:    *user.ID,
-			Name:  *user.Name,
-			Email: *user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone: *user.Phone,
-			Role:  uint(user.Role),
-			UserProfile: res.UserProfile{
-				Image:         user.UserProfile.Image,
-				Birthday:      user.UserProfile.Birthday,
-				CompanyID:     user.UserProfile.CompanyID,
-				DepartmentIds: user.UserProfile.DepartmentIds,
-				TeamIds:       user.UserProfile.TeamIds,
-				PositionId:    user.UserProfile.PositionId,
-			},
-			CreatedAt: *user.CreatedAt,
-			UpdatedAt: *user.UpdatedAt,
-			Nickname:  *user.Nickname,
+			ID:            *user.ID,
+			Name:          *user.Name,
+			Email:         *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone:         *user.Phone,
+			Role:          uint(user.Role),
+			Image:         user.UserProfile.Image,
+			Birthday:      user.UserProfile.Birthday,
+			CompanyID:     user.UserProfile.CompanyID,
+			DepartmentIds: user.UserProfile.DepartmentIds,
+			TeamIds:       user.UserProfile.TeamIds,
+			PositionId:    user.UserProfile.PositionId,
+			CreatedAt:     *user.CreatedAt,
+			UpdatedAt:     *user.UpdatedAt,
+			Nickname:      *user.Nickname,
 		}
 
 		response = append(response, userResponse)
