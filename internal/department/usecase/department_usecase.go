@@ -65,7 +65,7 @@ func (du *departmentUsecase) GetDepartments() ([]_departmentEntity.Department, e
 
 // TODO 부서 상세 조회
 func (du *departmentUsecase) GetDepartment(departmentID uint) (*_departmentEntity.Department, error) {
-	department, err := du.departmentRepository.GetDepartment(departmentID)
+	department, err := du.departmentRepository.GetDepartmentByID(departmentID)
 	if err != nil {
 		log.Printf("부서 상세 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "부서 상세 조회에 실패했습니다")
@@ -87,7 +87,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
-	_, err = du.departmentRepository.GetDepartment(targetDepartmentID)
+	_, err = du.departmentRepository.GetDepartmentByID(targetDepartmentID)
 	if err != nil {
 		log.Printf("업데이트가 불가능한 부서입니다: %v", err)
 		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 부서입니다")
@@ -113,7 +113,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 // TODO 부서 삭제 (관리자 이상만 가능)
 func (du *departmentUsecase) DeleteDepartment(departmentID uint, requestUserId uint) error {
 
-	_, err := du.departmentRepository.GetDepartment(departmentID)
+	_, err := du.departmentRepository.GetDepartmentByID(departmentID)
 	if err != nil {
 		log.Printf("부서 조회에 실패했습니다: %v", err)
 		return common.NewError(http.StatusNotFound, "부서 조회에 실패했습니다")

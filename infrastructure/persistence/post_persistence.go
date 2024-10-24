@@ -18,9 +18,9 @@ func NewPostPersistence(db *gorm.DB) repository.PostRepository {
 	return &postPersistence{db: db}
 }
 
-func (r *postPersistence) CreatePost(post *entity.Post) error {
+func (r *postPersistence) CreatePost(requestUserId uint, post *entity.Post) (*entity.Post, error) {
 	if err := r.db.Create(post).Error; err != nil {
-		return fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
+		return nil, fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
 	}
-	return nil
+	return post, nil
 }

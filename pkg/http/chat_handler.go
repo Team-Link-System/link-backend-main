@@ -60,10 +60,10 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 	var usersResponse []res.UserInfoResponse
 	for _, user := range chatRoom.Users {
 		usersResponse = append(usersResponse, res.UserInfoResponse{
-			ID:    user.ID,
-			Name:  user.Name,
-			Email: user.Email,
-			Phone: user.Phone,
+			ID:    *user.ID,
+			Name:  *user.Name,
+			Email: *user.Email,
+			Phone: *user.Phone,
 		})
 	}
 

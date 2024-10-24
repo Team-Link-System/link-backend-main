@@ -51,11 +51,11 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.Us
 		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
 	}
 	user := &entity.User{
-		Name:     request.Name,
-		Email:    request.Email,
-		Password: hashedPassword,
-		Nickname: request.Nickname,
-		Phone:    request.Phone,
+		Name:     &request.Name,
+		Email:    &request.Email,
+		Password: &hashedPassword,
+		Nickname: &request.Nickname,
+		Phone:    &request.Phone,
 		Role:     entity.RoleUser,
 	}
 
@@ -94,7 +94,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 	}
 
 	//TODO 일반 사용자 혹은 회사 관리자가 운영자 이상을 열람하려고 하면 못하게 해야지
-	if (requestUser.Role >= entity.RoleCompanyManager) && user.Role <= entity.RoleAdmin {
+	if (requestUser.Role >= entity.RoleCompanyManager) && (user.Role <= entity.RoleAdmin) {
 		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
@@ -246,9 +246,9 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]entity.User,
 	// 사용자 저장소에서 검색
 	//request를 entity.User로 변환
 	user := entity.User{
-		Email:    request.Email,
-		Name:     request.Name,
-		Nickname: request.Nickname,
+		Email:    &request.Email,
+		Name:     &request.Name,
+		Nickname: &request.Nickname,
 	}
 
 	users, err := u.userRepo.SearchUser(&user)
@@ -280,7 +280,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 
 	userIds := make([]uint, len(users))
 	for i, user := range users {
-		userIds[i] = user.ID
+		userIds[i] = *user.ID
 	}
 
 	//TODO 온라인 상태 가져오기
@@ -292,10 +292,14 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, erro
 
 	// 사용자 리스트를 순회하며 온라인 상태를 업데이트
 	for i := range users {
-		if isOnline, ok := onlineStatusMap[users[i].ID]["is_online"]; ok {
-			users[i].IsOnline = isOnline.(string) == "1"
+		if isOnline, ok := onlineStatusMap[*users[i].ID]["is_online"]; ok {
+			if onlineStatus, isBool := isOnline.(bool); isBool {
+				users[i].IsOnline = &onlineStatus
+			} else {
+				users[i].IsOnline = new(bool) // Default to false
+			}
 		} else {
-			users[i].IsOnline = false // Redis에 정보가 없으면 기본값 false로 설정
+			users[i].IsOnline = new(bool) // Default to false
 		}
 	}
 

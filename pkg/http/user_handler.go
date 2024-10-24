@@ -47,11 +47,11 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 
 	// 유스케이스에서 반환된 엔티티를 응답 DTO로 변환
 	response := res.RegisterUserResponse{
-		ID:       createdUser.ID,
-		Name:     createdUser.Name,
-		Email:    createdUser.Email,
-		Phone:    createdUser.Phone,
-		Nickname: createdUser.Nickname,
+		ID:       *createdUser.ID,
+		Name:     *createdUser.Name,
+		Email:    *createdUser.Email,
+		Phone:    *createdUser.Phone,
+		Nickname: *createdUser.Nickname,
 		Role:     uint(createdUser.Role),
 	}
 
@@ -90,19 +90,13 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 		return
 	}
 
-	requestUserID, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
-		return
-	}
-
 	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 사용자 ID입니다"))
 		return
 	}
 
-	user, err := h.userUsecase.GetUserInfo(uint(targetUserIdUint), requestUserID, "user")
+	user, err := h.userUsecase.GetUserInfo(userId.(uint), uint(targetUserIdUint), "user")
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -113,37 +107,31 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	}
 
 	response := res.GetUserByIdResponse{
-		ID:       user.ID,
-		Email:    user.Email,
-		Name:     user.Name,
-		Phone:    user.Phone,
-		Nickname: user.Nickname,
+		ID:       *user.ID,
+		Email:    *user.Email,
+		Name:     *user.Name,
+		Phone:    *user.Phone,
+		Nickname: *user.Nickname,
 		Role:     uint(user.Role),
 		UserProfile: res.UserProfile{
-			Image:        user.UserProfile.Image,
-			Birthday:     user.UserProfile.Birthday,
-			CompanyID:    user.UserProfile.CompanyID,
-			DepartmentID: user.UserProfile.DepartmentID,
-			TeamID:       user.UserProfile.TeamID,
-			PositionID:   user.UserProfile.PositionID,
+			Image:         user.UserProfile.Image,
+			Birthday:      user.UserProfile.Birthday,
+			CompanyID:     user.UserProfile.CompanyID,
+			DepartmentIds: user.UserProfile.DepartmentIds,
+			TeamIds:       user.UserProfile.TeamIds,
+			PositionId:    user.UserProfile.PositionId,
 		},
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		CreatedAt: *user.CreatedAt,
+		UpdatedAt: *user.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 조회 성공", response))
 }
 
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
-	userId, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
-		return
-	}
-
-	requestUserId, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
 		return
 	}
 
@@ -170,7 +158,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	fmt.Printf("Received request: %+v\n", request)
 
 	// DTO를 Usecase에 전달
-	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId, &request)
+	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -185,15 +173,9 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 
 // 사용자 정보 삭제 핸들러
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	userId, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
-		return
-	}
-
-	requestUserId, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
 		return
 	}
 
@@ -204,7 +186,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	err = h.userUsecase.DeleteUser(uint(targetUserIdUint), requestUserId)
+	err = h.userUsecase.DeleteUser(uint(targetUserIdUint), requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -255,22 +237,22 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	for _, user := range users {
 		log.Printf("user: %v", user)
 		userResponse := res.SearchUserResponse{
-			ID:       user.ID,
-			Name:     user.Name,
-			Email:    user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Nickname: user.Nickname,
-			Phone:    user.Phone,
+			ID:       *user.ID,
+			Name:     *user.Name,
+			Email:    *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Nickname: *user.Nickname,
+			Phone:    *user.Phone,
 			Role:     uint(user.Role),
 			UserProfile: res.UserProfile{
-				Image:        user.UserProfile.Image,
-				Birthday:     user.UserProfile.Birthday,
-				CompanyID:    user.UserProfile.CompanyID,
-				DepartmentID: user.UserProfile.DepartmentID,
-				TeamID:       user.UserProfile.TeamID,
-				PositionID:   user.UserProfile.PositionID,
+				Image:         user.UserProfile.Image,
+				Birthday:      user.UserProfile.Birthday,
+				CompanyID:     user.UserProfile.CompanyID,
+				DepartmentIds: user.UserProfile.DepartmentIds,
+				TeamIds:       user.UserProfile.TeamIds,
+				PositionId:    user.UserProfile.PositionId,
 			},
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
+			CreatedAt: *user.CreatedAt,
+			UpdatedAt: *user.UpdatedAt,
 		}
 
 		response = append(response, userResponse)
@@ -281,19 +263,13 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 
 // TODO 본인이 속한 회사 사용자 리스트 가져오기
 func (h *UserHandler) GetUserByCompany(c *gin.Context) {
-	userId, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
 		return
 	}
 
-	requestUserId, ok := userId.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
-		return
-	}
-
-	users, err := h.userUsecase.GetUsersByCompany(requestUserId)
+	users, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -310,23 +286,23 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 		fmt.Println(user.IsOnline)
 
 		response = append(response, res.GetUserByIdResponse{
-			ID:       user.ID,
-			Email:    user.Email,
-			Name:     user.Name,
-			Nickname: user.Nickname,
-			Phone:    user.Phone,
+			ID:       *user.ID,
+			Email:    *user.Email,
+			Name:     *user.Name,
+			Nickname: *user.Nickname,
+			Phone:    *user.Phone,
 			Role:     uint(user.Role),
-			IsOnline: bool(user.IsOnline),
+			IsOnline: *user.IsOnline,
 			UserProfile: res.UserProfile{
-				Image:        user.UserProfile.Image,
-				Birthday:     user.UserProfile.Birthday,
-				CompanyID:    user.UserProfile.CompanyID,
-				DepartmentID: user.UserProfile.DepartmentID,
-				TeamID:       user.UserProfile.TeamID,
-				PositionID:   user.UserProfile.PositionID,
+				Image:         user.UserProfile.Image,
+				Birthday:      user.UserProfile.Birthday,
+				CompanyID:     user.UserProfile.CompanyID,
+				DepartmentIds: user.UserProfile.DepartmentIds,
+				TeamIds:       user.UserProfile.TeamIds,
+				PositionId:    user.UserProfile.PositionId,
 			},
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
+			CreatedAt: *user.CreatedAt,
+			UpdatedAt: *user.UpdatedAt,
 		})
 
 	}

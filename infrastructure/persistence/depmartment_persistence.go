@@ -31,7 +31,7 @@ func (p *departmentPersistence) GetDepartments() ([]entity.Department, error) {
 	return departments, nil
 }
 
-func (p *departmentPersistence) GetDepartment(departmentID uint) (*entity.Department, error) {
+func (p *departmentPersistence) GetDepartmentByID(departmentID uint) (*entity.Department, error) {
 	var department entity.Department
 	err := p.db.Where("id = ?", departmentID).First(&department).Error
 	if err != nil {

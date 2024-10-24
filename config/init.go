@@ -103,6 +103,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Department{},
 		&model.ChatRoom{},
 		&model.Post{},
+		&model.PostImage{},
 		&model.Comment{},
 		&model.Like{},
 		&model.Company{},

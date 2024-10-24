@@ -47,11 +47,11 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 	}
 
 	adminResponse := res.RegisterUserResponse{
-		ID:       admin.ID,
-		Name:     admin.Name,
-		Email:    admin.Email,
-		Phone:    admin.Phone,
-		Nickname: admin.Nickname,
+		ID:       *admin.ID,
+		Name:     *admin.Name,
+		Email:    *admin.Email,
+		Phone:    *admin.Phone,
+		Nickname: *admin.Nickname,
 		Role:     uint(admin.Role),
 	}
 
@@ -91,22 +91,22 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 		// User 정보를 GetAllUsersResponse로 변환
 
 		userResponse := res.GetAllUsersResponse{
-			ID:    user.ID,
-			Name:  user.Name,
-			Email: user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone: user.Phone,
+			ID:    *user.ID,
+			Name:  *user.Name,
+			Email: *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone: *user.Phone,
 			Role:  uint(user.Role),
 			UserProfile: res.UserProfile{
-				Image:        user.UserProfile.Image,
-				Birthday:     user.UserProfile.Birthday,
-				CompanyID:    user.UserProfile.CompanyID,
-				DepartmentID: user.UserProfile.DepartmentID,
-				TeamID:       user.UserProfile.TeamID,
-				PositionID:   user.UserProfile.PositionID,
+				Image:         user.UserProfile.Image,
+				Birthday:      user.UserProfile.Birthday,
+				CompanyID:     user.UserProfile.CompanyID,
+				DepartmentIds: user.UserProfile.DepartmentIds,
+				TeamIds:       user.UserProfile.TeamIds,
+				PositionId:    user.UserProfile.PositionId,
 			},
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Nickname:  user.Nickname,
+			CreatedAt: *user.CreatedAt,
+			UpdatedAt: *user.UpdatedAt,
+			Nickname:  *user.Nickname,
 		}
 
 		response = append(response, userResponse)

@@ -27,11 +27,11 @@ func NewUserPersistence(db *gorm.DB, redisClient *redis.Client) repository.UserR
 func (r *userPersistence) CreateUser(user *entity.User) error {
 	// Entity -> Model 변경
 	modelUser := &model.User{
-		Name:     user.Name,
-		Email:    user.Email,
-		Nickname: user.Nickname,
-		Password: user.Password,
-		Phone:    user.Phone,
+		Name:     *user.Name,
+		Email:    *user.Email,
+		Nickname: *user.Nickname,
+		Password: *user.Password,
+		Phone:    *user.Phone,
 		Role:     model.UserRole(user.Role),
 	}
 
@@ -74,10 +74,6 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 		Image:        user.UserProfile.Image,
 		Birthday:     user.UserProfile.Birthday,
 		IsSubscribed: user.UserProfile.IsSubscribed,
-		CompanyID:    user.UserProfile.CompanyID,
-		DepartmentID: user.UserProfile.DepartmentID,
-		TeamID:       user.UserProfile.TeamID,
-		PositionID:   user.UserProfile.PositionID,
 	}
 
 	// 프로필 정보를 Omit할 필드를 찾기 위한 로직
@@ -179,7 +175,7 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 	if len(profileUpdates) > 0 {
 		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
+			return fmt.Errorf("사용��� 프로필 업데이트 중 DB 오류: %w", err)
 		}
 	}
 
@@ -205,17 +201,17 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 	query := r.db.Where("role != ?", 1)
 
 	// 이메일이 입력된 경우 이메일로 검색 조건 추가
-	if user.Email != "" {
-		query = query.Where("email LIKE ?", "%"+user.Email+"%")
+	if user.Email != nil {
+		query = query.Where("email LIKE ?", "%"+*user.Email+"%")
 	}
 
 	// 이름이 입력된 경우 이름으로 검색 조건 추가
-	if user.Name != "" {
-		query = query.Where("name LIKE ?", "%"+user.Name+"%")
+	if user.Name != nil {
+		query = query.Where("name LIKE ?", "%"+*user.Name+"%")
 	}
 
-	if user.Nickname != "" {
-		query = query.Where("nickname LIKE ?", "%"+user.Nickname+"%")
+	if user.Nickname != nil {
+		query = query.Where("nickname LIKE ?", "%"+*user.Nickname+"%")
 	}
 
 	//!TODO 입력된 것 토대로 조건
@@ -280,7 +276,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 		//TODO 캐시 is_online 정보 불러오기
 
 		// UserProfile에 company_id 설정
-		user.UserProfile = entity.UserProfile{
+		user.UserProfile = &entity.UserProfile{
 			CompanyID: &companyID,
 		}
 
@@ -349,7 +345,7 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 	}
 	// 해시셋 데이터를 User 구조체로 매핑
 	user := &entity.User{
-		ID: userId,
+		ID: &userId,
 	}
 
 	// 필드 값 매핑
@@ -360,7 +356,8 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 
 		switch field {
 		case "is_online":
-			user.IsOnline = values[i].(string) == "true"
+			isOnline := values[i].(string) == "true"
+			user.IsOnline = &isOnline
 		case "image":
 			user.UserProfile.Image = values[i].(string)
 		case "birthday":

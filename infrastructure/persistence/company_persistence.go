@@ -48,3 +48,12 @@ func (r *companyPersistence) DeleteCompany(companyID uint) (*entity.Company, err
 	}
 	return &company, nil
 }
+
+func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, error) {
+	var company entity.Company
+	err := r.db.Where("id = ?", companyID).First(&company).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 조회 중 오류 발생: %w", err)
+	}
+	return &company, nil
+}
