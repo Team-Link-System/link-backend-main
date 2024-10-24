@@ -6,7 +6,6 @@ import (
 
 	_companyRepo "link/internal/company/repository"
 	"link/internal/user/entity"
-	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -17,11 +16,11 @@ import (
 
 // UserUsecase 인터페이스 정의
 type UserUsecase interface {
-	RegisterUser(request *req.RegisterUserRequest) (*_userEntity.User, error)
+	RegisterUser(request *req.RegisterUserRequest) (*entity.User, error)
 	ValidateEmail(email string) error
 	ValidateNickname(nickname string) error
-	GetUserInfo(targetUserId, requestUserId uint, role string) (*_userEntity.User, error)
-	GetUserByID(userId uint) (*_userEntity.User, error)
+	GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error)
+	GetUserByID(userId uint) (*entity.User, error)
 
 	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
@@ -31,7 +30,7 @@ type UserUsecase interface {
 
 	//TODO 복합 관련
 	GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
-	GetUsersByDepartment(departmentId uint) ([]_userEntity.User, error)
+	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 }
 
 type userUsecase struct {
@@ -300,7 +299,6 @@ func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
 	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
 }
 
-// TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
 func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error) {
 	// 사용자 ID로 조회
