@@ -39,7 +39,7 @@ type GetUserByIdResponse struct {
 	Image           *string   `json:"image,omitempty"`
 	Birthday        string    `json:"birthday,omitempty"`
 	CompanyID       *uint     `json:"company_id,omitempty"`
-	CompanyName     string    `json:"company_name,omitempty"`
+	CompanyName     *string   `json:"company_name,omitempty"`
 	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
 	DepartmentNames []*string `json:"department_names,omitempty"`
 	TeamIds         []*uint   `json:"team_ids,omitempty"`
@@ -61,7 +61,7 @@ type SearchUserResponse struct {
 	Image           *string   `json:"image,omitempty"`
 	Birthday        string    `json:"birthday,omitempty"`
 	CompanyID       *uint     `json:"company_id,omitempty"`
-	CompanyName     string    `json:"company_name,omitempty"`
+	CompanyName     *string   `json:"company_name,omitempty"`
 	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
 	DepartmentNames []*string `json:"department_names,omitempty"`
 	TeamIds         []*uint   `json:"team_ids,omitempty"`

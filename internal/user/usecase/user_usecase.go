@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -31,7 +30,7 @@ type UserUsecase interface {
 	UpdateUserOnlineStatus(userId uint, online bool) error
 
 	//TODO 복합 관련
-	GetUsersByCompany(requestUserId uint) ([]_userEntity.User, error)
+	GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
 	GetUsersByDepartment(departmentId uint) ([]_userEntity.User, error)
 }
 
@@ -279,15 +278,6 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUs
 
 	for _, user := range users {
 
-		fmt.Println("user.ID: ", user.ID)
-		fmt.Println("user.Name: ", *user.Name)
-		fmt.Println("user.Email: ", *user.Email)
-		fmt.Println("user.Nickname: ", *user.Nickname)
-		fmt.Println("user.Role: ", uint(user.Role))
-		fmt.Println("user.UserProfile.Image: ", user.UserProfile.Image)
-		fmt.Println("user.CreatedAt: ", user.CreatedAt)
-		fmt.Println("user.UpdatedAt: ", user.UpdatedAt)
-
 		userResponse := res.SearchUserResponse{
 			ID:        *user.ID,
 			Name:      *user.Name,
@@ -311,50 +301,106 @@ func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
-func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]entity.User, error) {
+// TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
+func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error) {
+	// 사용자 ID로 조회
 	user, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
 	}
 
+	// 회사 ID 유효성 검사
 	if user.UserProfile == nil || user.UserProfile.CompanyID == nil || *user.UserProfile.CompanyID == 0 {
 		log.Printf("사용자의 회사 ID가 없습니다: 사용자 ID %d", requestUserId)
 		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다")
 	}
 
+	// 회사 ID로 사용자 목록 조회
 	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID)
 	if err != nil {
 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
 	}
 
+	// 사용자 ID 배열 생성
 	userIds := make([]uint, len(users))
 	for i, user := range users {
 		userIds[i] = *user.ID
 	}
 
-	//TODO 온라인 상태 가져오기
+	// 온라인 상태 조회
 	onlineStatusMap, err := u.userRepo.GetCacheUsers(userIds, []string{"is_online"})
 	if err != nil {
 		log.Printf("온라인 상태 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
 	}
 
-	// 사용자 리스트를 순회하며 온라인 상태를 업데이트
+	// 사용자 리스트 순회하며 온라인 상태 업데이트
 	for i := range users {
 		if isOnline, ok := onlineStatusMap[*users[i].ID]["is_online"]; ok {
 			if onlineStatus, isBool := isOnline.(bool); isBool {
 				users[i].IsOnline = &onlineStatus
 			} else {
-				users[i].IsOnline = new(bool) // Default to false
+				users[i].IsOnline = new(bool) // 기본값 false로 설정
 			}
 		} else {
-			users[i].IsOnline = new(bool) // Default to false
+			users[i].IsOnline = new(bool) // 기본값 false로 설정
 		}
 	}
 
-	return users, nil
+	// 응답 변환
+	var response []res.GetUserByIdResponse
+	for _, user := range users {
+		companyName := (*string)(nil)
+		if user.UserProfile.Company != nil {
+			if name, ok := (*user.UserProfile.Company)["name"].(string); ok {
+				companyName = &name
+			}
+		}
+
+		positionName := (*string)(nil)
+		if user.UserProfile.Position != nil {
+			if name, ok := (*user.UserProfile.Position)["name"].(string); ok {
+				positionName = &name
+			}
+		}
+		departmentNames := make([]*string, len(user.UserProfile.Departments))
+		for i, department := range user.UserProfile.Departments {
+			departmentName, _ := (*department)["name"].(string)
+			departmentNames[i] = &departmentName
+		}
+		teamNames := make([]*string, len(user.UserProfile.Teams))
+		for i, team := range user.UserProfile.Teams {
+			teamName, _ := (*team)["name"].(string)
+			teamNames[i] = &teamName
+		}
+
+		response = append(response, res.GetUserByIdResponse{
+			ID:              *user.ID,
+			Email:           *user.Email,
+			Name:            *user.Name,
+			Nickname:        *user.Nickname,
+			Phone:           *user.Phone,
+			Role:            uint(user.Role),
+			IsOnline:        *user.IsOnline,
+			Image:           user.UserProfile.Image,
+			Birthday:        user.UserProfile.Birthday,
+			CompanyID:       user.UserProfile.CompanyID,
+			CompanyName:     companyName,
+			DepartmentIds:   user.UserProfile.DepartmentIds,
+			DepartmentNames: departmentNames,
+			TeamIds:         user.UserProfile.TeamIds,
+			TeamNames:       teamNames,
+			PositionId:      user.UserProfile.PositionId,
+			PositionName:    positionName,
+			CreatedAt:       *user.CreatedAt,
+			UpdatedAt:       *user.UpdatedAt,
+		})
+
+	}
+
+	return response, nil
 }
 
 // TODO 해당 부서에 속한 사용자 리스트 가져오기

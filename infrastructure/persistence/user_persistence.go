@@ -400,7 +400,6 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	var users []entity.User
 
 	// UserProfile의 company_id 필드를 사용하여 조건을 설정
-	//TODO 트랜잭션을 통해서 조회
 	rows, err := r.db.
 		Table("users").
 		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
@@ -416,7 +415,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 		Joins("LEFT JOIN user_teams ON user_teams.user_profile_user_id = users.id").
 		Joins("LEFT JOIN teams ON teams.id = user_teams.team_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
-		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser). // Role 3,4 관리자 포함
+		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser).
 		Rows()
 
 	if err != nil {
@@ -424,9 +423,11 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	}
 	defer rows.Close()
 
-	//TODO 없으면, 그냥 응답
+	// 사용자 ID를 키로 하는 맵을 사용하여 중복 사용자 데이터를 누적
+	userMap := make(map[uint]*entity.User)
 
 	for rows.Next() {
+		var userID uint
 		var user entity.User
 		var userProfile entity.UserProfile
 		var companyName, departmentName, teamName, positionName *string
@@ -435,56 +436,81 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 
 		// 데이터베이스에서 조회된 데이터를 변수에 스캔
 		if err := rows.Scan(
-			&user.ID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
+			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
 			&birthday, &userProfile.Image,
 			&companyID, &companyName, &departmentID, &departmentName, &teamID, &teamName, &positionID, &positionName,
 		); err != nil {
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
 		}
-		// UserProfile 설정
-		if birthday.Valid {
-			userProfile.Birthday = birthday.String
+
+		// 기존 사용자 데이터를 찾거나 새로 생성
+		existingUser, found := userMap[userID]
+		if found {
+			user = *existingUser
 		} else {
-			userProfile.Birthday = ""
-		}
-
-		if companyName != nil {
-			companyMap := map[string]interface{}{
-				"id":   *companyID,
-				"name": *companyName,
+			user.ID = &userID
+			if birthday.Valid {
+				userProfile.Birthday = birthday.String
 			}
-			userProfile.Company = &companyMap
-		}
+			userProfile.CompanyID = companyID
 
-		if departmentID != nil {
-			department := map[string]interface{}{
-				"id":   *departmentID,
-				"name": *departmentName,
+			if companyName != nil {
+				companyMap := map[string]interface{}{
+					"name": *companyName,
+				}
+				userProfile.Company = &companyMap
 			}
-			userProfile.Departments = append(userProfile.Departments, &department)
-		}
 
-		if teamID != nil {
-			team := map[string]interface{}{
-				"id":   *teamID,
-				"name": *teamName,
+			// 직책 추가
+			if positionID != nil && positionName != nil {
+				position := map[string]interface{}{
+					"name": *positionName,
+				}
+				userProfile.Position = &position
 			}
-			userProfile.Teams = append(userProfile.Teams, &team)
+
+			user.UserProfile = &userProfile
+			userMap[userID] = &user
 		}
 
-		if positionID != nil {
-			position := map[string]interface{}{
-				"id":   *positionID,
-				"name": *positionName,
+		// 부서가 이미 추가되지 않았다면 추가
+		if departmentID != nil && departmentName != nil {
+			departmentExists := false
+			for _, dept := range user.UserProfile.Departments {
+				if dept != nil && (*dept)["name"] == *departmentName {
+					departmentExists = true
+					break
+				}
 			}
-			userProfile.Position = &position
+			if !departmentExists {
+				department := map[string]interface{}{
+					"name": *departmentName,
+				}
+				user.UserProfile.Departments = append(user.UserProfile.Departments, &department)
+			}
 		}
 
-		// 사용자에 프로필 정보 추가
-		user.UserProfile = &userProfile
+		// 팀이 이미 추가되지 않았다면 추가
+		if teamID != nil && teamName != nil {
+			teamExists := false
+			for _, team := range user.UserProfile.Teams {
+				if team != nil && (*team)["name"] == *teamName {
+					teamExists = true
+					break
+				}
+			}
+			if !teamExists {
+				team := map[string]interface{}{
+					"name": *teamName,
+				}
+				user.UserProfile.Teams = append(user.UserProfile.Teams, &team)
+			}
+		}
+	}
 
-		// 사용자 목록에 추가
-		users = append(users, user)
+	// 최종 사용자 목록 생성
+	for _, user := range userMap {
+		users = append(users, *user)
 	}
 
 	return users, nil
