@@ -149,13 +149,20 @@ func (r *userPersistence) ValidateNickname(nickname string) (*entity.User, error
 
 func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 	var user model.User
-	err := r.db.Select("id", "email", "nickname", "name", "role", "password").Where("email = ?", email).First(&user).Error
+	// var userProfile model.UserProfile
+	// err := r.db.
+	// 	Table("users").
+	// 	Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.id").
+	// 	Select("users.id", "users.email", "users.nickname", "users.name", "users.role", "users.password", "user_profiles.company_id").
+	// 	Where("users.email = ?", email).First(&user).Error
+	err := r.db.Preload("UserProfile").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %s", email)
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -163,7 +170,11 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		Name:     &user.Name,
 		Role:     entity.UserRole(user.Role),
 		Password: &user.Password,
+		UserProfile: &entity.UserProfile{
+			CompanyID: user.UserProfile.CompanyID,
+		},
 	}
+
 	return entityUser, nil
 }
 
@@ -171,7 +182,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	var user model.User
 
 	//TODO UserProfile 조인 추가
-	err := r.db.Preload("UserProfile").Where("id = ?", id).First(&user).Error
+	err := r.db.
+		Preload("UserProfile").
+		Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %d", id)

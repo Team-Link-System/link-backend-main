@@ -13,6 +13,6 @@ type Team struct {
 	Department   *Department    `gorm:"foreignKey:DepartmentID"`
 	CreatedAt    time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
-	UsersProfile []*UserProfile `gorm:"many2many:user_teams;constraint:OnDelete:CASCADE"` //
+	UserProfiles []*UserProfile `gorm:"many2many:user_teams;constraint:OnDelete:CASCADE"` //
 	Posts        []*Post        `gorm:"many2many:post_teams;constraint:OnDelete:CASCADE"`
 }

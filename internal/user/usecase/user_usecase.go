@@ -358,7 +358,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdRe
 		}
 
 		positionName := (*string)(nil)
-		if user.UserProfile.Position != nil {
+		if user.UserProfile.PositionId != nil {
 			if name, ok := (*user.UserProfile.Position)["name"].(string); ok {
 				positionName = &name
 			}
