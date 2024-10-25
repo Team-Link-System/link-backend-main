@@ -17,4 +17,5 @@ type AdminCreateCompanyRequest struct {
 	RepresentativeEmail       string `json:"representative_email,omitempty"`
 	RepresentativeAddress     string `json:"representative_address,omitempty"`
 	RepresentativePostalCode  string `json:"representative_postal_code,omitempty"`
+	Grade                     int    `json:"grade,omitempty"`
 }

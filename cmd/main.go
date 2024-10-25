@@ -89,7 +89,8 @@ func main() {
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
 			publicRoute.GET("user/validate-nickname", userHandler.ValidateNickname)
 			publicRoute.POST("auth/signin", authHandler.SignIn)
-
+			publicRoute.GET("company/list", companyHandler.GetAllCompanies)
+			publicRoute.GET("company/:id", companyHandler.GetCompanyInfo)
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor())
 		//, tokenInterceptor.RefreshTokenInterceptor() accessToken 재발급 인터셉터 제거 -> accessToken 재발급 기능 따로 구현 (필요해지면 다시 사용)

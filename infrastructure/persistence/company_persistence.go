@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"link/infrastructure/model"
 	"link/internal/company/entity"
 	"link/internal/company/repository"
 	"reflect"
@@ -50,10 +51,67 @@ func (r *companyPersistence) DeleteCompany(companyID uint) (*entity.Company, err
 }
 
 func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, error) {
-	var company entity.Company
+	var company model.Company
 	err := r.db.Where("id = ?", companyID).First(&company).Error
 	if err != nil {
 		return nil, fmt.Errorf("회사 조회 중 오류 발생: %w", err)
 	}
-	return &company, nil
+
+	var departmentsMaps []*map[string]interface{}
+	for _, department := range company.Departments {
+		departmentsMaps = append(departmentsMaps, &map[string]interface{}{
+			"id":   department.ID,
+			"name": department.Name,
+		})
+	}
+
+	var teamsMaps []*map[string]interface{}
+	for _, team := range company.Teams {
+		teamsMaps = append(teamsMaps, &map[string]interface{}{
+			"id":   team.ID,
+			"name": team.Name,
+		})
+	}
+
+	companyEntity := entity.Company{
+		ID:                        company.ID,
+		CpName:                    company.CpName,
+		CpLogo:                    &company.CpLogo,
+		RepresentativeName:        &company.RepresentativeName,
+		RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
+		RepresentativeEmail:       &company.RepresentativeEmail,
+		RepresentativeAddress:     &company.RepresentativeAddress,
+		IsVerified:                company.IsVerified,
+		Grade:                     (*int)(&company.Grade),
+		Departments:               departmentsMaps,
+		Teams:                     teamsMaps,
+		CreatedAt:                 company.CreatedAt,
+		UpdatedAt:                 company.UpdatedAt,
+	}
+
+	return &companyEntity, nil
+}
+
+func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
+	var companies []model.Company
+	err := r.db.Find(&companies).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 전체 조회 중 오류 발생: %w", err)
+	}
+
+	companyEntities := make([]entity.Company, len(companies))
+
+	for i, company := range companies {
+		companyEntities[i] = entity.Company{
+			ID:                        company.ID,
+			CpName:                    company.CpName,
+			CpLogo:                    &company.CpLogo,
+			RepresentativeName:        &company.RepresentativeName,
+			RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
+			RepresentativeEmail:       &company.RepresentativeEmail,
+			RepresentativeAddress:     &company.RepresentativeAddress,
+		}
+	}
+
+	return companyEntities, nil
 }
