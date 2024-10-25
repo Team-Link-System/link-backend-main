@@ -10,6 +10,7 @@ import (
 type CompanyUsecase interface {
 	GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
 	GetCompanyInfo(id uint) (res.GetCompanyInfoResponse, error)
+	SearchCompany(companyName string) ([]res.GetCompanyInfoResponse, error)
 }
 
 type companyUsecase struct {
@@ -58,6 +59,29 @@ func (u *companyUsecase) GetCompanyInfo(id uint) (res.GetCompanyInfoResponse, er
 		RepresentativeTel:     *company.RepresentativePhoneNumber,
 		RepresentativeEmail:   *company.RepresentativeEmail,
 		RepresentativeAddress: *company.RepresentativeAddress,
+	}
+
+	return response, nil
+}
+
+// TODO 회사 검색
+func (u *companyUsecase) SearchCompany(companyName string) ([]res.GetCompanyInfoResponse, error) {
+	companies, err := u.companyRepository.SearchCompany(companyName)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러")
+	}
+
+	response := make([]res.GetCompanyInfoResponse, len(companies))
+	for i, company := range companies {
+		response[i] = res.GetCompanyInfoResponse{
+			ID:                    company.ID,
+			CpName:                company.CpName,
+			CpLogo:                *company.CpLogo,
+			RepresentativeName:    *company.RepresentativeName,
+			RepresentativeTel:     *company.RepresentativePhoneNumber,
+			RepresentativeEmail:   *company.RepresentativeEmail,
+			RepresentativeAddress: *company.RepresentativeAddress,
+		}
 	}
 
 	return response, nil

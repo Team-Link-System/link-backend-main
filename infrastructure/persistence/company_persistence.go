@@ -115,3 +115,26 @@ func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
 
 	return companyEntities, nil
 }
+
+func (r *companyPersistence) SearchCompany(companyName string) ([]entity.Company, error) {
+	var companies []model.Company
+	err := r.db.Where("cp_name LIKE ?", "%"+companyName+"%").Find(&companies).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
+	}
+
+	companiesEntities := make([]entity.Company, len(companies))
+	for i, company := range companies {
+		companiesEntities[i] = entity.Company{
+			ID:                        company.ID,
+			CpName:                    company.CpName,
+			CpLogo:                    &company.CpLogo,
+			RepresentativeName:        &company.RepresentativeName,
+			RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
+			RepresentativeEmail:       &company.RepresentativeEmail,
+			RepresentativeAddress:     &company.RepresentativeAddress,
+		}
+	}
+
+	return companiesEntities, nil
+}

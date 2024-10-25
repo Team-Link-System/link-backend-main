@@ -3,6 +3,7 @@ package http
 import (
 	"link/internal/company/usecase"
 	"link/pkg/common"
+	"link/pkg/dto/req"
 	"net/http"
 	"strconv"
 
@@ -52,7 +53,29 @@ func (h *CompanyHandler) GetCompanyInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 상세 조회 성공", company))
 }
 
-//TODO 회사 검색 - 모든 사용자 사용가능
+// TODO 회사 검색 - 모든 사용자 사용가능
+func (h *CompanyHandler) SearchCompany(c *gin.Context) {
+
+	request := req.SearchCompanyRequest{}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		return
+	}
+
+	company, err := h.companyUsecase.SearchCompany(request.CompanyName)
+
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 검색 성공", company))
+}
 
 //TODO 회사 생성은 관리자만 가능 -> 유저가 요청하는 것임(따로 admin도메인에 요청 핸들러만들것)
 

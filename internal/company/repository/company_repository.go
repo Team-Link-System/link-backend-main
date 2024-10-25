@@ -9,4 +9,5 @@ type CompanyRepository interface {
 
 	GetCompanyByID(companyID uint) (*entity.Company, error)
 	GetAllCompanies() ([]entity.Company, error)
+	SearchCompany(companyName string) ([]entity.Company, error)
 }

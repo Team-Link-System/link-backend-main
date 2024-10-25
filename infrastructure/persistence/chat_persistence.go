@@ -2,9 +2,11 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
@@ -18,10 +20,11 @@ import (
 type chatPersistence struct {
 	db    *gorm.DB
 	mongo *mongo.Client
+	redis *redis.Client
 }
 
-func NewChatPersistence(db *gorm.DB, mongo *mongo.Client) repository.ChatRepository {
-	return &chatPersistence{db: db, mongo: mongo}
+func NewChatPersistence(db *gorm.DB, mongo *mongo.Client, redis *redis.Client) repository.ChatRepository {
+	return &chatPersistence{db: db, mongo: mongo, redis: redis}
 }
 
 func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
@@ -39,7 +42,7 @@ func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
 		}
 	}
 	// 저장 전 IsPrivate 값 확인
-	fmt.Println("IsPrivate 값 확인:", modelChatRoom.IsPrivate)
+
 	result := r.db.Create(&modelChatRoom)
 
 	if result.Error != nil {
@@ -211,6 +214,40 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, 
 	}
 
 	return entityChatMessages, nil
+}
+
+// TODO 레디스 관련
+func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoom *chatEntity.ChatRoom) error {
+	//key는 chat:roomID
+	//value는 chatRoom
+	//json으로 변환
+	chatRoomJson, err := json.Marshal(chatRoom)
+	if err != nil {
+		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
+	}
+
+	//redis에 저장
+	r.redis.Set(context.Background(), fmt.Sprintf("chat:room:%d", roomId), chatRoomJson, 0)
+
+	return nil
+}
+
+func (r *chatPersistence) GetChatRoomByIdFromRedis(roomId uint) (*chatEntity.ChatRoom, error) {
+
+	//redis에서 조회
+	chatRoomJson, err := r.redis.Get(context.Background(), fmt.Sprintf("chat:room:%d", roomId)).Result()
+	if err != nil {
+		return nil, fmt.Errorf("채팅방 조회 중 Redis 오류: %w", err)
+	}
+
+	//역직렬화
+	var chatRoom chatEntity.ChatRoom
+	err = json.Unmarshal([]byte(chatRoomJson), &chatRoom)
+	if err != nil {
+		return nil, fmt.Errorf("채팅방 역직렬화 중 오류: %w", err)
+	}
+
+	return &chatRoom, nil
 }
 
 //TODO 그룹 채팅방일 때 나가면 해당 유저 삭제
