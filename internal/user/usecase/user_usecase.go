@@ -16,7 +16,7 @@ import (
 
 // UserUsecase 인터페이스 정의
 type UserUsecase interface {
-	RegisterUser(request *req.RegisterUserRequest) (*entity.User, error)
+	RegisterUser(request *req.RegisterUserRequest) (*res.RegisterUserResponse, error)
 	ValidateEmail(email string) error
 	ValidateNickname(nickname string) error
 	GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error)
@@ -44,7 +44,7 @@ func NewUserUsecase(repo _userRepo.UserRepository, companyRepo _companyRepo.Comp
 }
 
 // TODO 사용자 생성 - 무조건 일반 사용자
-func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.User, error) {
+func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*res.RegisterUserResponse, error) {
 
 	hashedPassword, err := _utils.HashPassword(request.Password)
 	if err != nil {
@@ -58,6 +58,9 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.Us
 		Nickname: &request.Nickname,
 		Phone:    &request.Phone,
 		Role:     entity.RoleUser,
+		UserProfile: &entity.UserProfile{
+			Image: request.UserProfile.Image,
+		},
 	}
 
 	if err := u.userRepo.CreateUser(user); err != nil {
@@ -65,7 +68,16 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*entity.Us
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 생성에 실패했습니다")
 	}
 
-	return user, nil
+	response := res.RegisterUserResponse{
+		ID:       _utils.GetValueOrDefault(user.ID, 0),
+		Name:     _utils.GetValueOrDefault(user.Name, ""),
+		Email:    _utils.GetValueOrDefault(user.Email, ""),
+		Phone:    _utils.GetValueOrDefault(user.Phone, ""),
+		Nickname: _utils.GetValueOrDefault(user.Nickname, ""),
+		Role:     uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+	}
+
+	return &response, nil
 }
 
 // TODO 이메일 중복 체크

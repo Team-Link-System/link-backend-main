@@ -10,11 +10,12 @@ type UserProfile struct {
 }
 
 type RegisterUserRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Nickname string `json:"nickname" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Phone    string `json:"phone" binding:"required"`
+	Name        string       `json:"name" binding:"required"`
+	Email       string       `json:"email" binding:"required,email"`
+	Nickname    string       `json:"nickname" binding:"required"`
+	Password    string       `json:"password" binding:"required"`
+	Phone       string       `json:"phone" binding:"required"`
+	UserProfile *UserProfile `json:"user_profile,omitempty"`
 }
 
 type UpdateUserRequest struct {

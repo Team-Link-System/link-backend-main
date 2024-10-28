@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +36,16 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	createdUser, err := h.userUsecase.RegisterUser(&request)
+	//TODO 회원가입 시 기본 이미지 설정
+	imageUrl := os.Getenv("DEFAULT_PROFILE_IMAGE_URL")
+
+	if request.UserProfile == nil {
+		request.UserProfile = &req.UserProfile{}
+	}
+
+	request.UserProfile.Image = &imageUrl
+
+	response, err := h.userUsecase.RegisterUser(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -44,17 +54,6 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		}
 		return
 	}
-
-	// 유스케이스에서 반환된 엔티티를 응답 DTO로 변환
-	response := res.RegisterUserResponse{
-		ID:       *createdUser.ID,
-		Name:     *createdUser.Name,
-		Email:    *createdUser.Email,
-		Phone:    *createdUser.Phone,
-		Nickname: *createdUser.Nickname,
-		Role:     uint(createdUser.Role),
-	}
-
 	// 성공 응답
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "회원가입 완료", response))
 }
