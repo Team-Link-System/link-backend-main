@@ -302,7 +302,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		// 알림 저장
+		// 알림 생성 -> upsert로 해야함
 		response, err := h.notificationUsecase.CreateNotification(message.SenderId, message.ReceiverId, message.AlarmType)
 		if err != nil {
 			log.Printf("알림 저장 실패: %v", err)
@@ -314,11 +314,11 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		//TODO 알림 데이터베이스에 저장
 		h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
 			Success: true,
 			Type:    "notification",
 			Payload: &res.NotificationPayload{
+				ID:         response.ID,
 				SenderID:   response.SenderId,
 				ReceiverID: response.ReceiverId,
 				Content:    response.Content,

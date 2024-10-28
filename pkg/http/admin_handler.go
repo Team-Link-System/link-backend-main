@@ -21,6 +21,7 @@ func NewAdminHandler(adminUsecase _adminUsecase.AdminUsecase) *AdminHandler {
 	return &AdminHandler{adminUsecase: adminUsecase}
 }
 
+// TODO Role 1,2만 가능
 // TODO 운영자 등록 - 시스템 루트만 가능
 func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 	//TODO 운영자 등록 로직 구현
@@ -180,3 +181,5 @@ func (h *AdminHandler) DeleteCompany(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 삭제에 성공하였습니다.", deletedCompany))
 }
+
+//TODO 아래서부터는 Role 3까지 가능

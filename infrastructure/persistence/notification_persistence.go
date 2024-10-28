@@ -44,3 +44,25 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint) 
 
 	return notifications, nil
 }
+
+func (r *notificationPersistence) GetNotificationByID(notificationId uint) (*entity.Notification, error) {
+	collection := r.db.Database("link").Collection("notifications")
+	filter := bson.M{"id": notificationId}
+	result := collection.FindOne(context.Background(), filter)
+	var notification *entity.Notification
+	if err := result.Decode(&notification); err != nil {
+		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
+	}
+
+	return notification, nil
+}
+
+func (r *notificationPersistence) UpdateNotificationStatus(notification *entity.Notification) (*entity.Notification, error) {
+	collection := r.db.Database("link").Collection("notifications")
+	_, err := collection.UpdateOne(context.Background(), bson.M{"id": notification.ID}, bson.M{"$set": notification})
+	if err != nil {
+		return nil, fmt.Errorf("알림 상태 업데이트에 실패했습니다: %w", err)
+	}
+
+	return notification, nil
+}

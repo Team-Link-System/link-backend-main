@@ -71,11 +71,11 @@ func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.C
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
 	container.Provide(http.NewAuthHandler)
+	container.Provide(http.NewCompanyHandler)
 	container.Provide(http.NewDepartmentHandler)
 	container.Provide(http.NewChatHandler)
 	container.Provide(http.NewNotificationHandler)
 	container.Provide(http.NewPostHandler)
-	container.Provide(http.NewCompanyHandler)
 
 	container.Provide(http.NewAdminHandler)
 
