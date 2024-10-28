@@ -26,7 +26,6 @@ func NewImageUploadMiddleware(directory, staticPrefix string) *ImageUploadMiddle
 	}
 }
 
-// ProfileImageUploadMiddleware는 이미지 업로드를 처리하는 미들웨어 함수입니다.
 func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := c.FormFile("file")
@@ -70,6 +69,53 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 		// 이미지 URL 설정
 		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName)
 		c.Set("profile_image_url", imageUrl)
+		c.Next()
+	}
+}
+
+// TODO 게시글 이미지 파일 업로드 미들웨어
+func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		files, err := c.MultipartForm()
+		if err != nil {
+			c.Next()
+			return
+		}
+
+		formFiles := files.File["files"]
+		if len(formFiles) == 0 {
+			c.Next()
+			return
+		}
+
+		imageUrls := []string{}
+
+		for _, file := range formFiles {
+			ext := strings.ToLower(filepath.Ext(file.Filename))
+			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+				c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다"))
+				c.Abort()
+				return
+			}
+
+			now := time.Now().Format("2006-01-02")
+			folderPath := filepath.Join(i.directory, now)
+
+			uniqueFileName := uuid.New().String()[:15]
+			fileName := uniqueFileName + ext
+			filePath := filepath.Join(folderPath, fileName)
+
+			if err := c.SaveUploadedFile(file, filePath); err != nil {
+				c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패"))
+				c.Abort()
+				return
+			}
+
+			imageUrls = append(imageUrls, fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName))
+		}
+
+		//TODO next로 넘길때 배열 형태로 넘겨주기
+		c.Set("image_urls", imageUrls)
 		c.Next()
 	}
 }
