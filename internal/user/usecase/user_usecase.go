@@ -3,6 +3,7 @@ package usecase
 import (
 	"log"
 	"net/http"
+	"time"
 
 	_companyRepo "link/internal/company/repository"
 	"link/internal/user/entity"
@@ -19,7 +20,7 @@ type UserUsecase interface {
 	RegisterUser(request *req.RegisterUserRequest) (*res.RegisterUserResponse, error)
 	ValidateEmail(email string) error
 	ValidateNickname(nickname string) error
-	GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error)
+	GetUserInfo(targetUserId, requestUserId uint, role string) (*res.GetUserByIdResponse, error)
 	GetUserByID(userId uint) (*entity.User, error)
 
 	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
@@ -110,7 +111,7 @@ func (u *userUsecase) ValidateNickname(nickname string) error {
 }
 
 // TODO 사용자 정보 가져오기 (다른 사용자)
-func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string) (*entity.User, error) {
+func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string) (*res.GetUserByIdResponse, error) {
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
@@ -129,7 +130,28 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
-	return user, nil
+	response := res.GetUserByIdResponse{
+		ID:              _utils.GetValueOrDefault(user.ID, 0),
+		Email:           _utils.GetValueOrDefault(user.Email, ""),
+		Name:            _utils.GetValueOrDefault(user.Name, ""),
+		Phone:           _utils.GetValueOrDefault(user.Phone, ""),
+		Nickname:        _utils.GetValueOrDefault(user.Nickname, ""),
+		Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+		Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+		Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
+		CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
+		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Departments, "id"),
+		DepartmentNames: _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
+		TeamIds:         _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Teams, "id"),
+		TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
+		PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
+		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
+		UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
+	}
+
+	return &response, nil
 }
 
 // TODO 본인 정보 가져오기
@@ -269,7 +291,7 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	return u.userRepo.DeleteUser(targetUserId)
 }
 
-// TODO 사용자 검색 (수정)
+// TODO 사용자 검색
 func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error) {
 	// 사용자 저장소에서 검색
 	//request를 entity.User로 변환
@@ -346,71 +368,35 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdRe
 		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
 	}
 
-	// 사용자 리스트 순회하며 온라인 상태 업데이트
-	for i := range users {
-		if isOnline, ok := onlineStatusMap[*users[i].ID]["is_online"]; ok {
-			if onlineStatus, isBool := isOnline.(bool); isBool {
-				users[i].IsOnline = &onlineStatus
-			} else {
-				users[i].IsOnline = new(bool) // 기본값 false로 설정
-			}
-		} else {
-			users[i].IsOnline = new(bool) // 기본값 false로 설정
-		}
-	}
-
-	// 응답 변환
-	var response []res.GetUserByIdResponse
-	for _, user := range users {
-		companyName := (*string)(nil)
-		if user.UserProfile.Company != nil {
-			if name, ok := (*user.UserProfile.Company)["name"].(string); ok {
-				companyName = &name
+	// 사용자 리스트 변환
+	return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
+		isOnline := false
+		if status, exists := onlineStatusMap[_utils.GetValueOrDefault(user.ID, 0)]["is_online"]; exists {
+			if online, ok := status.(bool); ok {
+				isOnline = online
 			}
 		}
-
-		positionName := (*string)(nil)
-		if user.UserProfile.PositionId != nil {
-			if name, ok := (*user.UserProfile.Position)["name"].(string); ok {
-				positionName = &name
-			}
+		return res.GetUserByIdResponse{
+			ID:              _utils.GetValueOrDefault(user.ID, 0),
+			Email:           _utils.GetValueOrDefault(user.Email, ""),
+			Name:            _utils.GetValueOrDefault(user.Name, ""),
+			Nickname:        _utils.GetValueOrDefault(user.Nickname, ""),
+			Phone:           _utils.GetValueOrDefault(user.Phone, ""),
+			Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+			IsOnline:        isOnline,
+			Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+			Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
+			CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
+			DepartmentNames: _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
+			TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
+			PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
+			PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+			CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
+			UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
 		}
-		departmentNames := make([]*string, len(user.UserProfile.Departments))
-		for i, department := range user.UserProfile.Departments {
-			departmentName, _ := (*department)["name"].(string)
-			departmentNames[i] = &departmentName
-		}
-		teamNames := make([]*string, len(user.UserProfile.Teams))
-		for i, team := range user.UserProfile.Teams {
-			teamName, _ := (*team)["name"].(string)
-			teamNames[i] = &teamName
-		}
+	}), nil
 
-		response = append(response, res.GetUserByIdResponse{
-			ID:              *user.ID,
-			Email:           *user.Email,
-			Name:            *user.Name,
-			Nickname:        *user.Nickname,
-			Phone:           *user.Phone,
-			Role:            uint(user.Role),
-			IsOnline:        *user.IsOnline,
-			Image:           user.UserProfile.Image,
-			Birthday:        user.UserProfile.Birthday,
-			CompanyID:       user.UserProfile.CompanyID,
-			CompanyName:     companyName,
-			DepartmentIds:   user.UserProfile.DepartmentIds,
-			DepartmentNames: departmentNames,
-			TeamIds:         user.UserProfile.TeamIds,
-			TeamNames:       teamNames,
-			PositionId:      user.UserProfile.PositionId,
-			PositionName:    positionName,
-			CreatedAt:       *user.CreatedAt,
-			UpdatedAt:       *user.UpdatedAt,
-		})
-
-	}
-
-	return response, nil
 }
 
 // TODO 해당 부서에 속한 사용자 리스트 가져오기

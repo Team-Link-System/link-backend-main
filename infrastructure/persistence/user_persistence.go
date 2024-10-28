@@ -191,6 +191,23 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
+
+	departments := make([]*map[string]interface{}, len(user.UserProfile.Departments))
+	for i, dept := range user.UserProfile.Departments {
+		departments[i] = &map[string]interface{}{
+			"id":   dept.ID,
+			"name": dept.Name,
+		}
+	}
+
+	teams := make([]*map[string]interface{}, len(user.UserProfile.Teams))
+	for i, team := range user.UserProfile.Teams {
+		teams[i] = &map[string]interface{}{
+			"id":   team.ID,
+			"name": team.Name,
+		}
+	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -202,9 +219,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			Birthday:     user.UserProfile.Birthday,
 			IsSubscribed: user.UserProfile.IsSubscribed,
 			CompanyID:    user.UserProfile.CompanyID,
-			// Departments:  user.UserProfile.Departments,
-			// Teams:        user.UserProfile.Teams,
-			// PositionId:   user.UserProfile.PositionID,
+			Departments:  departments,
+			Teams:        teams,
+			PositionId:   user.UserProfile.PositionID,
 			// Position:     user.UserProfile.Position,
 		},
 	}
