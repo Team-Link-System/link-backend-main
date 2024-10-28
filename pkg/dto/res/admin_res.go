@@ -12,23 +12,23 @@ type RegisterAdminResponse struct {
 }
 
 type GetAllUsersResponse struct {
-	ID              uint      `json:"id"`
-	Name            string    `json:"name"`
-	Email           string    `json:"email"`
-	Nickname        string    `json:"nickname"`
-	IsOnline        bool      `json:"is_online"`
-	Phone           string    `json:"phone"`
-	Role            uint      `json:"role"`
+	ID              uint      `json:"id,omitempty"`
+	Name            string    `json:"name,omitempty"`
+	Email           string    `json:"email,omitempty"`
+	Nickname        string    `json:"nickname,omitempty"`
+	IsOnline        bool      `json:"is_online,omitempty"`
+	Phone           string    `json:"phone,omitempty"`
+	Role            uint      `json:"role,omitempty"`
 	Image           *string   `json:"image,omitempty"`
 	Birthday        string    `json:"birthday,omitempty"`
-	CompanyID       *uint     `json:"company_id,omitempty"`
+	CompanyID       uint      `json:"company_id,omitempty"`
 	CompanyName     string    `json:"company_name,omitempty"`
-	DepartmentIds   []*uint   `json:"department_ids,omitempty"`
-	DepartmentNames []*string `json:"department_names,omitempty"`
-	TeamIds         []*uint   `json:"team_ids,omitempty"`
-	TeamNames       []*string `json:"team_names,omitempty"`
-	PositionId      *uint     `json:"position_id,omitempty"`
-	PositionName    *string   `json:"position_name,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	DepartmentIds   []uint    `json:"department_ids,omitempty"`
+	DepartmentNames []string  `json:"department_names,omitempty"`
+	TeamIds         []uint    `json:"team_ids,omitempty"`
+	TeamNames       []string  `json:"team_names,omitempty"`
+	PositionId      uint      `json:"position_id,omitempty"`
+	PositionName    string    `json:"position_name,omitempty"`
+	CreatedAt       time.Time `json:"created_at,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at,omitempty"`
 }

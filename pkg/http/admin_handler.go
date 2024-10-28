@@ -7,6 +7,7 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	"link/pkg/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -89,20 +90,22 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 	for _, user := range users {
 		// User 정보를 GetAllUsersResponse로 변환
 		userResponse := res.GetAllUsersResponse{
-			ID:            *user.ID,
-			Name:          *user.Name,
-			Email:         *user.Email, // 민감 정보 포함할지 여부에 따라 처리
-			Phone:         *user.Phone,
-			Role:          uint(user.Role),
-			Image:         user.UserProfile.Image,
-			Birthday:      user.UserProfile.Birthday,
-			CompanyID:     user.UserProfile.CompanyID,
-			DepartmentIds: user.UserProfile.DepartmentIds,
-			TeamIds:       user.UserProfile.TeamIds,
-			PositionId:    user.UserProfile.PositionId,
-			CreatedAt:     *user.CreatedAt,
-			UpdatedAt:     *user.UpdatedAt,
-			Nickname:      *user.Nickname,
+			ID:              *user.ID,
+			Name:            *user.Name,
+			Email:           *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone:           *user.Phone,
+			Role:            uint(user.Role),
+			Image:           user.UserProfile.Image,
+			Birthday:        user.UserProfile.Birthday,
+			CompanyID:       util.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			CompanyName:     util.GetFirstOrEmpty(util.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
+			DepartmentNames: util.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
+			TeamNames:       util.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
+			PositionId:      util.GetValueOrDefault(user.UserProfile.PositionId, 0),
+			PositionName:    util.GetFirstOrEmpty(util.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+			CreatedAt:       *user.CreatedAt,
+			UpdatedAt:       *user.UpdatedAt,
+			Nickname:        *user.Nickname,
 		}
 
 		response = append(response, userResponse)

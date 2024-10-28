@@ -249,11 +249,6 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 	// Entity 변환
 	entityUsers := make([]entity.User, len(users))
 	for i, user := range users {
-		// DepartmentIds 변환
-		var departmentIds []*uint
-		for _, dept := range user.UserProfile.Departments {
-			departmentIds = append(departmentIds, &dept.ID)
-		}
 
 		// Departments 변환
 		var departmentMaps []*map[string]interface{}
@@ -263,12 +258,6 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 				"name": dept.Name,
 			}
 			departmentMaps = append(departmentMaps, &deptMap)
-		}
-
-		// TeamIds 변환
-		var teamIds []*uint
-		for _, team := range user.UserProfile.Teams {
-			teamIds = append(teamIds, &team.ID)
 		}
 
 		// Teams 변환
@@ -299,19 +288,17 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 			Name:     &user.Name,
 			Role:     entity.UserRole(user.Role),
 			UserProfile: &entity.UserProfile{
-				UserId:        user.ID,
-				CompanyID:     user.UserProfile.CompanyID,
-				DepartmentIds: departmentIds,
-				Departments:   departmentMaps,
-				TeamIds:       teamIds,
-				Teams:         teamMaps,
-				Image:         user.UserProfile.Image,
-				Birthday:      user.UserProfile.Birthday,
-				IsSubscribed:  user.UserProfile.IsSubscribed,
-				PositionId:    user.UserProfile.PositionID,
-				Position:      positionMap,
-				CreatedAt:     user.UserProfile.CreatedAt,
-				UpdatedAt:     user.UserProfile.UpdatedAt,
+				UserId:       user.ID,
+				CompanyID:    user.UserProfile.CompanyID,
+				Departments:  departmentMaps,
+				Teams:        teamMaps,
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				IsSubscribed: user.UserProfile.IsSubscribed,
+				PositionId:   user.UserProfile.PositionID,
+				Position:     positionMap,
+				CreatedAt:    user.UserProfile.CreatedAt,
+				UpdatedAt:    user.UserProfile.UpdatedAt,
 			},
 		}
 	}
@@ -545,10 +532,9 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	return users, nil
 }
 
-// TODO 모든 유저 가져오기 (관리자만 가능)
 func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error) {
-	var users []entity.User
-	var requestUser entity.User
+	var users []model.User
+	var requestUser model.User
 
 	// 먼저 요청한 사용자의 정보를 가져옴
 	if err := r.db.First(&requestUser, requestUserId).Error; err != nil {
@@ -557,15 +543,19 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 	}
 
 	// 관리자는 자기보다 권한이 낮은 사용자 리스트들을 가져옴
+	query := r.db.Preload("UserProfile").
+		Preload("UserProfile.Company").
+		Preload("UserProfile.Departments").
+		Preload("UserProfile.Teams").
+		Preload("UserProfile.Position")
 
-	// TODO UserProfile 조인 추가
-	if requestUser.Role == entity.RoleAdmin {
-		if err := r.db.Preload("UserProfile").Find(&users).Error; err != nil {
+	if requestUser.Role == model.UserRole(entity.RoleAdmin) {
+		if err := query.Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err
 		}
-	} else if requestUser.Role == entity.RoleSubAdmin {
-		if err := r.db.Preload("UserProfile").Where("role >= ?", entity.RoleSubAdmin).Find(&users).Error; err != nil {
+	} else if requestUser.Role == model.UserRole(entity.RoleSubAdmin) {
+		if err := query.Where("role >= ?", model.UserRole(entity.RoleSubAdmin)).Find(&users).Error; err != nil {
 			log.Printf("사용자 조회 중 DB 오류: %v", err)
 			return nil, err
 		}
@@ -574,7 +564,76 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 		return nil, fmt.Errorf("잘못된 사용자 권한")
 	}
 
-	return users, nil
+	// model.User -> entity.User 변환
+	entityUsers := make([]entity.User, len(users))
+	for i, user := range users {
+
+		// 각 사용자별로 회사 정보 매핑
+		var companyMap *map[string]interface{}
+		if user.UserProfile.Company != nil {
+			companyData := map[string]interface{}{
+				"id":   user.UserProfile.Company.ID,
+				"name": user.UserProfile.Company.CpName,
+			}
+			companyMap = &companyData
+		}
+
+		var departmentMaps []*map[string]interface{}
+		if user.UserProfile.Departments != nil {
+			for _, department := range user.UserProfile.Departments {
+				departmentMap := map[string]interface{}{
+					"id":   department.ID,
+					"name": department.Name,
+				}
+				departmentMaps = append(departmentMaps, &departmentMap)
+			}
+		}
+
+		var teamMaps []*map[string]interface{}
+		if user.UserProfile.Teams != nil {
+			for _, team := range user.UserProfile.Teams {
+				teamMap := map[string]interface{}{
+					"id":   team.ID,
+					"name": team.Name,
+				}
+				teamMaps = append(teamMaps, &teamMap)
+			}
+		}
+
+		// Position mapping
+		var positionMap *map[string]interface{}
+		if user.UserProfile.Position != nil {
+			posData := map[string]interface{}{
+				"id":   user.UserProfile.Position.ID,
+				"name": user.UserProfile.Position.Name,
+			}
+			positionMap = &posData
+		}
+
+		entityUsers[i] = entity.User{
+			ID:       &user.ID,
+			Email:    &user.Email,
+			Name:     &user.Name,
+			Nickname: &user.Nickname,
+			Phone:    &user.Phone,
+			Role:     entity.UserRole(user.Role),
+			UserProfile: &entity.UserProfile{
+				Image:        user.UserProfile.Image,
+				Birthday:     user.UserProfile.Birthday,
+				IsSubscribed: user.UserProfile.IsSubscribed,
+				CompanyID:    user.UserProfile.CompanyID,
+				Company:      companyMap,
+				Departments:  departmentMaps,
+				Teams:        teamMaps,
+				PositionId:   user.UserProfile.PositionID,
+				Position:     positionMap,
+			},
+			CreatedAt: &user.CreatedAt,
+			UpdatedAt: &user.UpdatedAt,
+		}
+	}
+
+	return entityUsers, nil
 }
 
 // !--------------------------- ! redis 캐시 관련
