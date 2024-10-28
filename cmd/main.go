@@ -120,6 +120,7 @@ func main() {
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
 				user.GET("/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
+				user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
 			}
 			department := protectedRoute.Group("department")
 			{

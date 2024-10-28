@@ -264,9 +264,6 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("usersasdasdasdasd")
-	fmt.Println(users)
-
 	if len(users) == 0 {
 		c.JSON(http.StatusNotFound, common.NewError(http.StatusNotFound, "사용자를 찾을 수 없습니다"))
 		return
