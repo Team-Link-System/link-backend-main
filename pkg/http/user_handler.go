@@ -283,7 +283,7 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 		return
 	}
 
-	users, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint))
+	response, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -293,28 +293,6 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 		return
 	}
 
-	var response []res.GetUserByIdResponse
-	for _, user := range users {
-
-		response = append(response, res.GetUserByIdResponse{
-			ID:            *user.ID,
-			Email:         *user.Email,
-			Name:          *user.Name,
-			Nickname:      *user.Nickname,
-			Phone:         *user.Phone,
-			Role:          uint(user.Role),
-			IsOnline:      *user.IsOnline,
-			Image:         user.UserProfile.Image,
-			Birthday:      user.UserProfile.Birthday,
-			CompanyID:     user.UserProfile.CompanyID,
-			DepartmentIds: user.UserProfile.DepartmentIds,
-			TeamIds:       user.UserProfile.TeamIds,
-			PositionId:    user.UserProfile.PositionId,
-			CreatedAt:     *user.CreatedAt,
-			UpdatedAt:     *user.UpdatedAt,
-		})
-
-	}
 	// 회사 사용자 조회 성공 응답
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 사용자 조회 성공", response))

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"reflect"
@@ -148,13 +149,20 @@ func (r *userPersistence) ValidateNickname(nickname string) (*entity.User, error
 
 func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 	var user model.User
-	err := r.db.Select("id", "email", "nickname", "name", "role", "password").Where("email = ?", email).First(&user).Error
+	// var userProfile model.UserProfile
+	// err := r.db.
+	// 	Table("users").
+	// 	Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.id").
+	// 	Select("users.id", "users.email", "users.nickname", "users.name", "users.role", "users.password", "user_profiles.company_id").
+	// 	Where("users.email = ?", email).First(&user).Error
+	err := r.db.Preload("UserProfile").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %s", email)
 		}
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -162,7 +170,11 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		Name:     &user.Name,
 		Role:     entity.UserRole(user.Role),
 		Password: &user.Password,
+		UserProfile: &entity.UserProfile{
+			CompanyID: user.UserProfile.CompanyID,
+		},
 	}
+
 	return entityUser, nil
 }
 
@@ -170,7 +182,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	var user model.User
 
 	//TODO UserProfile 조인 추가
-	err := r.db.Preload("UserProfile").Where("id = ?", id).First(&user).Error
+	err := r.db.
+		Preload("UserProfile").
+		Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %d", id)
@@ -225,12 +239,11 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 		}
 
 		// Departments 변환
-		var departmentMaps []*map[uint]interface{}
+		var departmentMaps []*map[string]interface{}
 		for _, dept := range user.UserProfile.Departments {
-			deptMap := map[uint]interface{}{
-				dept.ID: map[string]interface{}{
-					"name": dept.Name,
-				},
+			deptMap := map[string]interface{}{
+				"id":   dept.ID,
+				"name": dept.Name,
 			}
 			departmentMaps = append(departmentMaps, &deptMap)
 		}
@@ -242,23 +255,21 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 		}
 
 		// Teams 변환
-		var teamMaps []*map[uint]interface{}
+		var teamMaps []*map[string]interface{}
 		for _, team := range user.UserProfile.Teams {
-			teamMap := map[uint]interface{}{
-				team.ID: map[string]interface{}{
-					"name": team.Name,
-				},
+			teamMap := map[string]interface{}{
+				"id":   team.ID,
+				"name": team.Name,
 			}
 			teamMaps = append(teamMaps, &teamMap)
 		}
 
 		// Position 변환
-		var positionMap *map[uint]interface{}
+		var positionMap *map[string]interface{}
 		if user.UserProfile.Position != nil {
-			posMap := map[uint]interface{}{
-				user.UserProfile.Position.ID: map[string]interface{}{
-					"name": user.UserProfile.Position.Name,
-				},
+			posMap := map[string]interface{}{
+				"id":   user.UserProfile.Position.ID,
+				"name": user.UserProfile.Position.Name,
 			}
 			positionMap = &posMap
 		}
@@ -299,7 +310,7 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 	}
 
 	if len(updates) > 0 {
-		if err := tx.Model(&entity.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if err := tx.Model(&model.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("사용자 업데이트 중 DB 오류: %w", err)
 		}
@@ -308,9 +319,9 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 
 	// UserProfile 업데이트
 	if len(profileUpdates) > 0 {
-		if err := tx.Model(&entity.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
+		if err := tx.Model(&model.UserProfile{}).Where("user_id = ?", id).Updates(profileUpdates).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("사용��� 프로필 업데이트 중 DB 오류: %w", err)
+			return fmt.Errorf("사용자 프로필 업데이트 중 DB 오류: %w", err)
 		}
 	}
 
@@ -402,12 +413,22 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	var users []entity.User
 
 	// UserProfile의 company_id 필드를 사용하여 조건을 설정
-	//TODO 트랜잭션을 통해서 조회
 	rows, err := r.db.
 		Table("users").
-		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at", "user_profiles.company_id").
+		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
+			"user_profiles.birthday", "user_profiles.image",
+			"companies.id as company_id", "companies.cp_name as company_name",
+			"departments.id as department_id", "departments.name as department_name",
+			"teams.id as team_id", "teams.name as team_name",
+			"positions.id as position_id", "positions.name as position_name").
 		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
-		Where("user_profiles.company_id = ? or users.role = ? or users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser). // Role 3,4 관리자 포함
+		Joins("JOIN companies ON companies.id = user_profiles.company_id").
+		Joins("LEFT JOIN user_departments ON user_departments.user_profile_user_id = users.id").
+		Joins("LEFT JOIN departments ON departments.id = user_departments.department_id").
+		Joins("LEFT JOIN user_teams ON user_teams.user_profile_user_id = users.id").
+		Joins("LEFT JOIN teams ON teams.id = user_teams.team_id").
+		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
+		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser).
 		Rows()
 
 	if err != nil {
@@ -415,27 +436,94 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 	}
 	defer rows.Close()
 
-	//TODO 없으면, 그냥 응답
+	// 사용자 ID를 키로 하는 맵을 사용하여 중복 사용자 데이터를 누적
+	userMap := make(map[uint]*entity.User)
 
-	// 조회된 행들을 처리하여 users 배열에 추가
 	for rows.Next() {
+		var userID uint
 		var user entity.User
-		var companyID uint
+		var userProfile entity.UserProfile
+		var companyName, departmentName, teamName, positionName *string
+		var companyID, departmentID, teamID, positionID *uint
+		var birthday sql.NullString
 
-		// users 테이블의 컬럼과 user_profiles의 company_id를 스캔
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt, &companyID); err != nil {
+		// 데이터베이스에서 조회된 데이터를 변수에 스캔
+		if err := rows.Scan(
+			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
+			&birthday, &userProfile.Image,
+			&companyID, &companyName, &departmentID, &departmentName, &teamID, &teamName, &positionID, &positionName,
+		); err != nil {
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
 		}
 
-		//TODO 캐시 is_online 정보 불러오기
+		// 기존 사용자 데이터를 찾거나 새로 생성
+		existingUser, found := userMap[userID]
+		if found {
+			user = *existingUser
+		} else {
+			user.ID = &userID
+			if birthday.Valid {
+				userProfile.Birthday = birthday.String
+			}
+			userProfile.CompanyID = companyID
 
-		// UserProfile에 company_id 설정
-		user.UserProfile = &entity.UserProfile{
-			CompanyID: &companyID,
+			if companyName != nil {
+				companyMap := map[string]interface{}{
+					"name": *companyName,
+				}
+				userProfile.Company = &companyMap
+			}
+
+			// 직책 추가
+			if positionID != nil && positionName != nil {
+				position := map[string]interface{}{
+					"name": *positionName,
+				}
+				userProfile.Position = &position
+			}
+
+			user.UserProfile = &userProfile
+			userMap[userID] = &user
 		}
 
-		// 사용자 목록에 추가
-		users = append(users, user)
+		// 부서가 이미 추가되지 않았다면 추가
+		if departmentID != nil && departmentName != nil {
+			departmentExists := false
+			for _, dept := range user.UserProfile.Departments {
+				if dept != nil && (*dept)["name"] == *departmentName {
+					departmentExists = true
+					break
+				}
+			}
+			if !departmentExists {
+				department := map[string]interface{}{
+					"name": *departmentName,
+				}
+				user.UserProfile.Departments = append(user.UserProfile.Departments, &department)
+			}
+		}
+
+		// 팀이 이미 추가되지 않았다면 추가
+		if teamID != nil && teamName != nil {
+			teamExists := false
+			for _, team := range user.UserProfile.Teams {
+				if team != nil && (*team)["name"] == *teamName {
+					teamExists = true
+					break
+				}
+			}
+			if !teamExists {
+				team := map[string]interface{}{
+					"name": *teamName,
+				}
+				user.UserProfile.Teams = append(user.UserProfile.Teams, &team)
+			}
+		}
+	}
+
+	// 최종 사용자 목록 생성
+	for _, user := range userMap {
+		users = append(users, *user)
 	}
 
 	return users, nil

@@ -1,10 +1,12 @@
 package entity
 
 type Team struct {
-	ID           uint `gorm:"primaryKey"`
-	Name         string
-	ManagerID    *uint
-	Manager      *map[uint]interface{}
-	DepartmentID *uint
-	CompanyID    uint //TODO 필수값
+	ID           uint                      `json:"id"`
+	Name         string                    `json:"name"`
+	ManagerID    *uint                     `json:"manager_id,omitempty"`
+	DepartmentID *uint                     `json:"department_id,omitempty"`
+	CompanyID    uint                      `json:"company_id"`
+	CompanyName  string                    `json:"company_name"`
+	Users        []*map[string]interface{} `json:"users,omitempty"`
+	Posts        []*map[uint]interface{}   `json:"posts,omitempty"`
 }

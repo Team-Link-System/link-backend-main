@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"link/internal/auth/entity"
 	_authRepo "link/internal/auth/repository"
+	_companyRepo "link/internal/company/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
@@ -24,8 +25,9 @@ type AuthUsecase interface {
 
 // authUsecase 구조체 정의
 type authUsecase struct {
-	authRepo _authRepo.AuthRepository // Redis와 상호작용하는 저장소
-	userRepo _userRepo.UserRepository // 사용자 정보 저장소
+	authRepo    _authRepo.AuthRepository       // Redis와 상호작용하는 저장소
+	userRepo    _userRepo.UserRepository       // 사용자 정보 저장소
+	companyRepo _companyRepo.CompanyRepository // 회사 정보 저장소
 }
 
 // NewAuthUsecase 생성자 함수
@@ -35,15 +37,11 @@ func NewAuthUsecase(authRepo _authRepo.AuthRepository, userRepo _userRepo.UserRe
 }
 
 func (u *authUsecase) SignIn(request *req.LoginRequest) (*_userEntity.User, *entity.Token, error) {
-	fmt.Println("request:", request)
-
 	user, err := u.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
 		log.Printf("사용자 조회 오류: %v", err)
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 존재하지 않습니다")
 	}
-
-	fmt.Println("user:", user.Password)
 
 	if !util.CheckPasswordHash(request.Password, *user.Password) {
 		log.Printf("비밀번호 불일치: %s", request.Email)

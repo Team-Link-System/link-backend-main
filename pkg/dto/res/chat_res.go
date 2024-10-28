@@ -1,16 +1,16 @@
 package res
 
 type UserInfoResponse struct {
-	ID    uint   `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
+	ID    *uint   `json:"id,omitempty"`
+	Name  *string `json:"name,omitempty"`
+	Email *string `json:"email,omitempty"`
+	Phone *string `json:"phone,omitempty"`
 }
 
 type CreateChatRoomResponse struct {
-	Name      string             `json:"name"`
-	IsPrivate bool               `json:"is_private"`
-	Users     []UserInfoResponse `json:"users"`
+	Name      string             `json:"name,omitempty"`
+	IsPrivate bool               `json:"is_private,omitempty"`
+	Users     []UserInfoResponse `json:"users,omitempty"`
 }
 
 type ChatPayload struct {

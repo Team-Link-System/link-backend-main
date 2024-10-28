@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -108,18 +109,30 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	// 메모리에서 채팅방 확인, 없으면 DB에서 가져오기
 	_, exists := h.hub.ChatRooms.Load(uint(roomIdUint))
 	if !exists {
-		chatRoomEntity, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
-		if err != nil || chatRoomEntity == nil {
-			log.Printf("DB 채팅방 조회 실패: %v", err)
-			conn.WriteJSON(res.JsonResponse{
-				Success: false,
-				Message: "채팅방이 없습니다",
-				Type:    "error",
-			})
-			return
+		//TODO 1단계  메모리에 없으면 redis에서 조회
+		fmt.Println("메모리에 없으면 redis에서 조회")
+
+		chatRoomFromRedis, err := h.chatUsecase.GetChatRoomByIdFromRedis(uint(roomIdUint))
+		if err == nil && chatRoomFromRedis != nil {
+			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
+		} else {
+			//TODO 2단계 postgres에서 채팅방 조회
+			chatRoomEntity, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
+			if err != nil || chatRoomEntity == nil {
+				log.Printf("DB 채팅방 조회 실패: %v", err)
+				conn.WriteJSON(res.JsonResponse{
+					Success: false,
+					Message: "채팅방이 없습니다",
+					Type:    "error",
+				})
+				return
+			}
+			// DB에서 가져온 채팅방을 메모리에 추가
+			h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatRoomEntity)
+			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		}
-		// DB에서 가져온 채팅방을 메모리에 추가
-		h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
+
+		//TODO 3단계 1 2단계에 정보 없으면 메모리에 추가
 	}
 
 	h.hub.RegisterClient(conn, uint(userIdUint), uint(roomIdUint))

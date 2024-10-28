@@ -46,7 +46,7 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 		return
 	}
 
-	chatRoom, err := h.chatUsecase.CreateChatRoom(requestUserId, &request)
+	response, err := h.chatUsecase.CreateChatRoom(requestUserId, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -54,23 +54,6 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
 		}
 		return
-	}
-
-	// Users 필드를 UserInfoResponse로 변환
-	var usersResponse []res.UserInfoResponse
-	for _, user := range chatRoom.Users {
-		usersResponse = append(usersResponse, res.UserInfoResponse{
-			ID:    *user.ID,
-			Name:  *user.Name,
-			Email: *user.Email,
-			Phone: *user.Phone,
-		})
-	}
-
-	response := res.CreateChatRoomResponse{
-		Name:      chatRoom.Name,
-		IsPrivate: chatRoom.IsPrivate,
-		Users:     usersResponse,
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅방 생성 성공", response))

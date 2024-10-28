@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -12,15 +11,19 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 )
 
 type ChatUsecase interface {
-	CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*entity.ChatRoom, error)
+	CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*res.CreateChatRoomResponse, error)
 	GetChatRoomList(userId uint) ([]*entity.ChatRoom, error)
 	GetChatRoomById(roomId uint) (*entity.ChatRoom, error)
 
 	SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error)
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
+
+	SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error
+	GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error)
 }
 
 type chatUsecase struct {
@@ -33,7 +36,7 @@ func NewChatUsecase(chatRepository _chatRepo.ChatRepository, userRepository _use
 }
 
 // TODO 채팅방 생성
-func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*entity.ChatRoom, error) {
+func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*res.CreateChatRoomResponse, error) {
 	// 해당 유저들이 실제로 존재하는지 확인
 	users, err := uc.userRepository.GetUserByIds(request.UserIDs)
 	if err != nil {
@@ -91,13 +94,30 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRe
 		return nil, common.NewError(http.StatusInternalServerError, "채팅방 생성에 실패했습니다")
 	}
 
-	return chatRoom, nil
+	// Users 필드를 UserInfoResponse로 변환
+	var usersResponse []res.UserInfoResponse
+	for _, user := range chatRoom.Users {
+
+		usersResponse = append(usersResponse, res.UserInfoResponse{
+			ID:    user.ID,
+			Name:  user.Name,
+			Email: user.Email,
+			Phone: user.Phone,
+		})
+	}
+
+	response := &res.CreateChatRoomResponse{
+		Name:      chatRoom.Name,
+		IsPrivate: chatRoom.IsPrivate,
+		Users:     usersResponse,
+	}
+
+	return response, nil
 }
 
 // TODO 채팅방 조회
 func (uc *chatUsecase) GetChatRoomById(roomId uint) (*entity.ChatRoom, error) {
 	chatRoom, err := uc.chatRepository.GetChatRoomById(roomId)
-	fmt.Println(chatRoom)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회에 실패했습니다")
@@ -157,4 +177,23 @@ func (uc *chatUsecase) GetChatMessages(chatRoomID uint) ([]*entity.Chat, error) 
 		return nil, common.NewError(http.StatusInternalServerError, "채팅 내용 조회에 실패했습니다")
 	}
 	return chatMessages, nil
+}
+
+func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error {
+	if roomId == 0 || chatRoom == nil {
+		return common.NewError(http.StatusBadRequest, "채팅방 또는 채팅방 ID가 유효하지 않습니다")
+	}
+
+	uc.chatRepository.SetChatRoomToRedis(roomId, chatRoom)
+
+	return nil
+}
+
+func (uc *chatUsecase) GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error) {
+	chatRoom, err := uc.chatRepository.GetChatRoomByIdFromRedis(roomId)
+	if err != nil {
+		log.Printf("채팅방 조회 중 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회에 실패했습니다")
+	}
+	return chatRoom, nil
 }

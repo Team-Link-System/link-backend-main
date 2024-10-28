@@ -19,6 +19,7 @@ func NewDepartmentHandler(departmentUsecase usecase.DepartmentUsecase) *Departme
 	return &DepartmentHandler{departmentUsecase: departmentUsecase}
 }
 
+// TODO 요청 유저가 회사 관리자여야하고, 해당 회사에 속해있어야함 Role 3
 func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
@@ -62,7 +63,7 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "부서 생성 성공", createdDepartment))
 }
 
-// TODO 부서 목록 리스트
+// TODO 부서 목록 리스트 요청 유저가 해당 회사에 속해있어야함
 func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 	departments, err := h.departmentUsecase.GetDepartments()
 	if err != nil {
@@ -76,7 +77,7 @@ func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 목록 조회 성공", departments))
 }
 
-// TODO 부서 상세 조회
+// TODO 부서 상세 조회 - 요청 유저가 해당 회사에 속해있어야함
 func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 	departmentID := c.Param("id")
 
@@ -173,6 +174,6 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 삭제 성공", nil))
 }
 
-//TODO 부서 수정 요청 저장 - 부서장만 요청 가능 - 내용은 바디에 있음
+//TODO 부서 수정 요청 저장 - 일반 유저 -> Role 3에게
 
 //TODO 부서 수정 요청 조회해서 수락 및 거절 ( 관리자만 )
