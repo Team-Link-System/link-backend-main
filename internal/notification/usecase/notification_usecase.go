@@ -9,12 +9,15 @@ import (
 	_notificationRepo "link/internal/notification/repository"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
+	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 )
 
 type NotificationUsecase interface {
 	GetNotifications(userId uint) ([]*entity.Notification, error)
-	CreateNotification(senderId uint, receiverId uint, notificationType string) (*entity.Notification, error)
+	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
+	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
+	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateNotificationStatus(notificationId uint, isRead bool, status string) (*res.UpdateNotificationStatusResponse, error)
 }
 
@@ -27,11 +30,9 @@ func NewNotificationUsecase(notificationRepo _notificationRepo.NotificationRepos
 	return &notificationUsecase{notificationRepo: notificationRepo, userRepo: userRepo}
 }
 
-// TODO 알림저장 usecase 멘션
-func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint, notificationType string) (*entity.Notification, error) {
-
-	//SenderId, ReceiverId 존재하는지 확인 Ids로 조회
-	users, err := n.userRepo.GetUserByIds([]uint{senderId, receiverId})
+// TODO 알림저장 usecase 멘션 -- 수정해야함
+func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
+	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
 	if err != nil {
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
 	}
@@ -41,43 +42,14 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 
 	//alarmType에 따른 처리
 	var notification *entity.Notification
-
-	switch notificationType {
-	case "mention":
-		notification = &entity.Notification{
-			SenderId:   *users[0].ID,
-			ReceiverId: *users[1].ID,
-			Title:      "Mention",
-			Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
-			AlarmType:  entity.NotificationTypeMention,
-			IsRead:     false,
-			CreatedAt:  time.Now(),
-		}
-
-	case "invite":
-		notification = &entity.Notification{
-			SenderId:   *users[0].ID,
-			ReceiverId: *users[1].ID,
-			Title:      "Invite",
-			Status:     "pending",
-			Content:    fmt.Sprintf("%s님이 %s님을 초대했습니다", *users[0].Name, *users[1].Name),
-			AlarmType:  entity.NotificationTypeInvite,
-			IsRead:     false,
-			CreatedAt:  time.Now(),
-		}
-	case "request": //TODO 이거는 role이 1이거나 2인 사람만 받을 수 있음
-		notification = &entity.Notification{
-			SenderId:   *users[0].ID,
-			ReceiverId: *users[1].ID,
-			Title:      "Request",
-			Content:    fmt.Sprintf("%s님이 %s님에게 요청을 보냈습니다", *users[0].Name, *users[1].Name),
-			AlarmType:  entity.NotificationTypeRequest,
-			IsRead:     false,
-			CreatedAt:  time.Now(),
-		}
-
-	default:
-		return nil, common.NewError(http.StatusBadRequest, "알림 타입이 존재하지 않습니다")
+	notification = &entity.Notification{
+		SenderId:   *users[0].ID,
+		ReceiverId: *users[1].ID,
+		Title:      "Mention",
+		Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
+		AlarmType:  entity.NotificationTypeMention,
+		IsRead:     false,
+		CreatedAt:  time.Now(),
 	}
 
 	notification, err = n.notificationRepo.CreateNotification(notification)
@@ -85,12 +57,57 @@ func (n *notificationUsecase) CreateNotification(senderId uint, receiverId uint,
 		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
 	}
 
-	return notification, nil
+	response := &res.CreateNotificationResponse{
+		ID:           notification.ID,
+		SenderID:     notification.SenderId,
+		ReceiverID:   notification.ReceiverId,
+		Content:      notification.Content,
+		AlarmType:    string(notification.AlarmType),
+		InviteType:   string(notification.InviteType),
+		RequestType:  string(notification.RequestType),
+		CompanyId:    notification.CompanyId,
+		DepartmentId: notification.DepartmentId,
+		TeamId:       notification.TeamId,
+		Title:        notification.Title,
+		IsRead:       notification.IsRead,
+		Status:       notification.Status,
+		CreatedAt:    notification.CreatedAt.Format(time.DateTime),
+	}
+
+	return response, nil
 }
 
-//TODO 알림 저장 usecase -> 초대 : 초대는 어떤 초대인지 유형에 따라 분기처리
+// TODO 알림 저장 usecase -> 초대 : 초대는 어떤 초대인지 유형에 따라 분기처리
+func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
+	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
+	if err != nil {
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+	}
+	if len(users) != 2 {
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+	}
 
-//TODO 알림 저장 usecase -> 요청 : 요청은 어떤 요청인지 유형에 따라 분기처리
+	if req.InviteType == "" {
+		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다")
+	}
+
+	var notification *entity.Notification
+	notification = &entity.Notification{
+		SenderId:   *users[0].ID,
+		ReceiverId: *users[1].ID,
+		Title:      "Invite",
+		Content:    fmt.Sprintf("%s님이 %s님을 초대했습니다", *users[0].Name, *users[1].Name),
+		AlarmType:  entity.NotificationTypeInvite,
+		InviteType: req.InviteType,
+		IsRead:     false,
+		CreatedAt:  time.Now(),
+	}
+}
+
+// TODO 알림 저장 usecase -> 요청 : 요청은 어떤 요청인지 유형에 따라 분기처리
+func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
+
+}
 
 // TODO 알림 메시지 업데이트 - 읽음 처리, 혹은 초대에 수락 등등
 func (n *notificationUsecase) UpdateNotificationStatus(notificationId uint, isRead bool, status string) (*res.UpdateNotificationStatusResponse, error) {

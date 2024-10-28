@@ -281,53 +281,53 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		h.userUsecase.UpdateUserOnlineStatus(*user.ID, true)
 	}
 	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
-	for {
-		_, messageBytes, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("예기치 않은 WebSocket 종료: %v", err)
-			}
-			break
-		}
+	// for {
+	// 	_, messageBytes, err := conn.ReadMessage()
+	// 	if err != nil {
+	// 		if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+	// 			log.Printf("예기치 않은 WebSocket 종료: %v", err)
+	// 		}
+	// 		break
+	// 	}
 
-		// 수신된 메시지를 처리
-		var message req.NotificationRequest
-		if err := json.Unmarshal(messageBytes, &message); err != nil {
-			log.Printf("메시지 디코딩 실패: %v", err)
-			conn.WriteJSON(res.JsonResponse{
-				Success: false,
-				Message: "메시지 형식이 올바르지 않습니다",
-				Type:    "notification",
-			})
-			continue
-		}
+	// 	// 수신된 메시지를 처리
+	// 	var message req.NotificationRequest
+	// 	if err := json.Unmarshal(messageBytes, &message); err != nil {
+	// 		log.Printf("메시지 디코딩 실패: %v", err)
+	// 		conn.WriteJSON(res.JsonResponse{
+	// 			Success: false,
+	// 			Message: "메시지 형식이 올바르지 않습니다",
+	// 			Type:    "notification",
+	// 		})
+	// 		continue
+	// 	}
 
-		// 알림 생성 -> upsert로 해야함
-		response, err := h.notificationUsecase.CreateNotification(message.SenderId, message.ReceiverId, message.AlarmType)
-		if err != nil {
-			log.Printf("알림 저장 실패: %v", err)
-			conn.WriteJSON(res.JsonResponse{
-				Success: false,
-				Message: "알림 저장 실패",
-				Type:    "notification",
-			})
-			continue
-		}
+	// 	// // 알림 생성 -> upsert로 해야함
+	// 	// response, err := h.notificationUsecase.CreateNotification(message.SenderId, message.ReceiverId, message.AlarmType)
+	// 	// if err != nil {
+	// 	// 	log.Printf("알림 저장 실패: %v", err)
+	// 	// 	conn.WriteJSON(res.JsonResponse{
+	// 	// 		Success: false,
+	// 	// 		Message: "알림 저장 실패",
+	// 	// 		Type:    "notification",
+	// 	// 	})
+	// 	// 	continue
+	// 	// }
 
-		h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
-			Success: true,
-			Type:    "notification",
-			Payload: &res.NotificationPayload{
-				ID:         response.ID,
-				SenderID:   response.SenderId,
-				ReceiverID: response.ReceiverId,
-				Content:    response.Content,
-				CreatedAt:  response.CreatedAt.Format(time.RFC3339),
-				AlarmType:  response.AlarmType,
-				Title:      response.Title,
-				IsRead:     response.IsRead,
-				Status:     response.Status,
-			},
-		})
-	}
+	// 	// h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
+	// 	// 	Success: true,
+	// 	// 	Type:    "notification",
+	// 	// 	Payload: &res.NotificationPayload{
+	// 	// 		ID:         response.ID,
+	// 	// 		SenderID:   response.SenderId,
+	// 	// 		ReceiverID: response.ReceiverId,
+	// 	// 		Content:    response.Content,
+	// 	// 		CreatedAt:  response.CreatedAt.Format(time.RFC3339),
+	// 	// 		AlarmType:  response.AlarmType,
+	// 	// 		Title:      response.Title,
+	// 	// 		IsRead:     response.IsRead,
+	// 	// 		Status:     response.Status,
+	// 	// 	},
+	// 	// })
+	// }
 }

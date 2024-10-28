@@ -9,7 +9,6 @@ import (
 	"link/pkg/ws"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -127,7 +126,7 @@ func (h *CompanyHandler) AddUserToCompany(c *gin.Context) {
 	}
 
 	//TODO 로그 저장(mongoDB에 저장)
-	response, err := h.notificationUsecase.CreateNotification(companyAdminId.(uint), uint(targetUserIdUint), request.Type)
+	response, err := h.notificationUsecase.CreateInvite(request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -139,19 +138,23 @@ func (h *CompanyHandler) AddUserToCompany(c *gin.Context) {
 	}
 
 	//TODO 해당 사용자에게 알림 전송 - 웹소켓 허브에 전송
-	h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
+	h.hub.SendMessageToUser(response.ReceiverID, res.JsonResponse{
 		Success: true,
 		Type:    "notification",
 		Payload: &res.NotificationPayload{
-			ID:         response.ID,
-			SenderID:   response.SenderId,
-			ReceiverID: response.ReceiverId,
-			Content:    response.Content,
-			CreatedAt:  response.CreatedAt.Format(time.RFC3339),
-			AlarmType:  string(response.AlarmType),
-			Title:      response.Title,
-			IsRead:     response.IsRead,
-			Status:     response.Status,
+			ID:           response.ID,
+			SenderID:     response.SenderID,
+			ReceiverID:   response.ReceiverID,
+			Content:      response.Content,
+			AlarmType:    string(response.AlarmType),
+			InviteType:   string(response.InviteType),
+			CompanyId:    response.CompanyId,
+			DepartmentId: response.DepartmentId,
+			TeamId:       response.TeamId,
+			Title:        response.Title,
+			IsRead:       response.IsRead,
+			Status:       response.Status,
+			CreatedAt:    response.CreatedAt,
 		},
 	})
 

@@ -3,17 +3,17 @@ package req
 type InviteType string
 
 const (
-	InviteTypeCompany    InviteType = "company"
-	InviteTypeDepartment InviteType = "department"
-	InviteTypeProject    InviteType = "team"
+	InviteTypeCompany    InviteType = "COMPANY"
+	InviteTypeDepartment InviteType = "DEPARTMENT"
+	InviteTypeProject    InviteType = "TEAM"
 )
 
 type RequestType string
 
 const (
-	RequestTypeCompany    RequestType = "company"
-	RequestTypeDepartment RequestType = "department"
-	RequestTypeProject    RequestType = "team"
+	RequestTypeCompany    RequestType = "COMPANY"
+	RequestTypeDepartment RequestType = "DEPARTMENT"
+	RequestTypeProject    RequestType = "TEAM"
 )
 
 type NotificationRequest struct {
