@@ -1,7 +1,6 @@
 package interceptor
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -73,8 +72,6 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		fmt.Println("claims:", claims)
 
 		// Access Token 재발급
 		newAccessToken, err := util.GenerateAccessToken(claims.Name, claims.Email, claims.UserId)
