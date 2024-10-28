@@ -38,6 +38,17 @@ func InitAdminUser(db *gorm.DB) {
 					Role:     model.RoleAdmin, // 시스템 관리자 권한 설정
 					// DepartmentID, TeamID, Group 필드를 설정하지 않음 (NULL 허용)
 				}
+
+				companyID := uint(1)
+				imageUrl := os.Getenv("DEFAULT_PROFILE_IMAGE_URL")
+
+				admin.UserProfile = &model.UserProfile{
+					UserID:       admin.ID,
+					CompanyID:    &companyID,
+					IsSubscribed: true,
+					Image:        &imageUrl,
+				}
+
 				if err := tx.Create(&admin).Error; err != nil {
 					return err
 				}

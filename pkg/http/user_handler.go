@@ -253,6 +253,7 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	searchReq.Nickname = decodedNickname
 
 	// 사용자 검색
+	//TODO 검색 조건 나중에 회사사람만 검색가능하도록 해야함
 	users, err := h.userUsecase.SearchUser(&searchReq)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {

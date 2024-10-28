@@ -10,7 +10,6 @@ import (
 	"link/internal/auth/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
-	"link/pkg/dto/res"
 	"link/pkg/util"
 )
 
@@ -30,7 +29,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.authUsecase.SignIn(&request)
+	response, token, err := h.authUsecase.SignIn(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -38,14 +37,6 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
 		}
 		return
-	}
-
-	response := res.LoginUserResponse{
-		ID:        *user.ID,
-		Email:     *user.Email,
-		Name:      *user.Name,
-		Role:      uint(user.Role),
-		CompanyID: *user.UserProfile.CompanyID,
 	}
 
 	//! 도메인 다를 때 사용

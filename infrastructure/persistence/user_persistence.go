@@ -344,8 +344,7 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 	var users []model.User
 
 	// 기본 쿼리: 관리자를 제외함 (role != 1)
-	query := r.db.Where("role != ?", 1)
-
+	query := r.db.Where("role != ? AND role != ?", 1, 2)
 	// 이메일이 입력된 경우 이메일로 검색 조건 추가
 	if user.Email != nil {
 		query = query.Where("email LIKE ?", "%"+*user.Email+"%")
