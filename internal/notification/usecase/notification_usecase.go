@@ -6,7 +6,12 @@ import (
 	"time"
 
 	"link/internal/notification/entity"
+
+	_companyRepo "link/internal/company/repository"
+	_departmentRepo "link/internal/department/repository"
 	_notificationRepo "link/internal/notification/repository"
+	_teamRepo "link/internal/team/repository"
+
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -24,6 +29,9 @@ type NotificationUsecase interface {
 type notificationUsecase struct {
 	notificationRepo _notificationRepo.NotificationRepository
 	userRepo         _userRepo.UserRepository
+	companyRepo      _companyRepo.CompanyRepository
+	departmentRepo   _departmentRepo.DepartmentRepository
+	teamRepo         _teamRepo.TeamRepository
 }
 
 func NewNotificationUsecase(notificationRepo _notificationRepo.NotificationRepository, userRepo _userRepo.UserRepository) NotificationUsecase {
@@ -99,25 +107,58 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다")
 	}
 
+	var Content string
+	var CompanyName string
+	var DepartmentName string
+	var TeamName string
+
+	if string(req.InviteType) == "COMPANY" {
+		CompanyInfo, err := n.companyRepo.GetCompanyByID(req.CompanyID)
+		if err != nil {
+			return nil, common.NewError(http.StatusInternalServerError, "회사 정보 조회에 실패했습니다")
+		}
+		CompanyName = CompanyInfo.CpName
+		Content = fmt.Sprintf("%s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, CompanyName)
+	} else if string(req.InviteType) == "DEPARTMENT" {
+		DepartmentInfo, err := n.departmentRepo.GetDepartmentByID(req.DepartmentID)
+		if err != nil {
+			return nil, common.NewError(http.StatusInternalServerError, "부서 정보 조회에 실패했습니다")
+		}
+		DepartmentName = DepartmentInfo.Name
+		Content = fmt.Sprintf("%s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, DepartmentName)
+	} else if string(req.InviteType) == "TEAM" {
+		TeamInfo, err := n.teamRepo.GetTeamByID(req.TeamID)
+		if err != nil {
+			return nil, common.NewError(http.StatusInternalServerError, "팀 정보 조회에 실패했습니다")
+		}
+		TeamName = TeamInfo.Name
+		Content = fmt.Sprintf("%s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, TeamName)
+	}
+
 	notification := &entity.Notification{
-		SenderId:     *users[0].ID,
-		ReceiverId:   *users[1].ID,
-		Title:        "INVITE",
-		Content:      fmt.Sprintf("%s님이 %s님을 초대했습니다", *users[0].Name, *users[1].Name),
-		AlarmType:    "INVITE",
-		InviteType:   string(req.InviteType),
-		CompanyId:    req.CompanyID,
-		DepartmentId: req.DepartmentID,
-		TeamId:       req.TeamID,
-		Status:       "PENDING",
-		IsRead:       false,
-		CreatedAt:    time.Now(),
+		SenderId:       *users[0].ID,
+		ReceiverId:     *users[1].ID,
+		Title:          "INVITE",
+		Content:        Content,
+		AlarmType:      "INVITE",
+		InviteType:     string(req.InviteType),
+		CompanyId:      req.CompanyID,
+		CompanyName:    CompanyName,
+		DepartmentId:   req.DepartmentID,
+		DepartmentName: DepartmentName,
+		TeamId:         req.TeamID,
+		TeamName:       TeamName,
+		Status:         "PENDING",
+		IsRead:         false,
+		CreatedAt:      time.Now(),
 	}
 
 	notification, err = n.notificationRepo.CreateNotification(notification)
 	if err != nil {
 		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
 	}
+
+	//TODO 회사 초대 , 혹은 부서 초대, 팀 초대라면 메시지 달라야하고,
 
 	response := &res.CreateNotificationResponse{
 		ID:           notification.ID,
@@ -136,7 +177,6 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		CreatedAt:    notification.CreatedAt.Format(time.DateTime),
 	}
 
-	fmt.Println("response")
 	return response, nil
 }
 
@@ -227,7 +267,6 @@ func (n *notificationUsecase) UpdateNotificationStatus(notificationId string, st
 		Content := fmt.Sprintf("%d님이 초대를 수락했습니다", updatedNotification.ReceiverId)
 
 		// 응답 데이터 생성 및 반환
-		// TODO 응답이니 보내는 사람이 반대로 되어야함
 		response := &res.UpdateNotificationStatusResponse{
 			ID:         updatedNotification.ID,
 			SenderID:   updatedNotification.ReceiverId,

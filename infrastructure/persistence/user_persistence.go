@@ -220,6 +220,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		Email:    &user.Email,
 		Nickname: &user.Nickname,
 		Name:     &user.Name,
+		Phone:    &user.Phone,
 		Role:     entity.UserRole(user.Role),
 		UserProfile: &entity.UserProfile{
 			Image:        user.UserProfile.Image,

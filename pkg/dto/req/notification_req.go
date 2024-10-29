@@ -24,10 +24,10 @@ type NotificationRequest struct {
 	Type         string      `json:"type" binding:"required"`       // 웹소켓 종류 (e.g., "notification", "chat")
 	AlarmType    string      `json:"alarm_type" binding:"required"` // 알림 타입 ("mention", "invite",  "request", "accept","reject")
 	InviteType   InviteType  `json:"invite_type,omitempty"`
-	RequestType  RequestType `json:"request_type,omitempty"` //TODO 사내에서만 요청  ("company","department","team")
-	CompanyID    uint        `json:"company_id,omitempty"`
-	DepartmentID uint        `json:"department_id,omitempty"`
-	TeamID       uint        `json:"team_id,omitempty"`
+	RequestType  RequestType `json:"request_type,omitempty"`  //TODO 사내에서만 요청  ("company","department","team")
+	CompanyID    uint        `json:"company_id,omitempty"`    //TODO 회사 초대인 경우
+	DepartmentID uint        `json:"department_id,omitempty"` //TODO 부서 초대인 경우
+	TeamID       uint        `json:"team_id,omitempty"`       //TODO 팀 초대인 경우
 }
 
 type UpdateNotificationStatusRequest struct {

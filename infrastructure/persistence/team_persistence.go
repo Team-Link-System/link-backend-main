@@ -69,3 +69,11 @@ func (p *teamPersistence) GetTeamByID(teamID uint) (*entity.Team, error) {
 	}
 	return &team, nil
 }
+
+func (p *teamPersistence) GetTeamInfo(teamID uint) (*entity.Team, error) {
+	var team entity.Team
+	if err := p.db.Preload("Company").Preload("Department").Where("id = ?", teamID).First(&team).Error; err != nil {
+		return nil, err
+	}
+	return &team, nil
+}

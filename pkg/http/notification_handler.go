@@ -41,6 +41,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "알림 조회 성공", notifications))
 }
 
+// TODO 초대 및 알림 허용 및 거절
 func (h *NotificationHandler) UpdateNotificationStatus(c *gin.Context) {
 	var request req.UpdateNotificationStatusRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
