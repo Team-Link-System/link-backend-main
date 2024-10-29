@@ -11,4 +11,5 @@ type NotificationRepository interface {
 	GetNotificationByID(notificationId string) (*entity.Notification, error)
 
 	UpdateNotificationStatus(notification *entity.Notification) (*entity.Notification, error)
+	UpdateNotificationReadStatus(notification *entity.Notification) (*entity.Notification, error)
 }

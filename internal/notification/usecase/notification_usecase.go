@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 
 	"link/internal/notification/entity"
@@ -24,7 +25,8 @@ type NotificationUsecase interface {
 	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
-	UpdateNotificationStatus(notificationId string, status string) (*res.UpdateNotificationStatusResponse, error)
+	UpdateInviteNotificationStatus(receiverId uint, notificationId string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
+	UpdateNotificationReadStatus(receiverId uint, notificationId string) error
 }
 
 type notificationUsecase struct {
@@ -43,6 +45,11 @@ func NewNotificationUsecase(
 	teamRepo _teamRepo.TeamRepository) NotificationUsecase {
 	return &notificationUsecase{notificationRepo: notificationRepo, userRepo: userRepo, companyRepo: companyRepo, departmentRepo: departmentRepo, teamRepo: teamRepo}
 }
+
+// TODO 알림저장 기본 알림 처리 함수
+// func (n *notificationUsecase) CreateDefaultNotification(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
+
+// }
 
 // TODO 알림저장 usecase 멘션 -- 수정해야함
 func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
@@ -96,18 +103,27 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 
 	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
 	if err != nil {
+		log.Println("senderId 또는 receiverId가 존재하지 않습니다")
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
 	}
 
 	if len(users) != 2 {
+		log.Println("senderId 또는 receiverId가 존재하지 않습니다")
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
 	}
 
+	if users[1].UserProfile.CompanyID != nil {
+		log.Println("receiverId가 회사에 속해있습니다")
+		return nil, common.NewError(http.StatusBadRequest, "receiverId가 회사에 속해있습니다")
+	}
+
 	if users[0].Role > 3 {
+		log.Println("senderId가 관리자가 아닙니다")
 		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다")
 	}
 
 	if req.InviteType == "" {
+		log.Println("invite_type이 필요합니다")
 		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다")
 	}
 
@@ -117,7 +133,6 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	var TeamName string
 
 	if string(req.InviteType) == "COMPANY" {
-
 		CompanyInfo, err := n.companyRepo.GetCompanyByID(uint(req.CompanyID))
 		if err != nil {
 			log.Println("회사 정보 조회 오류", err)
@@ -242,14 +257,17 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 	return response, nil
 }
 
-// TODO 알림 메시지 업데이트 - 읽음 처리, 혹은 초대에 수락 등등
-func (n *notificationUsecase) UpdateNotificationStatus(notificationId string, status string) (*res.UpdateNotificationStatusResponse, error) {
-
-	//TODO string ->
+// TODO 알림 메시지 상태 업데이트 - 수락 및 거절 초대 요청 분리
+func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, notificationId string, status string) (*res.UpdateNotificationStatusResponseMessage, error) {
 	// 알림 존재 여부 확인
 	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
 	if err != nil || notification == nil {
 		return nil, common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다")
+	}
+
+	if notification.ReceiverId != receiverId {
+		log.Println("알림 수신자가 아닙니다")
+		return nil, common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다")
 	}
 
 	if notification.Status == "ACCEPTED" || notification.Status == "REJECTED" {
@@ -269,48 +287,168 @@ func (n *notificationUsecase) UpdateNotificationStatus(notificationId string, st
 		return nil, common.NewError(http.StatusInternalServerError, "알림 상태 업데이트에 실패했습니다")
 	}
 
-	if status == "ACCEPTED" {
-		//TODO 수락했다는 메시지
-		Title := "ACCEPTED"
-		Content := fmt.Sprintf("[ACCEPTED] %d님이 초대를 수락했습니다", updatedNotification.ReceiverId)
+	users, err := n.userRepo.GetUserByIds([]uint{updatedNotification.SenderId, updatedNotification.ReceiverId})
+	if err != nil {
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+	}
 
-		//TODO 응답 데이터 생성 및 반환 -> 수신자 발신자 반대로
-		response := &res.UpdateNotificationStatusResponse{
-			ID:         updatedNotification.ID,
-			SenderID:   updatedNotification.ReceiverId,
-			ReceiverID: updatedNotification.SenderId,
+	// 두 사용자가 모두 존재하는지 확실히 체크
+	if len(users) != 2 {
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+	}
+
+	//TODO -> receiver가 회사가 속해있는지 확인
+	//TODO 상대방에게 응답한 내용 DB에 저장 및 전송
+	if status == "ACCEPTED" && users[1].UserProfile.CompanyID == nil {
+		//TODO 수신자 정보 업데이트
+		Title := "ACCEPTED"
+		Content := fmt.Sprintf("[ACCEPTED] %s님이 %s님의 [%s] 초대를 수락했습니다", *users[1].Name, *users[0].Name, updatedNotification.InviteType)
+		if updatedNotification.InviteType == "COMPANY" {
+			users[1].UserProfile.CompanyID = &updatedNotification.CompanyId
+		} else if updatedNotification.InviteType == "DEPARTMENT" {
+			existingDepartmentIDs := make(map[uint]bool)
+			for _, dept := range users[1].UserProfile.Departments {
+				existingDepartmentIDs[(*dept)["id"].(uint)] = true
+			}
+			if !existingDepartmentIDs[updatedNotification.DepartmentId] {
+				departmentMap := map[string]interface{}{"id": updatedNotification.DepartmentId}
+				users[1].UserProfile.Departments = append(users[1].UserProfile.Departments, &departmentMap)
+			}
+		} else if updatedNotification.InviteType == "TEAM" {
+
+			existingTeamIDs := make(map[uint]bool)
+			for _, team := range users[1].UserProfile.Teams {
+				existingTeamIDs[(*team)["id"].(uint)] = true
+			}
+
+			if !existingTeamIDs[updatedNotification.TeamId] {
+				teamMap := map[string]interface{}{"id": updatedNotification.TeamId}
+				users[1].UserProfile.Teams = append(users[1].UserProfile.Teams, &teamMap)
+			}
+		}
+
+		fmt.Println(reflect.TypeOf(users[1].UserProfile.Departments))
+		fmt.Println(reflect.TypeOf(users[1].UserProfile.Teams))
+
+		//TODO 수신자 정보 업데이트
+		err := n.userRepo.UpdateUser(*users[1].ID, map[string]interface{}{}, map[string]interface{}{
+			"company_id":     updatedNotification.CompanyId,
+			"department_ids": users[1].UserProfile.Departments,
+			"team_ids":       users[1].UserProfile.Teams,
+		})
+		if err != nil {
+			log.Println("수신자 정보 업데이트 오류", err)
+			return nil, common.NewError(http.StatusInternalServerError, "수신자 정보 업데이트에 실패했습니다")
+		}
+
+		//TODO INVITE는 일반 사용자 처리하는 것 이므로 receiver를 업데이트 해야하고,
+		//TODO  요청에 대한 응답 저장
+		notification := &entity.Notification{
+			SenderId:    updatedNotification.ReceiverId,
+			ReceiverId:  updatedNotification.SenderId,
+			Title:       Title,
+			Content:     Content,
+			AlarmType:   "RESPONSE",
+			InviteType:  updatedNotification.InviteType,
+			RequestType: updatedNotification.RequestType,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+		responseNotification, err := n.notificationRepo.CreateNotification(notification)
+
+		//TODO 이제 각 처리에 대한 사용자 업데이트 -> (나중에 pub/sub으로 처리 [옵션])
+
+		if err != nil {
+			log.Println("요청에 대한 응답 알림 생성 오류", err)
+			return nil, common.NewError(http.StatusInternalServerError, "요청에 대한 응답 알림 생성에 실패했습니다")
+		}
+
+		response := &res.UpdateNotificationStatusResponseMessage{
+			ID:         responseNotification.ID,
+			SenderID:   responseNotification.SenderId,
+			ReceiverID: responseNotification.ReceiverId,
 			Title:      Title,
 			Content:    Content,
-			AlarmType:  string(updatedNotification.AlarmType),
-			IsRead:     updatedNotification.IsRead,
-			Status:     updatedNotification.Status,
-			CreatedAt:  updatedNotification.CreatedAt.Format(time.DateTime),
-			UpdatedAt:  updatedNotification.UpdatedAt.Format(time.DateTime),
+			AlarmType:  string(responseNotification.AlarmType),
+			IsRead:     responseNotification.IsRead,
+			Status:     responseNotification.Status,
+			CreatedAt:  responseNotification.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  responseNotification.UpdatedAt.Format(time.DateTime),
 		}
 
 		return response, nil
-	} else if status == "REJECTED" {
+	} else if status == "REJECTED" || users[1].UserProfile.CompanyID != nil {
 		//TODO 거절했다는 메시지
 		Title := "REJECTED"
-		Content := fmt.Sprintf("%d님이 초대를 거절했습니다", updatedNotification.ReceiverId)
+		Content := fmt.Sprintf("[REJECTED] %s님이 %s님의 [%s] 초대를 거절했습니다", *users[1].Name, *users[0].Name, updatedNotification.InviteType)
+		// Create a new notification for the rejection response
+		notification := &entity.Notification{
+			SenderId:    updatedNotification.ReceiverId,
+			ReceiverId:  updatedNotification.SenderId,
+			Title:       Title,
+			Content:     Content,
+			AlarmType:   "RESPONSE",
+			InviteType:  updatedNotification.InviteType,
+			RequestType: updatedNotification.RequestType,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
 
-		response := &res.UpdateNotificationStatusResponse{
-			ID:         updatedNotification.ID,
-			SenderID:   updatedNotification.ReceiverId,
-			ReceiverID: updatedNotification.SenderId,
+		//TODO 응답 데이터 생성 및 반환 -> 수신자 발신자 반대로 DB 저장
+		responseNotification, err := n.notificationRepo.CreateNotification(notification)
+		if err != nil {
+			log.Println("거절 응답 알림 생성 오류", err)
+			return nil, common.NewError(http.StatusInternalServerError, "거절 응답 알림 생성에 실패했습니다")
+		}
+
+		response := &res.UpdateNotificationStatusResponseMessage{
+			ID:         responseNotification.ID,
+			SenderID:   responseNotification.SenderId,
+			ReceiverID: responseNotification.ReceiverId,
 			Title:      Title,
 			Content:    Content,
-			AlarmType:  string(updatedNotification.AlarmType),
-			IsRead:     updatedNotification.IsRead,
-			Status:     updatedNotification.Status,
-			CreatedAt:  updatedNotification.CreatedAt.Format(time.DateTime),
-			UpdatedAt:  updatedNotification.UpdatedAt.Format(time.DateTime),
+			AlarmType:  string(responseNotification.AlarmType),
+			IsRead:     responseNotification.IsRead,
+			Status:     responseNotification.Status,
+			CreatedAt:  responseNotification.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  responseNotification.UpdatedAt.Format(time.DateTime),
 		}
 
 		return response, nil
 	}
 
 	return nil, nil
+}
+
+//TODO 요청 알림 수락 및 거절 (관리자가 응답하는 것)
+
+// TODO 읽음 처리
+func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
+	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
+	if err != nil || notification == nil {
+		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다")
+	}
+
+	if notification.ReceiverId != receiverId {
+		return common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다")
+	}
+
+	notification.IsRead = true
+	notification.UpdatedAt = time.Now()
+
+	//TODO entity 변경
+	updatedNotification := &entity.Notification{
+		ID:        notification.ID,
+		IsRead:    true,
+		UpdatedAt: time.Now(),
+	}
+
+	_, err = n.notificationRepo.UpdateNotificationReadStatus(updatedNotification)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다")
+	}
+
+	return nil
 }
 
 func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notification, error) {

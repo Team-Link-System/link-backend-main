@@ -13,7 +13,7 @@ type Notification struct {
 	Title          string             `json:"title,omitempty"`
 	Status         string             `json:"status,omitempty" default:"pending"` // Status 값 ("pending", "accepted", "rejected","request" 등)
 	Content        string             `json:"content,omitempty"`
-	AlarmType      string             `json:"alarm_type" binding:"required"`     // 알림 타입 ("mention", "invite")
+	AlarmType      string             `json:"alarm_type" binding:"required"`     // 알림 타입 ("mention", "invite", "request", "response")
 	IsRead         bool               `json:"is_read,omitempty" default:"false"` // 읽음 여부
 	InviteType     string             `json:"invite_type,omitempty"`
 	RequestType    string             `json:"request_type,omitempty"`

@@ -142,7 +142,9 @@ func main() {
 			{
 				// notification.POST("", notificationHandler.CreateNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
-				notification.PUT("/status", notificationHandler.UpdateNotificationStatus) //! 알림 거절 및 수락
+				notification.PUT("/invite/status", notificationHandler.UpdateInviteNotificationStatus) //! 초대 알림 수락 및 거절
+				// notification.PUT("/request/status", notificationHandler.UpdateRequestNotificationStatus)    //! 요청 알림 수락 및 거절
+				notification.PUT("/:notificationId/read", notificationHandler.UpdateNotificationReadStatus) //! 알림 읽음 처리
 			}
 
 			post := protectedRoute.Group("post")
