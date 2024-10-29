@@ -51,6 +51,7 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 	//트랜잭션 시작
 	tx := r.db.Begin()
 	if tx.Error != nil {
+		log.Printf("트랜잭션 시작 중 DB 오류: %v", tx.Error)
 		return fmt.Errorf("트랜잭션 시작 중 DB 오류: %w", tx.Error)
 	}
 
@@ -63,6 +64,7 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 
 	// 사용자 생성
 	if err := tx.Omit(userOmitFields...).Create(modelUser).Error; err != nil {
+		log.Printf("사용자 생성중 DB 오류: %v", err)
 		tx.Rollback()
 		return fmt.Errorf("사용자 생성 중 DB 오류: %w", err)
 	}
@@ -91,13 +93,18 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 		}
 	}
 
+	fmt.Println("modelUser")
+	fmt.Println(modelUserProfile)
+
 	// 프로필 생성
 	if err := tx.Omit(profileOmitFields...).Create(modelUserProfile).Error; err != nil {
 		tx.Rollback()
+		log.Printf("사용자 프로필 생성 중 DB 오류: %v", err)
 		return fmt.Errorf("사용자 프로필 생성 중 DB 오류: %w", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {
+		log.Printf("트랜잭션 커밋 중 DB 오류: %v", err)
 		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
 	}
 

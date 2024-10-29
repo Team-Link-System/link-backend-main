@@ -1,10 +1,9 @@
 package http
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -31,18 +30,10 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 
 	// 요청 바디 검증
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Printf("회원가입 요청 바디 검증 오류: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
 		return
 	}
-
-	//TODO 회원가입 시 기본 이미지 설정
-	imageUrl := os.Getenv("DEFAULT_PROFILE_IMAGE_URL")
-
-	if request.UserProfile == nil {
-		request.UserProfile = &req.UserProfile{}
-	}
-
-	request.UserProfile.Image = &imageUrl
 
 	response, err := h.userUsecase.RegisterUser(&request)
 	if err != nil {
@@ -159,8 +150,6 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		imageURL := profileImageUrl.(string)
 		request.Image = &imageURL
 	}
-
-	fmt.Printf("Received request: %+v\n", request)
 
 	// DTO를 Usecase에 전달
 	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId.(uint), &request)
