@@ -60,7 +60,7 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*res.Regis
 		Phone:    &request.Phone,
 		Role:     entity.RoleUser,
 		UserProfile: &entity.UserProfile{
-			Image: request.UserProfile.Image,
+			IsSubscribed: false,
 		},
 	}
 
