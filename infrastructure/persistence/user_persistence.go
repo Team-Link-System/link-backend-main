@@ -403,25 +403,8 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 	return entityUsers, nil
 }
 
-func (r *userPersistence) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
-	var users []entity.User
+//! 회사
 
-	if err := r.db.Where("department_id = ?", departmentId).Find(&users).Error; err != nil {
-		return nil, fmt.Errorf("부서 사용자 조회 중 DB 오류: %w", err)
-	}
-
-	return users, nil
-}
-
-// 유저상태 업데이트
-func (r *userPersistence) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return r.db.Model(&entity.User{}).
-		Where("id = ?", userId).
-		Omit("updated_at").
-		Update("is_online", online).Error
-}
-
-// !---------------------------------------------- 관리자 관련
 // TODO 회사 사용자 조회 (일반 사용자, 회사 관리자 포함)
 func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, error) {
 	var users []entity.User
@@ -542,6 +525,93 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 
 	return users, nil
 }
+
+// ! 부서
+func (r *userPersistence) CreateUserDepartment(userId uint, departmentId uint) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("트랜잭션 시작 중 오류: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 사용자 프로필 조회
+	var userProfile model.UserProfile
+	if err := tx.Where("user_id = ?", userId).First(&userProfile).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("사용자 프로필 조회 중 오류: %w", err)
+	}
+
+	// 부서 조회
+	var department model.Department
+	if err := tx.First(&department, departmentId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("부서 조회 중 오류: %w", err)
+	}
+
+	// Association 추가
+	if err := tx.Model(&userProfile).Association("Departments").Append(&department); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("부서 할당 중 오류: %w", err)
+	}
+
+	return tx.Commit().Error
+}
+
+func (r *userPersistence) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
+	var users []entity.User
+
+	if err := r.db.Where("department_id = ?", departmentId).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("부서 사용자 조회 중 DB 오류: %w", err)
+	}
+
+	return users, nil
+}
+
+// ! 팀
+func (r *userPersistence) CreateUserTeam(userId uint, teamId uint) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("트랜잭션 시작 중 오류: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var userProfile model.UserProfile
+	if err := tx.Where("user_id = ?", userId).First(&userProfile).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("사용자 프로필 조회 중 오류: %w", err)
+	}
+
+	var team model.Team
+	if err := tx.First(&team, teamId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("팀 조회 중 오류: %w", err)
+	}
+
+	if err := tx.Model(&userProfile).Association("Teams").Append(&team); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("팀 할당 중 오류: %w", err)
+	}
+
+	return tx.Commit().Error
+}
+
+// 유저상태 업데이트
+func (r *userPersistence) UpdateUserOnlineStatus(userId uint, online bool) error {
+	return r.db.Model(&entity.User{}).
+		Where("id = ?", userId).
+		Omit("updated_at").
+		Update("is_online", online).Error
+}
+
+// !---------------------------------------------- 관리자 관련
 
 func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error) {
 	var users []model.User

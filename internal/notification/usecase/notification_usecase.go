@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"reflect"
 	"time"
 
 	"link/internal/notification/entity"
@@ -305,6 +304,12 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		Content := fmt.Sprintf("[ACCEPTED] %s님이 %s님의 [%s] 초대를 수락했습니다", *users[1].Name, *users[0].Name, updatedNotification.InviteType)
 		if updatedNotification.InviteType == "COMPANY" {
 			users[1].UserProfile.CompanyID = &updatedNotification.CompanyId
+			//TODO 사용자 정보에 회사 추가
+			err = n.userRepo.UpdateUser(*users[1].ID, nil, map[string]interface{}{"company_id": updatedNotification.CompanyId})
+			if err != nil {
+				return nil, common.NewError(http.StatusInternalServerError, "회사 추가에 실패했습니다")
+			}
+
 		} else if updatedNotification.InviteType == "DEPARTMENT" {
 			existingDepartmentIDs := make(map[uint]bool)
 			for _, dept := range users[1].UserProfile.Departments {
@@ -313,9 +318,16 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			if !existingDepartmentIDs[updatedNotification.DepartmentId] {
 				departmentMap := map[string]interface{}{"id": updatedNotification.DepartmentId}
 				users[1].UserProfile.Departments = append(users[1].UserProfile.Departments, &departmentMap)
+
+				//TODO 여기서 사용자_부서 중간테이블에서 추가하는 로직
+				// 사용자-부서 중간테이블에 추가
+				err = n.userRepo.CreateUserDepartment(*users[1].ID, updatedNotification.DepartmentId)
+				if err != nil {
+					return nil, common.NewError(http.StatusInternalServerError, "부서 할당에 실패했습니다")
+				}
+
 			}
 		} else if updatedNotification.InviteType == "TEAM" {
-
 			existingTeamIDs := make(map[uint]bool)
 			for _, team := range users[1].UserProfile.Teams {
 				existingTeamIDs[(*team)["id"].(uint)] = true
@@ -324,25 +336,15 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			if !existingTeamIDs[updatedNotification.TeamId] {
 				teamMap := map[string]interface{}{"id": updatedNotification.TeamId}
 				users[1].UserProfile.Teams = append(users[1].UserProfile.Teams, &teamMap)
+				//TODO 여기서 사용자_팀 중간테이블에서 추가하는 로직
+				err = n.userRepo.CreateUserTeam(*users[1].ID, updatedNotification.TeamId)
+				if err != nil {
+					return nil, common.NewError(http.StatusInternalServerError, "팀 할당에 실패했습니다")
+				}
 			}
 		}
 
-		fmt.Println(reflect.TypeOf(users[1].UserProfile.Departments))
-		fmt.Println(reflect.TypeOf(users[1].UserProfile.Teams))
-
-		//TODO 수신자 정보 업데이트
-		err := n.userRepo.UpdateUser(*users[1].ID, map[string]interface{}{}, map[string]interface{}{
-			"company_id":     updatedNotification.CompanyId,
-			"department_ids": users[1].UserProfile.Departments,
-			"team_ids":       users[1].UserProfile.Teams,
-		})
-		if err != nil {
-			log.Println("수신자 정보 업데이트 오류", err)
-			return nil, common.NewError(http.StatusInternalServerError, "수신자 정보 업데이트에 실패했습니다")
-		}
-
 		//TODO INVITE는 일반 사용자 처리하는 것 이므로 receiver를 업데이트 해야하고,
-		//TODO  요청에 대한 응답 저장
 		notification := &entity.Notification{
 			SenderId:    updatedNotification.ReceiverId,
 			ReceiverId:  updatedNotification.SenderId,
