@@ -61,11 +61,13 @@ func main() {
 	err := container.Invoke(func(
 		userHandler *handlerHttp.UserHandler,
 		authHandler *handlerHttp.AuthHandler,
+
+		companyHandler *handlerHttp.CompanyHandler,
 		departmentHandler *handlerHttp.DepartmentHandler,
 		chatHandler *handlerHttp.ChatHandler,
 		notificationHandler *handlerHttp.NotificationHandler,
 		postHandler *handlerHttp.PostHandler,
-		companyHandler *handlerHttp.CompanyHandler,
+
 		adminHandler *handlerHttp.AdminHandler,
 
 		imageUploadMiddleware *middleware.ImageUploadMiddleware,
@@ -122,6 +124,11 @@ func main() {
 				user.GET("/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
 			}
+
+			company := protectedRoute.Group("company")
+			{
+				company.POST("/:companyId/:userId/invite", companyHandler.AddUserToCompany)
+			}
 			department := protectedRoute.Group("department")
 			{
 				department.POST("", departmentHandler.CreateDepartment)
@@ -135,6 +142,7 @@ func main() {
 			{
 				// notification.POST("", notificationHandler.CreateNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
+				notification.PUT("/status", notificationHandler.UpdateNotificationStatus) //! 알림 거절 및 수락
 			}
 
 			post := protectedRoute.Group("post")

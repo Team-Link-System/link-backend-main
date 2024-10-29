@@ -1,16 +1,36 @@
 package req
 
-// // CreateNotificationRequest 구조체
-// type CreateNotificationRequest struct {
-// 	SenderId   uint   `json:"sender_id" binding:"required"`
-// 	ReceiverId uint   `json:"receiver_id" binding:"required"`
-// 	Type       string `json:"type" binding:"required"` // 알림 종류 (e.g., "mention", "invite", "message")
-// }
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
+type InviteType string
+
+const (
+	InviteTypeCompany    InviteType = "COMPANY"
+	InviteTypeDepartment InviteType = "DEPARTMENT"
+	InviteTypeProject    InviteType = "TEAM"
+)
+
+type RequestType string
+
+const (
+	RequestTypeCompany    RequestType = "COMPANY"
+	RequestTypeDepartment RequestType = "DEPARTMENT"
+	RequestTypeProject    RequestType = "TEAM"
+)
 
 type NotificationRequest struct {
-	SenderId   uint   `json:"sender_id" binding:"required"`
-	ReceiverId uint   `json:"receiver_id" binding:"required"`
-	Type       string `json:"type" binding:"required"`       // 웹소켓 종류 (e.g., "notification", "chat")
-	AlarmType  string `json:"alarm_type" binding:"required"` // 알림 타입 ("mention", "invite", "message", "request")
-	//TODO request는 관리자에게 요청
+	SenderId     uint        `json:"sender_id" binding:"required"`
+	ReceiverId   uint        `json:"receiver_id" binding:"required"`
+	Type         string      `json:"type" binding:"required"`       // 웹소켓 종류 (e.g., "notification", "chat")
+	AlarmType    string      `json:"alarm_type" binding:"required"` // 알림 타입 ("mention", "invite",  "request", "accept","reject")
+	InviteType   InviteType  `json:"invite_type,omitempty"`
+	RequestType  RequestType `json:"request_type,omitempty"` //TODO 사내에서만 요청  ("company","department","team")
+	CompanyID    uint        `json:"company_id,omitempty"`
+	DepartmentID uint        `json:"department_id,omitempty"`
+	TeamID       uint        `json:"team_id,omitempty"`
+}
+
+type UpdateNotificationStatusRequest struct {
+	ID     primitive.ObjectID `json:"_id" binding:"required" bson:"_id"`
+	Status string             `json:"status" binding:"required"`
 }

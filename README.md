@@ -38,6 +38,7 @@ link
 │     ├─ depmartment_persistence.go
 │     ├─ notification_persistence.go
 │     ├─ post_persistence.go
+│     ├─ team_persistence.go
 │     └─ user_persistence.go
 ├─ internal
 │  ├─ admin
@@ -89,8 +90,11 @@ link
 │  │     └─ post_usecase.go
 │  ├─ team
 │  │  ├─ entity
+│  │  │  └─ team_entity.go
 │  │  ├─ repository
+│  │  │  └─ team_repository.go
 │  │  └─ usecase
+│  │     └─ team_usecase.go
 │  └─ user
 │     ├─ entity
 │     │  ├─ user_entity.go
@@ -110,13 +114,17 @@ link
 │  │  │  ├─ company_req.go
 │  │  │  ├─ department_req.go
 │  │  │  ├─ notification_req.go
+│  │  │  ├─ post_req.go
 │  │  │  └─ user_req.go
 │  │  └─ res
 │  │     ├─ admin_res.go
 │  │     ├─ auth_res.go
 │  │     ├─ chat_res.go
+│  │     ├─ company_res.go
 │  │     ├─ department_res.go
 │  │     ├─ notification_res.go
+│  │     ├─ post_res.go
+│  │     ├─ team_res.go
 │  │     ├─ user_res.go
 │  │     └─ ws_res.go
 │  ├─ http
@@ -127,14 +135,16 @@ link
 │  │  ├─ department_handler.go
 │  │  ├─ notification_handler.go
 │  │  ├─ post_handler.go
+│  │  ├─ team_handler.go
 │  │  └─ user_handler.go
 │  ├─ interceptor
 │  │  ├─ error_handler.go
 │  │  └─ token_interceptor.go
 │  ├─ middleware
-│  │  └─ profileimage_middleware.go
+│  │  └─ image_middleware.go
 │  ├─ util
 │  │  ├─ jwt.go
+│  │  ├─ optional.go
 │  │  └─ password.go
 │  └─ ws
 │     ├─ ws_handler.go
