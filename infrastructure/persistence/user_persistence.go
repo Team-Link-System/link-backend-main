@@ -231,6 +231,8 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			PositionId:   user.UserProfile.PositionID,
 			// Position:     user.UserProfile.Position,
 		},
+		CreatedAt: &user.CreatedAt,
+		UpdatedAt: &user.UpdatedAt,
 	}
 	return entityUser, nil
 }
