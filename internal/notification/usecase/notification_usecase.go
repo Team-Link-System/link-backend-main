@@ -263,6 +263,7 @@ func (n *notificationUsecase) UpdateNotificationStatus(notificationId string, st
 		return response, nil
 	}
 
+	return nil, nil
 }
 
 func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notification, error) {
