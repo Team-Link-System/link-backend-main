@@ -19,7 +19,14 @@ type UserRepository interface {
 	SearchUser(user *entity.User) ([]entity.User, error)
 
 	GetUsersByCompany(companyId uint) ([]entity.User, error)
+
+	//TODO 부서
+	CreateUserDepartment(userId uint, departmentId uint) error
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+
+	//TODO 팀
+	CreateUserTeam(userId uint, teamId uint) error
+	// GetUsersByTeam(teamId uint) ([]entity.User, error)
 
 	//TODO redis 캐시 관련
 	UpdateCacheUser(userId uint, fields map[string]interface{}) error

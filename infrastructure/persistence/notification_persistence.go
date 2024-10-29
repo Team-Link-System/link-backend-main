@@ -75,3 +75,13 @@ func (r *notificationPersistence) UpdateNotificationStatus(notification *entity.
 
 	return notification, nil
 }
+
+func (r *notificationPersistence) UpdateNotificationReadStatus(notification *entity.Notification) (*entity.Notification, error) {
+	collection := r.db.Database("link").Collection("notifications")
+	_, err := collection.UpdateOne(context.Background(), bson.M{"id": notification.ID}, bson.M{"$set": notification})
+	if err != nil {
+		return nil, fmt.Errorf("알림 읽음 처리에 실패했습니다: %w", err)
+	}
+
+	return notification, nil
+}

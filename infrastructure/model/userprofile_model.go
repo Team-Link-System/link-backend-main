@@ -9,11 +9,11 @@ type UserProfile struct {
 	Birthday     string        `json:"birthday,omitempty" gorm:"default:null"`
 	IsSubscribed bool          `json:"is_subscribed" gorm:"default:false"`
 	CompanyID    *uint         `json:"company_id" gorm:"default:null"`
-	Company      *Company      `gorm:"foreignKey:CompanyID"`
-	Departments  []*Department `gorm:"many2many:user_departments;constraint:OnDelete:CASCADE"` // N:N 관계를 위한 중간 테이블 설정
-	Teams        []*Team       `gorm:"many2many:user_teams;constraint:OnDelete:CASCADE"`
-	PositionID   *uint         `json:"position_id" gorm:"default:null"`
-	Position     *Position     `gorm:"foreignKey:PositionID"`
+	Company      *Company      `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Departments  []*Department `json:"departments,omitempty" gorm:"many2many:user_profile_departments;constraint:OnDelete:CASCADE"` // N:N 관계를 위한 중간 테이블 설정
+	Teams        []*Team       `json:"teams,omitempty" gorm:"many2many:user_profile_teams;constraint:OnDelete:CASCADE"`
+	PositionID   *uint         `json:"position_id,omitempty" gorm:"default:null"`
+	Position     *Position     `json:"position,omitempty" gorm:"foreignKey:PositionID"`
 	CreatedAt    time.Time     `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time
 }

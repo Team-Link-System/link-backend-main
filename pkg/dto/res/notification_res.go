@@ -42,7 +42,7 @@ type CreateNotificationResponse struct {
 	CreatedAt      string             `json:"created_at,omitempty"`
 }
 
-type UpdateNotificationStatusResponse struct {
+type UpdateNotificationStatusResponseMessage struct {
 	ID         primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	SenderID   uint               `json:"sender_id,omitempty"`
 	ReceiverID uint               `json:"receiver_id,omitempty"`
