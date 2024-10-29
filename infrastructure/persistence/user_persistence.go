@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strconv"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
@@ -648,9 +649,30 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 
 // !--------------------------- ! redis 캐시 관련
 func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}) error {
+
 	cacheKey := fmt.Sprintf("user:%d", userId)
+	redisFields := make(map[string]interface{})
+	for key, value := range fields {
+		// 값을 문자열로 변환
+		switch v := value.(type) {
+		case string:
+			redisFields[key] = v
+		case bool:
+			redisFields[key] = strconv.FormatBool(v)
+		case int:
+			redisFields[key] = strconv.Itoa(v)
+		case uint:
+			redisFields[key] = strconv.FormatUint(uint64(v), 10)
+		default:
+			redisFields[key] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	if len(redisFields) == 0 {
+		return nil
+	}
 	// HMSet 명령어로 여러 필드를 한 번에 업데이트
-	if err := r.redisClient.HMSet(context.Background(), cacheKey, fields).Err(); err != nil {
+	if err := r.redisClient.HMSet(context.Background(), cacheKey, redisFields).Err(); err != nil {
 		return fmt.Errorf("redis 사용자 캐시 업데이트 중 오류: %w", err)
 	}
 	return nil

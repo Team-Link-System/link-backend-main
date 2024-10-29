@@ -1,12 +1,14 @@
 package http
 
 import (
+	"fmt"
 	_companyUsecase "link/internal/company/usecase"
 	_notificationUsecase "link/internal/notification/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/ws"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -104,6 +106,7 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 
 	var request req.NotificationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Println("회사 초대 요청 바디 검증 오류", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
 	}
@@ -119,6 +122,8 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	// 	return
 	// }
 
+	fmt.Println("request")
+	fmt.Println(request)
 	//TODO 여기서 저장은 했는데, mongoDB에 저장 하는것도 처리해야함 -> 정합성때문에
 
 	//TODO 로그 저장(mongoDB에 저장)
