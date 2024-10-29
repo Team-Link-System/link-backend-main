@@ -89,17 +89,10 @@ func (h *CompanyHandler) SearchCompany(c *gin.Context) {
 }
 
 // TODO 사용자 Role3 (회사 관리자)가 일반 사용자 초대 요청 처리
-func (h *CompanyHandler) AddUserToCompany(c *gin.Context) {
+func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	companyAdminId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
-		return
-	}
-
-	targetUserId := c.Param("userId")
-	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
 	}
 
@@ -110,21 +103,21 @@ func (h *CompanyHandler) AddUserToCompany(c *gin.Context) {
 	}
 
 	var request req.NotificationRequest
-	request.Type = "notification"
-	request.AlarmType = "invite"
-	request.InviteType = req.InviteTypeCompany
-	request.CompanyID = uint(companyId)
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
 		return
 	}
 
+	request.SenderId = companyAdminId.(uint)
+	request.CompanyID = uint(companyId)
+	request.InviteType = req.InviteTypeCompany
+
 	//TODO 회사에 사용자 추가 (postgres에 저장)
-	err = h.companyUsecase.AddUserToCompany(companyAdminId.(uint), uint(targetUserIdUint), uint(companyId))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
-		return
-	}
+	// err = h.companyUsecase.AddUserToCompany(companyAdminId.(uint), uint(targetUserIdUint), uint(companyId))
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+	// 	return
+	// }
 
 	//TODO 여기서 저장은 했는데, mongoDB에 저장 하는것도 처리해야함 -> 정합성때문에
 
@@ -145,22 +138,22 @@ func (h *CompanyHandler) AddUserToCompany(c *gin.Context) {
 		Success: true,
 		Type:    "notification",
 		Payload: &res.NotificationPayload{
-			ID:         response.ID,
-			SenderID:   response.SenderID,
-			ReceiverID: response.ReceiverID,
-			Content:    response.Content,
-			AlarmType:  string(response.AlarmType),
-			InviteType: string(response.InviteType),
-			CompanyId:  response.CompanyId,
-			// CompanyName:    response.CompanyName,
-			DepartmentId: response.DepartmentId,
-			// DepartmentName: response.DepartmentName,
-			TeamId: response.TeamId,
-			// TeamName:       response.TeamName,
-			Title:     response.Title,
-			IsRead:    response.IsRead,
-			Status:    response.Status,
-			CreatedAt: response.CreatedAt,
+			ID:             response.ID,
+			SenderID:       response.SenderID,
+			ReceiverID:     response.ReceiverID,
+			Content:        response.Content,
+			AlarmType:      string(response.AlarmType),
+			InviteType:     string(response.InviteType),
+			CompanyId:      response.CompanyId,
+			CompanyName:    response.CompanyName,
+			DepartmentId:   response.DepartmentId,
+			DepartmentName: response.DepartmentName,
+			TeamId:         response.TeamId,
+			TeamName:       response.TeamName,
+			Title:          response.Title,
+			IsRead:         response.IsRead,
+			Status:         response.Status,
+			CreatedAt:      response.CreatedAt,
 		},
 	})
 

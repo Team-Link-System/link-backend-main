@@ -127,7 +127,7 @@ func main() {
 
 			company := protectedRoute.Group("company")
 			{
-				company.POST("/:companyId/:userId/invite", companyHandler.AddUserToCompany)
+				company.POST("/:companyId/invite", companyHandler.InviteUserToCompany)
 			}
 			department := protectedRoute.Group("department")
 			{
