@@ -142,6 +142,7 @@ func main() {
 			{
 				// notification.POST("", notificationHandler.CreateNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
+				notification.PUT("/status", notificationHandler.UpdateNotificationStatus) //! 알림 거절 및 수락
 			}
 
 			post := protectedRoute.Group("post")
