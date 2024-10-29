@@ -15,7 +15,7 @@ type RequestType string
 const (
 	RequestTypeCompany    RequestType = "COMPANY"
 	RequestTypeDepartment RequestType = "DEPARTMENT"
-	RequestTypeProject    RequestType = "TEAM"
+	RequestTypeTeam       RequestType = "TEAM"
 )
 
 type NotificationRequest struct {
