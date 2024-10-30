@@ -55,13 +55,16 @@ func (r *companyPersistence) CreateCompany(company *entity.Company) (*entity.Com
 }
 
 // TODO 회사 삭제
-func (r *companyPersistence) DeleteCompany(companyID uint) (*entity.Company, error) {
-	var company entity.Company
-	err := r.db.Where("id = ?", companyID).Delete(&company).Error
-	if err != nil {
-		return nil, fmt.Errorf("회사 삭제 중 오류 발생: %w", err)
+func (r *companyPersistence) DeleteCompany(companyID uint) error {
+	company := model.Company{ID: companyID}
+	result := r.db.Model(&company).Delete(&company)
+	if result.Error != nil {
+		return fmt.Errorf("회사 삭제 중 오류 발생: %w", result.Error)
 	}
-	return &company, nil
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("해당 ID의 회사를 찾을 수 없습니다: %d", companyID)
+	}
+	return nil
 }
 
 func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, error) {

@@ -25,7 +25,7 @@ type AdminUsecase interface {
 
 	//Company관련
 	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*_companyEntity.Company, error)
-	AdminDeleteCompany(requestUserID uint, companyID uint) (*_companyEntity.Company, error)
+	AdminDeleteCompany(requestUserID uint, companyID uint) error
 }
 
 type adminUsecase struct {
@@ -174,24 +174,29 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 }
 
 // TODO 회사 삭제 - ADMIN
-func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) (*entity.Company, error) {
+func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) error {
 	//TODO 관리자 계정인지 확인
 	admin, err := c.userRepository.GetUserByID(requestUserID)
 	if err != nil {
 		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생")
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생")
 	}
 
-	if admin.Role >= _userEntity.RoleSubAdmin {
+	if admin.Role > _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 회사를 삭제하려 했습니다: 요청자 ID %d", requestUserID)
-		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다")
+		return common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다")
 	}
 
-	deletedCompany, err := c.companyRepository.DeleteCompany(companyID)
+	if companyID == 1 {
+		log.Printf("Link 회사는 삭제할 수 없습니다: 요청자 ID %d", requestUserID)
+		return common.NewError(http.StatusForbidden, "Link 회사는 삭제할 수 없습니다")
+	}
+
+	err = c.companyRepository.DeleteCompany(companyID)
 	if err != nil {
 		log.Printf("회사 삭제 중 오류 발생: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "회사 삭제 중 오류 발생")
+		return common.NewError(http.StatusInternalServerError, "회사 삭제 중 오류 발생")
 	}
 
-	return deletedCompany, nil
+	return nil
 }

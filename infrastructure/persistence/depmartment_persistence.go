@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"link/infrastructure/model"
 	"link/internal/department/entity"
 	"link/internal/department/repository"
 
@@ -60,7 +61,7 @@ func (p *departmentPersistence) UpdateDepartment(departmentID uint, updates map[
 }
 
 func (p *departmentPersistence) DeleteDepartment(departmentID uint) error {
-	if err := p.db.Where("id = ?", departmentID).Delete(&entity.Department{}).Error; err != nil {
+	if err := p.db.Where("id = ?", departmentID).Delete(&model.Department{}).Error; err != nil {
 		return fmt.Errorf("department 삭제 중 DB 오류: %w", err)
 	}
 	return nil
