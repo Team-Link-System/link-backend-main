@@ -18,7 +18,7 @@ type UserRepository interface {
 	DeleteUser(id uint) error
 	SearchUser(user *entity.User) ([]entity.User, error)
 
-	GetUsersByCompany(companyId uint) ([]entity.User, error)
+	GetUsersByCompany(companyId uint, query *entity.UserQueryOptions) ([]entity.User, error)
 
 	//TODO 부서
 	CreateUserDepartment(userId uint, departmentId uint) error

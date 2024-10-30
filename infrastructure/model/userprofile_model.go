@@ -14,6 +14,7 @@ type UserProfile struct {
 	Teams        []*Team       `json:"teams,omitempty" gorm:"many2many:user_profile_teams;constraint:OnDelete:CASCADE"`
 	PositionID   *uint         `json:"position_id,omitempty" gorm:"default:null"`
 	Position     *Position     `json:"position,omitempty" gorm:"foreignKey:PositionID"`
+	EntryDate    time.Time     `json:"entry_date" gorm:"default:null"`
 	CreatedAt    time.Time     `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time
 }

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"link/internal/company/entity"
+	_companyEntity "link/internal/company/entity"
 	_companyRepo "link/internal/company/repository"
 	_userRepo "link/internal/user/repository"
 
@@ -18,12 +19,13 @@ import (
 type AdminUsecase interface {
 
 	//사용자 관련 도메인
-	RegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error)
-	GetAllUsers(requestUserId uint) ([]_userEntity.User, error)
+	AdminRegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error)
+	AdminGetAllUsers(requestUserId uint) ([]_userEntity.User, error)
+	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error)
 
 	//Company관련
-	CreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*entity.Company, error)
-	DeleteCompany(requestUserID uint, companyID uint) (*entity.Company, error)
+	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*_companyEntity.Company, error)
+	AdminDeleteCompany(requestUserID uint, companyID uint) (*_companyEntity.Company, error)
 }
 
 type adminUsecase struct {
@@ -36,7 +38,7 @@ func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository, userRepos
 }
 
 // TODO 새로운 관리자 등록 -  ADMIN
-func (u *adminUsecase) RegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error) {
+func (u *adminUsecase) AdminRegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error) {
 	//TODO 루트 관리자만 가능
 	rootUser, err := u.userRepository.GetUserByID(requestUserId)
 	if err != nil {
@@ -78,7 +80,7 @@ func (u *adminUsecase) RegisterAdmin(requestUserId uint, request *req.AdminCreat
 }
 
 // TODO 전체 사용자 정보 가져오기 - ADMIN
-func (u *adminUsecase) GetAllUsers(requestUserId uint) ([]_userEntity.User, error) {
+func (u *adminUsecase) AdminGetAllUsers(requestUserId uint) ([]_userEntity.User, error) {
 
 	requestUser, err := u.userRepository.GetUserByID(requestUserId)
 	if err != nil {
@@ -101,7 +103,7 @@ func (u *adminUsecase) GetAllUsers(requestUserId uint) ([]_userEntity.User, erro
 }
 
 // TODO 회사 등록
-func (c *adminUsecase) CreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*entity.Company, error) {
+func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*_companyEntity.Company, error) {
 
 	//TODO 관리자 계정인지 확인
 	user, err := c.userRepository.GetUserByID(requestUserID)
@@ -139,8 +141,40 @@ func (c *adminUsecase) CreateCompany(requestUserID uint, request *req.AdminCreat
 	return createdCompany, nil
 }
 
+func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error) {
+
+	adminUser, err := c.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생")
+	}
+
+	if adminUser.Role <= _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 회사 사용자 조회하려 했습니다: 요청자 ID %d", adminUserId)
+		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다")
+	}
+
+	if query.SortBy == "" {
+		query.SortBy = req.UserSortBy(req.UserSortByID)
+	}
+	if query.Order == "" {
+		query.Order = req.UserSortOrder(req.UserSortOrderAsc)
+	}
+
+	queryOptions := &_userEntity.UserQueryOptions{
+		SortBy: string(query.SortBy),
+		Order:  string(query.Order),
+	}
+	users, err := c.userRepository.GetUsersByCompany(companyID, queryOptions)
+	if err != nil {
+		log.Printf("회사 사용자 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회 중 오류 발생")
+	}
+	return users, nil
+}
+
 // TODO 회사 삭제 - ADMIN
-func (c *adminUsecase) DeleteCompany(requestUserID uint, companyID uint) (*entity.Company, error) {
+func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) (*entity.Company, error) {
 	//TODO 관리자 계정인지 확인
 	admin, err := c.userRepository.GetUserByID(requestUserID)
 	if err != nil {

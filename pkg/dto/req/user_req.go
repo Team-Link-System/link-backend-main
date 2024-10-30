@@ -37,3 +37,27 @@ type SearchUserRequest struct {
 	Name     string `json:"name,omitempty"`
 	Nickname string `json:"nickname,omitempty"`
 }
+
+// ! 아래는 쿼리 스트링 구조
+type UserQuery struct {
+	SortBy UserSortBy
+	Order  UserSortOrder
+}
+
+type UserSortBy string
+
+const (
+	UserSortByID        UserSortBy = "users.id"
+	UserSortByName      UserSortBy = "users.name"
+	UserSortByEmail     UserSortBy = "users.email"
+	UserSortByRole      UserSortBy = "users.role"
+	UserSortByCreatedAt UserSortBy = "users.created_at"
+	UserSortByEntryDate UserSortBy = "users.entry_date"
+)
+
+type UserSortOrder string
+
+const (
+	UserSortOrderAsc  string = "asc"
+	UserSortOrderDesc string = "desc"
+)

@@ -251,7 +251,12 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 		return
 	}
 
-	response, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint))
+	queryOptions := req.UserQuery{
+		SortBy: req.UserSortBy(c.Query("sortby")),
+		Order:  req.UserSortOrder(c.Query("order")),
+	}
+
+	response, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint), &queryOptions)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
