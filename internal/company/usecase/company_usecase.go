@@ -11,7 +11,7 @@ import (
 
 type CompanyUsecase interface {
 	GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
-	GetCompanyInfo(id uint) (res.GetCompanyInfoResponse, error)
+	GetCompanyInfo(id uint) (*res.GetCompanyInfoResponse, error)
 	SearchCompany(companyName string) ([]res.GetCompanyInfoResponse, error)
 
 	AddUserToCompany(requestUserId uint, userId uint, companyId uint) error
@@ -50,13 +50,13 @@ func (u *companyUsecase) GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
 }
 
 // TODO 회사 조회
-func (u *companyUsecase) GetCompanyInfo(id uint) (res.GetCompanyInfoResponse, error) {
+func (u *companyUsecase) GetCompanyInfo(id uint) (*res.GetCompanyInfoResponse, error) {
 	company, err := u.companyRepository.GetCompanyByID(id)
 	if err != nil {
-		return res.GetCompanyInfoResponse{}, common.NewError(http.StatusInternalServerError, "서버 에러")
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러")
 	}
 
-	response := res.GetCompanyInfoResponse{
+	response := &res.GetCompanyInfoResponse{
 		ID:                    company.ID,
 		CpName:                company.CpName,
 		CpLogo:                company.CpLogo,

@@ -23,7 +23,7 @@ type UserUsecase interface {
 	GetUserInfo(targetUserId, requestUserId uint, role string) (*res.GetUserByIdResponse, error)
 	GetUserMyInfo(userId uint) (*entity.User, error)
 
-	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
+	UpdateUserInfo(requestUserId, targetUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
 	SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error)
 
@@ -111,7 +111,7 @@ func (u *userUsecase) ValidateNickname(nickname string) error {
 }
 
 // TODO 사용자 정보 가져오기 (다른 사용자)
-func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string) (*res.GetUserByIdResponse, error) {
+func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string) (*res.GetUserByIdResponse, error) {
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
@@ -177,7 +177,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	}
 
 	// 대상 사용자 조회
-	_, err = u.userRepo.GetUserByID(targetUserId)
+	targetUser, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
 		log.Printf("대상 사용자 조회에 실패했습니다: %v", err)
 		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다")
@@ -190,7 +190,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	}
 
 	//TODO 루트 관리자는 절대 변경 불가
-	if requestUser.Role == entity.RoleAdmin {
+	if targetUser.Role == entity.RoleAdmin {
 		log.Printf("루트 관리자는 변경할 수 없습니다")
 		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
 	}

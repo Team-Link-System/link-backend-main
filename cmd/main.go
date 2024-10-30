@@ -122,7 +122,7 @@ func main() {
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
-				user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
+				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
 			}
 
 			company := protectedRoute.Group("company")
@@ -157,9 +157,9 @@ func main() {
 			{
 				admin.POST("/signup", adminHandler.AdminCreateAdmin)
 				admin.POST("/company", adminHandler.AdminCreateCompany)
-				admin.DELETE("/company/:company_id", adminHandler.AdminDeleteCompany)
-				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                      //TODO 전체 사용자 조회
-				admin.GET("/user/company/:company_id", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회
+				admin.DELETE("/company/:companyid", adminHandler.AdminDeleteCompany)
+				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                     //TODO 전체 사용자 조회
+				admin.GET("/user/company/:companyid", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회
 			}
 		}
 	})

@@ -171,7 +171,7 @@ func (h *AdminHandler) AdminDeleteCompany(c *gin.Context) {
 		return
 	}
 
-	deletedCompany, err := h.adminUsecase.AdminDeleteCompany(requestUserID, uint(companyID))
+	err = h.adminUsecase.AdminDeleteCompany(requestUserID, uint(companyID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
@@ -181,7 +181,7 @@ func (h *AdminHandler) AdminDeleteCompany(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 삭제에 성공하였습니다.", deletedCompany))
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 삭제에 성공하였습니다.", nil))
 }
 
 // TODO 회사에 속한 모든 사용자 리스트 조회 (관리자만)

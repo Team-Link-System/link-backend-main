@@ -273,7 +273,7 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 
 // TODO 해당 부서에 속한 사용자 리스트 가져오기 (이후 디테일 잡을때)
 func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
-	departmentId := c.Param("departmentId")
+	departmentId := c.Param("departmentid")
 
 	departmentIdUint, err := strconv.ParseUint(departmentId, 10, 64)
 	if err != nil {
