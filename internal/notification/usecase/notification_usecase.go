@@ -121,6 +121,11 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다")
 	}
 
+	if users[1].Role <= 2 {
+		log.Println("운영자는 초대할 수 없습니다")
+		return nil, common.NewError(http.StatusBadRequest, "운영자는 초대할 수 없습니다")
+	}
+
 	if req.InviteType == "" {
 		log.Println("invite_type이 필요합니다")
 		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다")
@@ -281,7 +286,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 	notification.UpdatedAt = time.Now()
 
 	// 데이터베이스에 업데이트 적용
-	updatedNotification, err := n.notificationRepo.UpdateNotificationStatus(notification)
+	updatedNotification, err := n.notificationRepo.UpdateNotificationStatus(notification) //TODO 이거 확인
 	if err != nil {
 		return nil, common.NewError(http.StatusInternalServerError, "알림 상태 업데이트에 실패했습니다")
 	}

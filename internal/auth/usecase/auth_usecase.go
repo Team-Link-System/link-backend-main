@@ -39,17 +39,20 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 
 	user, err := u.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
+
 		log.Printf("사용자 조회 오류: %v", err)
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 존재하지 않습니다")
 	}
 
 	if !_utils.CheckPasswordHash(request.Password, *user.Password) {
+
 		log.Printf("비밀번호 불일치: %s", request.Email)
 		return nil, nil, common.NewError(http.StatusNotFound, "이메일 또는 비밀번호가 일치하지 않습니다")
 	}
 
 	accessToken, err := _utils.GenerateAccessToken(*user.Name, *user.Email, *user.ID)
 	if err != nil {
+
 		log.Printf("액세스 토큰 생성 오류: %v", err)
 		return nil, nil, common.NewError(http.StatusInternalServerError, "액세스 토큰 생성에 실패했습니다")
 	}

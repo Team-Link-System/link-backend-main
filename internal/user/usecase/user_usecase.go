@@ -21,7 +21,7 @@ type UserUsecase interface {
 	ValidateEmail(email string) error
 	ValidateNickname(nickname string) error
 	GetUserInfo(targetUserId, requestUserId uint, role string) (*res.GetUserByIdResponse, error)
-	GetUserByID(userId uint) (*entity.User, error)
+	GetUserMyInfo(userId uint) (*entity.User, error)
 
 	UpdateUserInfo(targetUserId, requestUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
@@ -30,7 +30,7 @@ type UserUsecase interface {
 	UpdateUserOnlineStatus(userId uint, online bool) error
 
 	//TODO 복합 관련
-	GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
+	GetUsersByCompany(requestUserId uint, query *req.UserQuery) ([]res.GetUserByIdResponse, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 }
 
@@ -157,7 +157,7 @@ func (u *userUsecase) GetUserInfo(targetUserId, requestUserId uint, role string)
 }
 
 // TODO 본인 정보 가져오기
-func (u *userUsecase) GetUserByID(userId uint) (*entity.User, error) {
+func (u *userUsecase) GetUserMyInfo(userId uint) (*entity.User, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -336,8 +336,8 @@ func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)
-func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error) {
-	// 사용자 ID로 조회
+func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery) ([]res.GetUserByIdResponse, error) {
+
 	user, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -350,8 +350,21 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdRe
 		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다")
 	}
 
+	// 쿼리 기본값 설정
+	if query.SortBy == "" {
+		query.SortBy = req.UserSortBy(req.UserSortByID)
+	}
+	if query.Order == "" {
+		query.Order = req.UserSortOrder(req.UserSortOrderAsc)
+	}
+
+	queryOptions := &entity.UserQueryOptions{
+		SortBy: string(query.SortBy),
+		Order:  string(query.Order),
+	}
+
 	// 회사 ID로 사용자 목록 조회
-	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID)
+	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID, queryOptions)
 	if err != nil {
 		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
@@ -378,6 +391,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdRe
 				isOnline = online
 			}
 		}
+
 		return res.GetUserByIdResponse{
 			ID:              _utils.GetValueOrDefault(user.ID, 0),
 			Email:           _utils.GetValueOrDefault(user.Email, ""),
@@ -401,7 +415,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint) ([]res.GetUserByIdRe
 
 }
 
-// TODO 해당 부서에 속한 사용자 리스트 가져오기
+// TODO 해당 부서에 속한 사용자 리스트 가져오기(일반 사용자용)
 func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
 	users, err := u.userRepo.GetUsersByDepartment(departmentId)
 	if err != nil {

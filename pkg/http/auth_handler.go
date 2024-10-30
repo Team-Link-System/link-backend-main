@@ -41,7 +41,6 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 
 	//! 도메인 다를 때 사용
 	authorization := fmt.Sprintf("Bearer %s", token.AccessToken)
-
 	// c.SetCookie("accessToken", token.AccessToken, 1200, "/", "", false, true)
 	c.Header("Authorization", authorization)
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "로그인 성공", response))

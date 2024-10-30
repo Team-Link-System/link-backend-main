@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	_companyUsecase "link/internal/company/usecase"
 	_notificationUsecase "link/internal/notification/usecase"
 	"link/pkg/common"
@@ -113,20 +112,9 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 
 	request.SenderId = companyAdminId.(uint)
 	request.CompanyID = uint(companyId)
-	request.InviteType = req.InviteTypeCompany
+	request.InviteType = req.InviteTypeCompany //TODO 초대 타입
 
-	//TODO 회사에 사용자 추가 (postgres에 저장)
-	// err = h.companyUsecase.AddUserToCompany(companyAdminId.(uint), uint(targetUserIdUint), uint(companyId))
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
-	// 	return
-	// }
-
-	fmt.Println("request")
-	fmt.Println(request)
-	//TODO 여기서 저장은 했는데, mongoDB에 저장 하는것도 처리해야함 -> 정합성때문에
-
-	//TODO 로그 저장(mongoDB에 저장)
+	//TODO 초대 알림 MONGODB에 저장
 	response, err := h.notificationUsecase.CreateInvite(request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
@@ -165,6 +153,18 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 초대 요청 성공", nil))
 }
 
+// TODO 일반 유저가 운영자에게 초대 요청
+// func (h *CompanyHandler) RequestAddUserToCompany(c *gin.Context) {
+
+// }
+
 //TODO 회사 수정은 관리자만 가능 -> 유저가 요청하는 것임(따로 admin도메인에 요청 핸들러만들것)
 
 //TODO 회사 삭제는 관리자만 가능 -> 유저가 요청하는 것임(따로 admin도메인에 요청 핸들러만들것)
+
+// TODO 회사 관리자 - 결제 후 ->  인증 처리 (company 테이블 업데이트)
+// func (h *CompanyHandler) RequestCompanyVerified(c *gin.Context) {
+
+// }
+
+// TODO 회사 관리자 요청 - 이미 등록된 회사에

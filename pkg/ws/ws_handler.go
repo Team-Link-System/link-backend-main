@@ -267,7 +267,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	_, exists := h.hub.Clients.Load(uint(userIdUint))
 	if !exists {
 		//TODO 없으면 DB에서 확인
-		user, err := h.userUsecase.GetUserByID(uint(userIdUint))
+		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
 		if err != nil {
 			log.Printf("사용자 조회에 실패했습니다: %v", err)
 			conn.WriteJSON(res.JsonResponse{

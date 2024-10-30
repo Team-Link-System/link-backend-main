@@ -68,7 +68,8 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 
 func (r *notificationPersistence) UpdateNotificationStatus(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
-	_, err := collection.UpdateOne(context.Background(), bson.M{"id": notification.ID}, bson.M{"$set": notification})
+	fmt.Println("notification", notification)
+	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": notification.ID}, bson.M{"$set": notification})
 	if err != nil {
 		return nil, fmt.Errorf("알림 상태 업데이트에 실패했습니다: %w", err)
 	}
@@ -78,7 +79,7 @@ func (r *notificationPersistence) UpdateNotificationStatus(notification *entity.
 
 func (r *notificationPersistence) UpdateNotificationReadStatus(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
-	_, err := collection.UpdateOne(context.Background(), bson.M{"id": notification.ID}, bson.M{"$set": notification})
+	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": notification.ID}, bson.M{"$set": notification})
 	if err != nil {
 		return nil, fmt.Errorf("알림 읽음 처리에 실패했습니다: %w", err)
 	}

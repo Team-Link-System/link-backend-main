@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
+
 	"link/internal/user/entity"
 	"link/internal/user/repository"
 )
@@ -406,11 +407,11 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 //! 회사
 
 // TODO 회사 사용자 조회 (일반 사용자, 회사 관리자 포함)
-func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, error) {
+func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity.UserQueryOptions) ([]entity.User, error) {
 	var users []entity.User
 
 	// UserProfile의 company_id 필드를 사용하여 조건을 설정
-	rows, err := r.db.
+	dbQuery := r.db.
 		Table("users").
 		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
 			"user_profiles.birthday", "user_profiles.image",
@@ -420,14 +421,27 @@ func (r *userPersistence) GetUsersByCompany(companyId uint) ([]entity.User, erro
 			"positions.id as position_id", "positions.name as position_name").
 		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
 		Joins("JOIN companies ON companies.id = user_profiles.company_id").
-		Joins("LEFT JOIN user_departments ON user_departments.user_profile_user_id = users.id").
-		Joins("LEFT JOIN departments ON departments.id = user_departments.department_id").
-		Joins("LEFT JOIN user_teams ON user_teams.user_profile_user_id = users.id").
-		Joins("LEFT JOIN teams ON teams.id = user_teams.team_id").
+		Joins("LEFT JOIN user_profile_departments ON user_profile_departments.user_profile_user_id = users.id").
+		Joins("LEFT JOIN departments ON departments.id = user_profile_departments.department_id").
+		Joins("LEFT JOIN user_profile_teams ON user_profile_teams.user_profile_user_id = users.id").
+		Joins("LEFT JOIN teams ON teams.id = user_profile_teams.team_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
-		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser).
-		Rows()
+		Where("user_profiles.company_id = ? OR users.role = ? OR users.role = ?", companyId, entity.RoleCompanyManager, entity.RoleUser)
 
+	sortBy := "users.id"
+	if queryOptions.SortBy != "" {
+		sortBy = queryOptions.SortBy
+	}
+
+	order := "asc"
+	if queryOptions.Order == "desc" {
+		order = "desc"
+	}
+
+	dbQuery = dbQuery.Order(sortBy + " " + order)
+
+	// 쿼리 실행
+	rows, err := dbQuery.Rows()
 	if err != nil {
 		return nil, fmt.Errorf("회사 사용자 조회 중 DB 오류: %w", err)
 	}

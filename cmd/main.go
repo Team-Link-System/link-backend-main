@@ -121,7 +121,7 @@ func main() {
 				user.PUT("/:id", imageUploadMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/search", userHandler.SearchUser)
-				user.GET("/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
+				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentId", userHandler.GetUsersByDepartment)
 			}
 
@@ -155,10 +155,11 @@ func main() {
 			//TODO admin 요청 - 관리자 페이지
 			admin := protectedRoute.Group("admin")
 			{
-				admin.POST("/signup", adminHandler.CreateAdmin)
-				admin.POST("/company", adminHandler.CreateCompany)
-				admin.DELETE("/company/:company_id", adminHandler.DeleteCompany)
-				admin.GET("/user/list", adminHandler.GetAllUsers) //TODO 전체 사용자 조회
+				admin.POST("/signup", adminHandler.AdminCreateAdmin)
+				admin.POST("/company", adminHandler.AdminCreateCompany)
+				admin.DELETE("/company/:company_id", adminHandler.AdminDeleteCompany)
+				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                      //TODO 전체 사용자 조회
+				admin.GET("/user/company/:company_id", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회
 			}
 		}
 	})
