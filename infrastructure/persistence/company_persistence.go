@@ -20,6 +20,18 @@ func NewCompanyPersistence(db *gorm.DB) repository.CompanyRepository {
 
 func (r *companyPersistence) CreateCompany(company *entity.Company) (*entity.Company, error) {
 
+	modelCompany := &model.Company{
+		CpName:                    company.CpName,
+		CpNumber:                  company.CpNumber,
+		CpLogo:                    company.CpLogo,
+		RepresentativeName:        company.RepresentativeName,
+		RepresentativeEmail:       company.RepresentativeEmail,
+		RepresentativePhoneNumber: company.RepresentativePhoneNumber,
+		RepresentativeAddress:     company.RepresentativeAddress,
+		IsVerified:                company.IsVerified,
+		Grade:                     model.CompanyGrade(company.Grade),
+	}
+
 	var omitFields []string
 	val := reflect.ValueOf(company).Elem()
 	typ := reflect.TypeOf(*company)
@@ -32,8 +44,10 @@ func (r *companyPersistence) CreateCompany(company *entity.Company) (*entity.Com
 		}
 	}
 
+	omitFields = append(omitFields, "Departments", "Teams")
+
 	// Omit 목록을 사용하여 빈 값이 아닌 필드만 삽입
-	if err := r.db.Omit(omitFields...).Create(company).Error; err != nil {
+	if err := r.db.Omit(omitFields...).Create(modelCompany).Error; err != nil {
 		return nil, fmt.Errorf("회사 생성 중 오류 발생: %w", err)
 	}
 
@@ -76,13 +90,13 @@ func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, er
 	companyEntity := entity.Company{
 		ID:                        company.ID,
 		CpName:                    company.CpName,
-		CpLogo:                    &company.CpLogo,
-		RepresentativeName:        &company.RepresentativeName,
-		RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
-		RepresentativeEmail:       &company.RepresentativeEmail,
-		RepresentativeAddress:     &company.RepresentativeAddress,
+		CpLogo:                    company.CpLogo,
+		RepresentativeName:        company.RepresentativeName,
+		RepresentativePhoneNumber: company.RepresentativePhoneNumber,
+		RepresentativeEmail:       company.RepresentativeEmail,
+		RepresentativeAddress:     company.RepresentativeAddress,
 		IsVerified:                company.IsVerified,
-		Grade:                     (*int)(&company.Grade),
+		Grade:                     int(company.Grade),
 		Departments:               departmentsMaps,
 		Teams:                     teamsMaps,
 		CreatedAt:                 company.CreatedAt,
@@ -105,11 +119,11 @@ func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
 		companyEntities[i] = entity.Company{
 			ID:                        company.ID,
 			CpName:                    company.CpName,
-			CpLogo:                    &company.CpLogo,
-			RepresentativeName:        &company.RepresentativeName,
-			RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
-			RepresentativeEmail:       &company.RepresentativeEmail,
-			RepresentativeAddress:     &company.RepresentativeAddress,
+			CpLogo:                    company.CpLogo,
+			RepresentativeName:        company.RepresentativeName,
+			RepresentativePhoneNumber: company.RepresentativePhoneNumber,
+			RepresentativeEmail:       company.RepresentativeEmail,
+			RepresentativeAddress:     company.RepresentativeAddress,
 		}
 	}
 
@@ -128,11 +142,11 @@ func (r *companyPersistence) SearchCompany(companyName string) ([]entity.Company
 		companiesEntities[i] = entity.Company{
 			ID:                        company.ID,
 			CpName:                    company.CpName,
-			CpLogo:                    &company.CpLogo,
-			RepresentativeName:        &company.RepresentativeName,
-			RepresentativePhoneNumber: &company.RepresentativePhoneNumber,
-			RepresentativeEmail:       &company.RepresentativeEmail,
-			RepresentativeAddress:     &company.RepresentativeAddress,
+			CpLogo:                    company.CpLogo,
+			RepresentativeName:        company.RepresentativeName,
+			RepresentativePhoneNumber: company.RepresentativePhoneNumber,
+			RepresentativeEmail:       company.RepresentativeEmail,
+			RepresentativeAddress:     company.RepresentativeAddress,
 		}
 	}
 

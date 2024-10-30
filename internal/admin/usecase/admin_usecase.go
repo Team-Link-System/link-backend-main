@@ -122,13 +122,13 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 
 	company := &entity.Company{
 		CpName:                    request.CpName,
-		CpNumber:                  &request.CpNumber,
-		RepresentativeName:        &request.RepresentativeName,
-		RepresentativePhoneNumber: &request.RepresentativePhoneNumber,
-		RepresentativeEmail:       &request.RepresentativeEmail,
-		RepresentativeAddress:     &request.RepresentativeAddress,
-		RepresentativePostalCode:  &request.RepresentativePostalCode,
-		Grade:                     &request.Grade,
+		CpNumber:                  request.CpNumber,
+		RepresentativeName:        request.RepresentativeName,
+		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
+		RepresentativeEmail:       request.RepresentativeEmail,
+		RepresentativeAddress:     request.RepresentativeAddress,
+		RepresentativePostalCode:  request.RepresentativePostalCode,
+		Grade:                     request.Grade,
 		IsVerified:                true,
 	}
 

@@ -38,11 +38,11 @@ func (u *companyUsecase) GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
 		response[i] = res.GetCompanyInfoResponse{
 			ID:                    company.ID,
 			CpName:                company.CpName,
-			CpLogo:                *company.CpLogo,
-			RepresentativeName:    *company.RepresentativeName,
-			RepresentativeTel:     *company.RepresentativePhoneNumber,
-			RepresentativeEmail:   *company.RepresentativeEmail,
-			RepresentativeAddress: *company.RepresentativeAddress,
+			CpLogo:                company.CpLogo,
+			RepresentativeName:    company.RepresentativeName,
+			RepresentativeTel:     company.RepresentativePhoneNumber,
+			RepresentativeEmail:   company.RepresentativeEmail,
+			RepresentativeAddress: company.RepresentativeAddress,
 		}
 	}
 
@@ -59,11 +59,11 @@ func (u *companyUsecase) GetCompanyInfo(id uint) (res.GetCompanyInfoResponse, er
 	response := res.GetCompanyInfoResponse{
 		ID:                    company.ID,
 		CpName:                company.CpName,
-		CpLogo:                *company.CpLogo,
-		RepresentativeName:    *company.RepresentativeName,
-		RepresentativeTel:     *company.RepresentativePhoneNumber,
-		RepresentativeEmail:   *company.RepresentativeEmail,
-		RepresentativeAddress: *company.RepresentativeAddress,
+		CpLogo:                company.CpLogo,
+		RepresentativeName:    company.RepresentativeName,
+		RepresentativeTel:     company.RepresentativePhoneNumber,
+		RepresentativeEmail:   company.RepresentativeEmail,
+		RepresentativeAddress: company.RepresentativeAddress,
 	}
 
 	return response, nil
@@ -81,11 +81,11 @@ func (u *companyUsecase) SearchCompany(companyName string) ([]res.GetCompanyInfo
 		response[i] = res.GetCompanyInfoResponse{
 			ID:                    company.ID,
 			CpName:                company.CpName,
-			CpLogo:                *company.CpLogo,
-			RepresentativeName:    *company.RepresentativeName,
-			RepresentativeTel:     *company.RepresentativePhoneNumber,
-			RepresentativeEmail:   *company.RepresentativeEmail,
-			RepresentativeAddress: *company.RepresentativeAddress,
+			CpLogo:                company.CpLogo,
+			RepresentativeName:    company.RepresentativeName,
+			RepresentativeTel:     company.RepresentativePhoneNumber,
+			RepresentativeEmail:   company.RepresentativeEmail,
+			RepresentativeAddress: company.RepresentativeAddress,
 		}
 	}
 
