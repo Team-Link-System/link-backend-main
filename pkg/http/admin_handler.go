@@ -61,7 +61,7 @@ func (h *AdminHandler) AdminCreateAdmin(c *gin.Context) {
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "운영자 등록에 성공하였습니다.", adminResponse))
 }
 
-// ! 사용자 전체 조회 핸들러 - 관리자만
+// ! 사용자 전체 조회 핸들러 - 관리자만 -> 얘도 나중에 쿼리 추가
 func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 	// 사용자 정보를 데이터베이스에서 조회
 	userId, exists := c.Get("userId")

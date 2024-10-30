@@ -21,7 +21,7 @@ type Company struct {
 	RepresentativePostalCode  string       `json:"representative_postal_code,omitempty" gorm:"size:255" default:""`  //대표 주소 우편번호
 	IsVerified                bool         `json:"is_verified" gorm:"default:false"`                                 // 인증하게 되면 Basic 등급이 됨
 	Grade                     CompanyGrade `json:"grade,omitempty" gorm:"default:null"`                              // 인증 받으면 Basic 등급이 됨
-	Departments               []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Departments               []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`                 // hasmany
 	Teams                     []Team       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	//TODO 나중에 직원수 추가
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
