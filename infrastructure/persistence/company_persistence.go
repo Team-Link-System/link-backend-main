@@ -52,7 +52,22 @@ func (r *companyPersistence) CreateCompany(company *entity.Company) (*entity.Com
 		return nil, fmt.Errorf("회사 생성 중 오류 발생: %w", err)
 	}
 
-	return company, nil
+	createdCompany := &entity.Company{
+		ID:                        modelCompany.ID,
+		CpName:                    modelCompany.CpName,
+		CpNumber:                  modelCompany.CpNumber,
+		CpLogo:                    modelCompany.CpLogo,
+		RepresentativeName:        modelCompany.RepresentativeName,
+		RepresentativePhoneNumber: modelCompany.RepresentativePhoneNumber,
+		RepresentativeEmail:       modelCompany.RepresentativeEmail,
+		RepresentativeAddress:     modelCompany.RepresentativeAddress,
+		IsVerified:                modelCompany.IsVerified,
+		Grade:                     int(modelCompany.Grade),
+		CreatedAt:                 modelCompany.CreatedAt,
+		UpdatedAt:                 modelCompany.UpdatedAt,
+	}
+
+	return createdCompany, nil
 }
 
 // TODO 회사 삭제

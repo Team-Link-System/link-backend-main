@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"link/internal/company/entity"
 	_companyEntity "link/internal/company/entity"
 	_companyRepo "link/internal/company/repository"
 	_userRepo "link/internal/user/repository"
@@ -10,6 +9,7 @@ import (
 
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 	"log"
 	"net/http"
 
@@ -24,8 +24,9 @@ type AdminUsecase interface {
 	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error)
 
 	//Company관련
-	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*_companyEntity.Company, error)
+	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error)
 	AdminDeleteCompany(requestUserID uint, companyID uint) error
+	AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error
 }
 
 type adminUsecase struct {
@@ -103,7 +104,7 @@ func (u *adminUsecase) AdminGetAllUsers(requestUserId uint) ([]_userEntity.User,
 }
 
 // TODO 회사 등록
-func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*_companyEntity.Company, error) {
+func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error) {
 
 	//TODO 관리자 계정인지 확인
 	user, err := c.userRepository.GetUserByID(requestUserID)
@@ -120,7 +121,7 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 		request.Grade = 1
 	}
 
-	company := &entity.Company{
+	company := &_companyEntity.Company{
 		CpName:                    request.CpName,
 		CpNumber:                  request.CpNumber,
 		RepresentativeName:        request.RepresentativeName,
@@ -138,7 +139,20 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 		return nil, common.NewError(http.StatusInternalServerError, "회사 생성 중 오류 발생")
 	}
 
-	return createdCompany, nil
+	response := &res.AdminRegisterCompanyResponse{
+		ID:                        createdCompany.ID,
+		CpName:                    createdCompany.CpName,
+		CpNumber:                  createdCompany.CpNumber,
+		RepresentativeName:        createdCompany.RepresentativeName,
+		RepresentativePhoneNumber: createdCompany.RepresentativePhoneNumber,
+		RepresentativeEmail:       createdCompany.RepresentativeEmail,
+		RepresentativeAddress:     createdCompany.RepresentativeAddress,
+		RepresentativePostalCode:  createdCompany.RepresentativePostalCode,
+		Grade:                     createdCompany.Grade,
+		IsVerified:                true,
+	}
+
+	return response, nil
 }
 
 func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error) {
@@ -196,6 +210,32 @@ func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) er
 	if err != nil {
 		log.Printf("회사 삭제 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "회사 삭제 중 오류 발생")
+	}
+
+	return nil
+}
+
+// TODO 사용자 companyId 업데이트
+func (u *adminUsecase) AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error {
+	userIds := []uint{adminUserId, targetUserId}
+	users, err := u.userRepository.GetUserByIds(userIds)
+	if err != nil {
+		log.Printf("사용자 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 조회 중 오류 발생")
+	}
+
+	if users[0].Role > _userEntity.RoleSubAdmin {
+		log.Printf("운영자 권한이 없는 사용자가 사용자를 회사에 추가하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
+	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{}, map[string]interface{}{
+		"company_id": companyID,
+	})
+
+	if err != nil {
+		log.Printf("사용자 업데이트 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 업데이트 중 오류 발생")
 	}
 
 	return nil
