@@ -17,7 +17,7 @@ func NewPostHandler(postUsecase usecase.PostUsecase) *PostHandler {
 	return &PostHandler{postUsecase: postUsecase}
 }
 
-// TODO 게시물 생성
+// TODO 게시물 생성 - 전체 사용자 게시물
 func (h *PostHandler) CreatePost(c *gin.Context) {
 	//TODO 게시물 생성
 	userId, exists := c.Get("userId")
@@ -40,3 +40,5 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 생성 완료", post))
 }
+
+// TODO 회사 사람만 볼 수 있는 게시물 생성
