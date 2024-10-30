@@ -95,14 +95,32 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 		}
 	}
 
-	fmt.Println("modelUser")
-	fmt.Println(modelUserProfile)
-
 	// 프로필 생성
 	if err := tx.Omit(profileOmitFields...).Create(modelUserProfile).Error; err != nil {
 		tx.Rollback()
 		log.Printf("사용자 프로필 생성 중 DB 오류: %v", err)
 		return fmt.Errorf("사용자 프로필 생성 중 DB 오류: %w", err)
+	}
+
+	// 캐시 업데이트
+	redisUserFields := make(map[string]interface{})
+
+	redisUserFields["id"] = modelUser.ID
+	redisUserFields["name"] = modelUser.Name
+	redisUserFields["email"] = modelUser.Email
+	redisUserFields["nickname"] = modelUser.Nickname
+	redisUserFields["phone"] = modelUser.Phone
+	redisUserFields["role"] = modelUser.Role
+
+	redisUserFields["company_id"] = modelUserProfile.CompanyID
+	redisUserFields["image"] = modelUserProfile.Image
+	redisUserFields["birthday"] = modelUserProfile.Birthday
+	redisUserFields["is_subscribed"] = modelUserProfile.IsSubscribed
+	redisUserFields["is_online"] = false
+
+	if err := r.UpdateCacheUser(modelUser.ID, redisUserFields); err != nil {
+		log.Printf("사용자 캐시 업데이트 중 오류: %v", err)
+		return fmt.Errorf("사용자 캐시 업데이트 중 오류: %w", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -181,6 +199,7 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		Password: &user.Password,
 		UserProfile: &entity.UserProfile{
 			CompanyID: user.UserProfile.CompanyID,
+			Image:     user.UserProfile.Image,
 		},
 	}
 
@@ -737,6 +756,8 @@ func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interfa
 	redisFields := make(map[string]interface{})
 	for key, value := range fields {
 		switch v := value.(type) {
+		case nil:
+			redisFields[key] = ""
 		case string:
 			redisFields[key] = v
 		case bool:
@@ -811,8 +832,8 @@ func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[ui
 	}
 
 	for _, userId := range userIds {
-		cacheKey := fmt.Sprintf("user:%d", userId)
-		values, err := r.redisClient.HMGet(context.Background(), cacheKey, fields...).Result()
+		cacheUserKey := fmt.Sprintf("user:%d", userId)
+		values, err := r.redisClient.HMGet(context.Background(), cacheUserKey, fields...).Result()
 		if err != nil {
 			return nil, fmt.Errorf("redis에서 사용자 %d의 데이터를 조회하는 중 오류 발생: %w", userId, err)
 		}

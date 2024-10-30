@@ -73,11 +73,12 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 	}
 
 	return &res.LoginUserResponse{
-			ID:        _utils.GetValueOrDefault(user.ID, 0),
-			Email:     _utils.GetValueOrDefault(user.Email, ""),
-			Name:      _utils.GetValueOrDefault(user.Name, ""),
-			Role:      uint(_utils.GetValueOrDefault(&user.Role, 4)),
-			CompanyID: _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			ID:           _utils.GetValueOrDefault(user.ID, 0),
+			Email:        _utils.GetValueOrDefault(user.Email, ""),
+			Name:         _utils.GetValueOrDefault(user.Name, ""),
+			Role:         uint(_utils.GetValueOrDefault(&user.Role, 4)),
+			CompanyID:    _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			ProfileImage: _utils.GetValueOrDefault(user.UserProfile.Image, ""),
 		}, &entity.Token{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
