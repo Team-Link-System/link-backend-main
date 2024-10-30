@@ -11,6 +11,22 @@ type RegisterAdminResponse struct {
 	Role     uint   `json:"role"`
 }
 
+type AdminRegisterCompanyResponse struct {
+	ID                        uint      `json:"id" binding:"required"`
+	CpName                    string    `json:"cp_name" binding:"required"`
+	CpNumber                  string    `json:"cp_number,omitempty"`
+	CpLogo                    string    `json:"cp_logo,omitempty"`
+	RepresentativeName        string    `json:"representative_name,omitempty"`
+	RepresentativePhoneNumber string    `json:"representative_phone_number,omitempty"`
+	RepresentativeEmail       string    `json:"representative_email,omitempty"`
+	RepresentativeAddress     string    `json:"representative_address,omitempty"`
+	RepresentativePostalCode  string    `json:"representative_postal_code,omitempty"`
+	IsVerified                bool      `json:"is_verified,omitempty"`
+	Grade                     int       `json:"grade,omitempty"`
+	CreatedAt                 time.Time `json:"created_at,omitempty"`
+	UpdatedAt                 time.Time `json:"updated_at,omitempty"`
+}
+
 type GetAllUsersResponse struct {
 	ID              uint      `json:"id,omitempty"`
 	Name            string    `json:"name,omitempty"`

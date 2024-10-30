@@ -190,6 +190,8 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
 
+	// UserProfile이 nil일 경우 기본값 설정
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,

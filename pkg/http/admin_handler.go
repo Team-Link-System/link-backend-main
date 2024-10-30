@@ -224,3 +224,30 @@ func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사에 속한 사용자 목록 조회 성공", users))
 }
+
+// TODO 회사에 사용자 추가
+func (h *AdminHandler) AdminAddUserToCompany(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	var request req.AdminAddUserToCompanyRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		return
+	}
+
+	err := h.adminUsecase.AdminAddUserToCompany(adminUserId.(uint), request.UserID, request.CompanyID)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사에 사용자 추가에 성공하였습니다.", nil))
+}

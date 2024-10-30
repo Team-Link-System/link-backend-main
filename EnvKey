@@ -1,6 +1,3 @@
-
-
-
 #postgres 컨테이너용
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres

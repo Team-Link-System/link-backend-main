@@ -19,3 +19,8 @@ type AdminCreateCompanyRequest struct {
 	RepresentativePostalCode  string `json:"representative_postal_code,omitempty"`
 	Grade                     int    `json:"grade,omitempty"`
 }
+
+type AdminAddUserToCompanyRequest struct {
+	UserID    uint `json:"user_id" binding:"required"`
+	CompanyID uint `json:"company_id" binding:"required"`
+}
