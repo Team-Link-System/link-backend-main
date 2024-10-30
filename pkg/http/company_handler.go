@@ -60,6 +60,7 @@ func (h *CompanyHandler) GetCompanyInfo(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
 		}
+		return
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 상세 조회 성공", company))

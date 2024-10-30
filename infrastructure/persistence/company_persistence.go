@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"errors"
 	"fmt"
 	"link/infrastructure/model"
 	"link/internal/company/entity"
@@ -71,6 +72,9 @@ func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, er
 	var company model.Company
 	err := r.db.Where("id = ?", companyID).First(&company).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("회사를 찾을 수 없습니다: ID %d", companyID)
+		}
 		return nil, fmt.Errorf("회사 조회 중 오류 발생: %w", err)
 	}
 

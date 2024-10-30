@@ -68,7 +68,7 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 				Type:    "connection",
 			})
 		}
-		//TODO 온라인 상태 변경
+		//TODO 온라인 상태 변경 -> 자기 친구들에게만 하기 혹은 회사사람들에게만 하기
 		oldStatus, ok := hub.OnlineClients.Load(userID)
 		if !ok || oldStatus == nil || oldStatus == false {
 			hub.OnlineClients.Store(userID, true)
@@ -164,6 +164,8 @@ func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 			IsOnline: online,
 		},
 	}
+
+	//TODO 온라인 상태 변경 시 모든 유저에게 전송 -> 추후 수정해야함
 	hub.BroadcastToAllUsers(statusMessage)
 }
 
