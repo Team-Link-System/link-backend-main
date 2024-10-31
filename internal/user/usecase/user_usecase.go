@@ -149,6 +149,7 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
 		PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
 		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+		EntryDate:       user.UserProfile.EntryDate,
 		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
 		UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
 	}
@@ -362,6 +363,8 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 		SortBy: string(query.SortBy),
 		Order:  string(query.Order),
 	}
+
+	//TODO redis에서 먼저 회사 사용자 목록 먼저 조회시도
 
 	// 회사 ID로 사용자 목록 조회
 	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID, queryOptions)

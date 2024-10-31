@@ -32,4 +32,5 @@ type UserRepository interface {
 	UpdateCacheUser(userId uint, fields map[string]interface{}) error
 	GetCacheUser(userId uint, fields []string) (*entity.User, error)
 	GetCacheUsers(userIds []uint, fields []string) (map[uint]map[string]interface{}, error)
+	IsUserCacheComplete(userData map[string]string) bool
 }
