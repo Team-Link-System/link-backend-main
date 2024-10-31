@@ -4,6 +4,7 @@ import (
 	_companyEntity "link/internal/company/entity"
 	_companyRepo "link/internal/company/repository"
 	_userRepo "link/internal/user/repository"
+	"time"
 
 	_userEntity "link/internal/user/entity"
 
@@ -229,8 +230,14 @@ func (u *adminUsecase) AdminAddUserToCompany(adminUserId uint, targetUserId uint
 		return common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
+	if users[1].UserProfile.CompanyID != nil {
+		log.Printf("이미 회사에 소속된 사용자입니다: 사용자 ID %d", targetUserId)
+		return common.NewError(http.StatusBadRequest, "이미 회사에 소속된 사용자입니다")
+	}
+
 	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{}, map[string]interface{}{
 		"company_id": companyID,
+		"entry_date": time.Now(),
 	})
 
 	if err != nil {

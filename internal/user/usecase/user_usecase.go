@@ -252,12 +252,12 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 		log.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다")
 	}
-	//TODO redis 캐시 업데이트
-	err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
-	if err != nil {
-		log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다")
-	}
+	// //TODO redis 캐시 업데이트
+	// err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
+	// if err != nil {
+	// 	log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
+	// 	return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다")
+	// }
 	// Persistence 레이어로 업데이트 요청 전달
 	return nil
 }
@@ -408,6 +408,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 			TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
 			PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
 			PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+			EntryDate:       user.UserProfile.EntryDate,
 			CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
 			UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
 		}
