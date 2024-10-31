@@ -98,16 +98,20 @@ func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint, roo
 	// 채팅방에서 유저 제거
 	if roomID != 0 {
 		hub.RemoveFromChatRoom(roomID, userID)
+		return
 	} else {
-		_, ok := hub.Clients.Load(userID)
-		if ok {
-			hub.Clients.Delete(userID)
-			conn.Close()
-		}
-		oldStatus, ok := hub.OnlineClients.Load(userID)
-		if ok && oldStatus == true {
-			hub.OnlineClients.Store(userID, false)
-			hub.BroadcastOnlineStatus(userID, false)
+		// 현재 저장된 연결이 해제하려는 연결과 동일한지 확인
+		if currentConn, exists := hub.Clients.Load(userID); exists {
+			if currentConn == conn {
+				hub.Clients.Delete(userID)
+				conn.Close()
+
+				// 다른 활성 연결이 없을 때만 오프라인으로 변경
+				if _, hasOtherConnection := hub.Clients.Load(userID); !hasOtherConnection {
+					hub.OnlineClients.Store(userID, false)
+					hub.BroadcastOnlineStatus(userID, false)
+				}
+			}
 		}
 	}
 }
