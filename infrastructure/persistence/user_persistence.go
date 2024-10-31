@@ -234,8 +234,11 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		companyID, _ := strconv.ParseUint(userData["company_id"], 10, 64)
 		isSubscribed, _ := strconv.ParseBool(userData["is_subscribed"])
 
+		//TODO 온라인 상태는 레디스에서 직접가져오기
+		isOnlineStr, _ := r.redisClient.HGet(context.Background(), cacheKey, "is_online").Result()
+
 		var isOnline bool
-		if userData["is_online"] == "" {
+		if isOnlineStr == "" {
 			isOnline = false
 		} else {
 			isOnline, _ = strconv.ParseBool(userData["is_online"])
@@ -261,10 +264,16 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		var parsedCreatedAt time.Time
 		var parsedUpdatedAt time.Time
 		if createdAt != "" {
-			parsedCreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+			parsedCreatedAt, err = time.Parse("2006-01-02 15:04:05.999999 -0700 MST", createdAt)
+			if err != nil {
+				log.Printf("시간 파싱 오류 (created_at): %v, 값: %s", err, createdAt)
+			}
 		}
 		if updatedAt != "" {
-			parsedUpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+			parsedUpdatedAt, err = time.Parse("2006-01-02 15:04:05.999999 -0700 MST", updatedAt)
+			if err != nil {
+				log.Printf("시간 파싱 오류 (updated_at): %v, 값: %s", err, updatedAt)
+			}
 		}
 
 		return &entity.User{
@@ -351,25 +360,48 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	//TODO 캐시 비동기 업데이트
 	go func() {
 		// departments와 teams를 JSON으로 변환
-		depsJSON, _ := json.Marshal(departments)
-		teamsJSON, _ := json.Marshal(teams)
-
 		cacheData := map[string]interface{}{
-			"id":            *entityUser.ID,
-			"email":         *entityUser.Email,
-			"nickname":      *entityUser.Nickname,
-			"name":          *entityUser.Name,
-			"phone":         *entityUser.Phone,
-			"role":          entityUser.Role,
-			"image":         *entityUser.UserProfile.Image,
-			"birthday":      entityUser.UserProfile.Birthday,
-			"is_subscribed": entityUser.UserProfile.IsSubscribed,
-			"company_id":    *entityUser.UserProfile.CompanyID,
-			"departments":   string(depsJSON),
-			"teams":         string(teamsJSON),
-			"entry_date":    *entityUser.UserProfile.EntryDate,
-			"created_at":    entityUser.CreatedAt,
-			"updated_at":    entityUser.UpdatedAt,
+			"id":       *entityUser.ID,
+			"email":    *entityUser.Email,
+			"nickname": *entityUser.Nickname,
+			"name":     *entityUser.Name,
+			"role":     entityUser.Role,
+		}
+
+		// Optional fields
+		if entityUser.Phone != nil {
+			cacheData["phone"] = *entityUser.Phone
+		}
+		if entityUser.UserProfile != nil {
+			if entityUser.UserProfile.Image != nil {
+				cacheData["image"] = *entityUser.UserProfile.Image
+			}
+			if entityUser.UserProfile.Birthday != "" {
+				cacheData["birthday"] = entityUser.UserProfile.Birthday
+			}
+			cacheData["is_subscribed"] = entityUser.UserProfile.IsSubscribed
+			if entityUser.UserProfile.CompanyID != nil {
+				cacheData["company_id"] = *entityUser.UserProfile.CompanyID
+			}
+			if len(departments) > 0 {
+				if depsJSON, err := json.Marshal(departments); err == nil {
+					cacheData["departments"] = string(depsJSON)
+				}
+			}
+			if len(teams) > 0 {
+				if teamsJSON, err := json.Marshal(teams); err == nil {
+					cacheData["teams"] = string(teamsJSON)
+				}
+			}
+			if entityUser.UserProfile.EntryDate != nil {
+				cacheData["entry_date"] = *entityUser.UserProfile.EntryDate
+			}
+		}
+		if entityUser.CreatedAt != nil {
+			cacheData["created_at"] = entityUser.CreatedAt
+		}
+		if entityUser.UpdatedAt != nil {
+			cacheData["updated_at"] = entityUser.UpdatedAt
 		}
 
 		if err := r.UpdateCacheUser(id, cacheData); err != nil {
@@ -1004,7 +1036,7 @@ func (r *userPersistence) IsUserCacheComplete(userData map[string]string) bool {
 	requiredFields := []string{
 		"id", "name", "email", "nickname", "role",
 		"image", "company_id", "departments", "teams",
-		"is_online", "birthday", "is_subscribed",
+		"birthday", "is_subscribed",
 		"created_at", "updated_at", "entry_date",
 	}
 
