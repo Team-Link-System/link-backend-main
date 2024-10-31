@@ -145,3 +145,14 @@ func AutoMigrate(db *gorm.DB) {
 // 		log.Printf("총 %d명의 사용자를 오프라인 상태로 변경했습니다.", result.RowsAffected)
 // 	}
 // }
+
+func StartServer() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("서버 시작 중 오류 발생:", r)
+			StartServer()
+		}
+	}()
+
+	log.Println("서버 시작")
+}

@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"os"
+	"runtime"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,7 +17,23 @@ import (
 	ws "link/pkg/ws"
 )
 
-func main() {
+func startServer() {
+	// 로그 파일 설정
+	logFile, err := os.OpenFile("server.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("로깅 파일 열기 실패: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
+	defer func() {
+		if r := recover(); r != nil {
+			_, file, line, _ := runtime.Caller(2)
+			log.Printf("서버 실행 중 panic 발생 - 파일: %s, 라인: %d, 오류: %v", file, line, r)
+			log.Printf("오류가 발생한 시간: %v", time.Now().Format(time.RFC3339))
+			startServer() // 재시작
+		}
+	}()
 
 	cfg := config.LoadConfig()
 
@@ -58,7 +77,7 @@ func main() {
 
 	go wsHub.Run()
 
-	err := container.Invoke(func(
+	err = container.Invoke(func(
 		userHandler *handlerHttp.UserHandler,
 		authHandler *handlerHttp.AuthHandler,
 
@@ -174,4 +193,8 @@ func main() {
 		log.Fatalf("HTTP 서버 시작 실패: %v", err)
 	}
 
+}
+
+func main() {
+	startServer()
 }
