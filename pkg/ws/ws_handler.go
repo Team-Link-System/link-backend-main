@@ -268,13 +268,18 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	//TODO 메모리에 유저 상태 확인
 	oldConn, exists := h.hub.Clients.Load(uint(userIdUint))
 	if exists {
-		//TODO 있으면 웹소켓 종료
+		//TODO 기존 연결이 있는 경우
 		if oldWs, ok := oldConn.(*websocket.Conn); ok {
 			oldWs.Close()
 		}
 		h.hub.RegisterClient(conn, uint(userIdUint), 0)
+		conn.WriteJSON(res.JsonResponse{
+			Success: true,
+			Message: "재연결 성공",
+			Type:    "reconnection",
+		})
 	} else {
-		//TODO 없으면 DB에서 확인
+		// 새로운 연결 인 경우
 		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
 		if err != nil {
 			log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -286,7 +291,10 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			return
 		}
 		h.hub.RegisterClient(conn, *user.ID, 0)
-		h.userUsecase.UpdateUserOnlineStatus(*user.ID, true)
+		// Redis나 DB에 온라인 상태 저장
+		if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
+			log.Printf("온라인 상태 업데이트 실패: %v", err)
+		}
 	}
 	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
 	for {

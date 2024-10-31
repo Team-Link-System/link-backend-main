@@ -12,7 +12,6 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
-
 	_utils "link/pkg/util"
 )
 
@@ -410,6 +409,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 			Phone:           _utils.GetValueOrDefault(user.Phone, ""),
 			Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
 			IsOnline:        isOnline,
+			IsSubscribed:    _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
 			Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
 			Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
 			CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
