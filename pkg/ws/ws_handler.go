@@ -286,6 +286,11 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("예기치 않은 WebSocket 종료: %v", err)
+
+				//TODO 유저 상태 업데이트
+				if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
+					log.Printf("유저 상태 업데이트 실패: %v", err)
+				}
 			}
 			break
 		}

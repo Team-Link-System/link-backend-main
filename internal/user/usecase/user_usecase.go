@@ -3,6 +3,7 @@ package usecase
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	_companyRepo "link/internal/company/repository"
@@ -396,10 +397,9 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 	// 사용자 리스트 변환
 	return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
 		isOnline := false
-		if status, exists := onlineStatusMap[_utils.GetValueOrDefault(user.ID, 0)]["is_online"]; exists {
-			if online, ok := status.(bool); ok {
-				isOnline = online
-			}
+		if status, exists := onlineStatusMap[*user.ID]["is_online"]; exists {
+			//TODO 캐시에서 가져온 값이 문자열이라면 불리언으로 변환
+			isOnline, _ = strconv.ParseBool(status.(string))
 		}
 
 		return res.GetUserByIdResponse{

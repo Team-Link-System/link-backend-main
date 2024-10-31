@@ -219,8 +219,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 
 	if err == nil && len(userData) > 0 && r.IsUserCacheComplete(userData) {
 
-		fmt.Println("레디스 조회 성공")
-		fmt.Println("userData", userData)
 		departments := make([]*map[string]interface{}, len(userData["departments"]))
 		teams := make([]*map[string]interface{}, len(userData["teams"]))
 
@@ -704,8 +702,6 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 			}
 		}
 	}
-
-	//TODO 캐시에서 가져오고 하나의 필드라도 안맞으면 업데이트
 
 	// 최종 사용자 목록 생성
 	for _, user := range userMap {
