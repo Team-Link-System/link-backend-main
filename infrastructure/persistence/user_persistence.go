@@ -104,7 +104,6 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 
 	// 캐시 업데이트
 	redisUserFields := make(map[string]interface{})
-
 	redisUserFields["id"] = modelUser.ID
 	redisUserFields["name"] = modelUser.Name
 	redisUserFields["email"] = modelUser.Email
@@ -112,11 +111,14 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 	redisUserFields["phone"] = modelUser.Phone
 	redisUserFields["role"] = modelUser.Role
 
-	redisUserFields["company_id"] = modelUserProfile.CompanyID
 	redisUserFields["image"] = modelUserProfile.Image
+	redisUserFields["company_id"] = modelUserProfile.CompanyID
 	redisUserFields["birthday"] = modelUserProfile.Birthday
 	redisUserFields["is_subscribed"] = modelUserProfile.IsSubscribed
 	redisUserFields["is_online"] = false
+	redisUserFields["entry_date"] = modelUserProfile.EntryDate
+	redisUserFields["created_at"] = modelUser.CreatedAt
+	redisUserFields["updated_at"] = modelUser.UpdatedAt
 
 	if err := r.UpdateCacheUser(modelUser.ID, redisUserFields); err != nil {
 		log.Printf("사용자 캐시 업데이트 중 오류: %v", err)
@@ -362,6 +364,25 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 		}
 	}
 
+	//TODO 캐시 업데이트 - updates와 profileUpdates 둘 다 업데이트
+	// Redis 캐시 비동기 업데이트
+	go func() {
+		// 모든 업데이트를 하나의 맵으로 병합
+		cacheUpdates := make(map[string]interface{})
+		for k, v := range updates {
+			cacheUpdates[k] = v
+		}
+		for k, v := range profileUpdates {
+			cacheUpdates[k] = v
+		}
+
+		if err := r.UpdateCacheUser(id, cacheUpdates); err != nil {
+			log.Printf("Redis 캐시 업데이트 실패: %v", err)
+		}
+	}()
+
+	//TODO 캐시 업데이트 - profileUpdates 업데이트
+
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("트랜잭션 커밋 중 DB 오류: %w", err)
 	}
@@ -435,7 +456,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 	dbQuery := r.db.
 		Table("users").
 		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
-			"user_profiles.birthday", "user_profiles.image",
+			"user_profiles.birthday", "user_profiles.is_subscribed", "user_profiles.entry_date", "user_profiles.image",
 			"companies.id as company_id", "companies.cp_name as company_name",
 			"departments.id as department_id", "departments.name as department_name",
 			"teams.id as team_id", "teams.name as team_name",
@@ -477,12 +498,17 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		var userProfile entity.UserProfile
 		var companyName, departmentName, teamName, positionName *string
 		var companyID, departmentID, teamID, positionID *uint
-		var birthday sql.NullString
+		var (
+			birthday     sql.NullString
+			entryDate    sql.NullTime
+			isSubscribed bool
+			image        sql.NullString
+		)
 
 		// 데이터베이스에서 조회된 데이터를 변수에 스캔
 		if err := rows.Scan(
 			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
-			&birthday, &userProfile.Image,
+			&birthday, &isSubscribed, &entryDate, &image,
 			&companyID, &companyName, &departmentID, &departmentName, &teamID, &teamName, &positionID, &positionName,
 		); err != nil {
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
@@ -496,6 +522,13 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 			user.ID = &userID
 			if birthday.Valid {
 				userProfile.Birthday = birthday.String
+			}
+			if entryDate.Valid {
+				userProfile.EntryDate = &entryDate.Time
+			}
+			userProfile.IsSubscribed = isSubscribed
+			if image.Valid {
+				userProfile.Image = &image.String
 			}
 			userProfile.CompanyID = companyID
 
@@ -820,6 +853,7 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 		}
 	}
 
+	fmt.Println("redis 테스트", user)
 	fmt.Println("user", user)
 
 	return user, nil

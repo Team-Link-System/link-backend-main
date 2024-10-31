@@ -38,6 +38,7 @@ type UserProfile struct {
 	Teams        []*map[string]interface{} `json:"teams,omitempty"`
 	PositionId   *uint                     `json:"position_id,omitempty"`
 	Position     *map[string]interface{}   `json:"position,omitempty"`
+	EntryDate    *time.Time                `json:"entry_date,omitempty"`
 	CreatedAt    time.Time                 `json:"created_at,omitempty"`
 	UpdatedAt    time.Time                 `json:"updated_at,omitempty"`
 }
