@@ -56,22 +56,38 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 	// 채팅방에 클라이언트 추가 (채팅방 참여자에게만 전송)
 	if roomID != 0 {
 		hub.AddToChatRoom(roomID, userID, conn)
+		return
 	} else {
 		//TODO userClient가 메모리에있는지 확인
-		_, ok := hub.Clients.Load(userID)
-		if !ok {
-			//TODO 없으면 그냥 메모리에 추가
+		// 기존 연결 확인
+		oldConn, existingConnection := hub.Clients.Load(userID)
+		if existingConnection {
+			// 기존 연결이 있는 경우 (재연결)
+			if oldWs, ok := oldConn.(*websocket.Conn); ok {
+				oldWs.Close()
+			}
 			hub.Clients.Store(userID, conn)
+			// 재연결은 단순히 연결만 업데이트 (상태 변경 없음)
 			conn.WriteJSON(res.JsonResponse{
 				Success: true,
-				Message: fmt.Sprintf("User %d 연결 성공", userID),
-				Type:    "connection",
+				Message: fmt.Sprintf("User %d 재연결 성공", userID),
+				Type:    "reconnection",
 			})
+			return
 		}
-		//TODO 온라인 상태 변경 -> 자기 친구들에게만 하기 혹은 회사사람들에게만 하기
-		oldStatus, ok := hub.OnlineClients.Load(userID)
-		if !ok || oldStatus == nil || oldStatus == false {
+
+		hub.Clients.Store(userID, conn)
+		conn.WriteJSON(res.JsonResponse{
+			Success: true,
+			Message: fmt.Sprintf("User %d 연결 성공", userID),
+			Type:    "connection",
+		})
+
+		//TODO 온라인 상태 변경 -> (새 연결일 때만)
+		oldStatus, _ := hub.OnlineClients.Load(userID)
+		if oldStatus == nil || oldStatus == false {
 			hub.OnlineClients.Store(userID, true)
+			// Redis 업데이트 및 상태 변경 브로드캐스트
 			hub.BroadcastOnlineStatus(userID, true)
 		}
 	}
