@@ -1,7 +1,6 @@
 ```
-link
+link-backend-main
 ├─ .dockerignore
-├─ .gitignore
 ├─ Dockerfile
 ├─ EnvKey
 ├─ README.md
@@ -12,10 +11,10 @@ link
 │  ├─ di.go
 │  └─ init.go
 ├─ docker-compose.yml
+├─ docker-compose2.yml
 ├─ go.mod
 ├─ go.sum
 ├─ infrastructure
-│  ├─ logger
 │  ├─ model
 │  │  ├─ chat_model.go
 │  │  ├─ chatroom_model.go
@@ -42,8 +41,6 @@ link
 │     └─ user_persistence.go
 ├─ internal
 │  ├─ admin
-│  │  ├─ entity
-│  │  ├─ repository
 │  │  └─ usecase
 │  │     └─ admin_usecase.go
 │  ├─ auth
@@ -97,59 +94,56 @@ link
 │  │     └─ team_usecase.go
 │  └─ user
 │     ├─ entity
-│     │  ├─ user_entity.go
-│     │  └─ userprofile_entity.go
+│     │  └─ user_entity.go
 │     ├─ repository
 │     │  └─ user_repository.go
 │     └─ usecase
 │        └─ user_usecase.go
-├─ pkg
-│  ├─ common
-│  │  └─ response.go
-│  ├─ dto
-│  │  ├─ req
-│  │  │  ├─ admin_req.go
-│  │  │  ├─ auth_req.go
-│  │  │  ├─ chat_req.go
-│  │  │  ├─ company_req.go
-│  │  │  ├─ department_req.go
-│  │  │  ├─ notification_req.go
-│  │  │  ├─ post_req.go
-│  │  │  └─ user_req.go
-│  │  └─ res
-│  │     ├─ admin_res.go
-│  │     ├─ auth_res.go
-│  │     ├─ chat_res.go
-│  │     ├─ company_res.go
-│  │     ├─ department_res.go
-│  │     ├─ notification_res.go
-│  │     ├─ post_res.go
-│  │     ├─ team_res.go
-│  │     ├─ user_res.go
-│  │     └─ ws_res.go
-│  ├─ http
-│  │  ├─ admin_handler.go
-│  │  ├─ auth_handler.go
-│  │  ├─ chat_handler.go
-│  │  ├─ company_handler.go
-│  │  ├─ department_handler.go
-│  │  ├─ notification_handler.go
-│  │  ├─ post_handler.go
-│  │  ├─ team_handler.go
-│  │  └─ user_handler.go
-│  ├─ interceptor
-│  │  ├─ error_handler.go
-│  │  └─ token_interceptor.go
-│  ├─ middleware
-│  │  └─ image_middleware.go
-│  ├─ util
-│  │  ├─ jwt.go
-│  │  ├─ optional.go
-│  │  └─ password.go
-│  └─ ws
-│     ├─ ws_handler.go
-│     └─ ws_hub.go
-├─ route
-└─ script
+└─ pkg
+   ├─ common
+   │  └─ response.go
+   ├─ dto
+   │  ├─ req
+   │  │  ├─ admin_req.go
+   │  │  ├─ auth_req.go
+   │  │  ├─ chat_req.go
+   │  │  ├─ company_req.go
+   │  │  ├─ department_req.go
+   │  │  ├─ notification_req.go
+   │  │  ├─ post_req.go
+   │  │  └─ user_req.go
+   │  └─ res
+   │     ├─ admin_res.go
+   │     ├─ auth_res.go
+   │     ├─ chat_res.go
+   │     ├─ company_res.go
+   │     ├─ department_res.go
+   │     ├─ notification_res.go
+   │     ├─ post_res.go
+   │     ├─ team_res.go
+   │     ├─ user_res.go
+   │     └─ ws_res.go
+   ├─ http
+   │  ├─ admin_handler.go
+   │  ├─ auth_handler.go
+   │  ├─ chat_handler.go
+   │  ├─ company_handler.go
+   │  ├─ department_handler.go
+   │  ├─ notification_handler.go
+   │  ├─ post_handler.go
+   │  ├─ team_handler.go
+   │  └─ user_handler.go
+   ├─ interceptor
+   │  ├─ error_handler.go
+   │  └─ token_interceptor.go
+   ├─ middleware
+   │  └─ image_middleware.go
+   ├─ util
+   │  ├─ jwt.go
+   │  ├─ optional.go
+   │  └─ password.go
+   └─ ws
+      ├─ ws_handler.go
+      └─ ws_hub.go
 
 ```

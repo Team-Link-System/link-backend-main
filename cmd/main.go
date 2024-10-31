@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
 	"runtime"
 	"time"
 
@@ -12,25 +12,25 @@ import (
 	"link/config"
 	handlerHttp "link/pkg/http"
 	"link/pkg/interceptor"
+	"link/pkg/logger"
 	"link/pkg/middleware"
 
 	ws "link/pkg/ws"
 )
 
 func startServer() {
-	// 로그 파일 설정
-	logFile, err := os.OpenFile("server.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("로깅 파일 열기 실패: %v", err)
+	// 로거 초기화
+	if err := logger.InitLogger(); err != nil {
+		log.Fatalf("로거 초기화 실패: %v", err)
 	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
+	defer logger.CloseLogger()
 
+	// panic 복구 처리
 	defer func() {
 		if r := recover(); r != nil {
 			_, file, line, _ := runtime.Caller(2)
-			log.Printf("서버 실행 중 panic 발생 - 파일: %s, 라인: %d, 오류: %v", file, line, r)
-			log.Printf("오류가 발생한 시간: %v", time.Now().Format(time.RFC3339))
+			logger.LogError(fmt.Sprintf("서버 실행 중 panic 발생 - 파일: %s, 라인: %d, 오류: %v", file, line, r))
+			logger.LogError(fmt.Sprintf("오류가 발생한 시간: %v", time.Now().Format(time.RFC3339)))
 			startServer() // 재시작
 		}
 	}()
@@ -77,7 +77,7 @@ func startServer() {
 
 	go wsHub.Run()
 
-	err = container.Invoke(func(
+	err := container.Invoke(func(
 		userHandler *handlerHttp.UserHandler,
 		authHandler *handlerHttp.AuthHandler,
 
