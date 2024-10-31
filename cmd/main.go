@@ -40,6 +40,7 @@ func startServer() {
 	config.AutoMigrate(cfg.DB)
 	config.InitCompany(cfg.DB)
 	config.InitAdminUser(cfg.DB)
+	config.InitRedisUserState(cfg.Redis)
 	// config.UpdateAllUserOffline(cfg.DB)
 	config.EnsureDirectory("static/profiles")
 	config.EnsureDirectory("static/posts")

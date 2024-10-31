@@ -1,10 +1,12 @@
 package config
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -130,4 +132,19 @@ func AutoMigrate(db *gorm.DB) {
 	); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
+}
+
+// TODO 레디스 사용자 정보 초기화
+func InitRedisUserState(redis *redis.Client) error {
+	keys, err := redis.Keys(context.Background(), "user:*").Result()
+	if err != nil {
+		log.Printf("레디스 사용자 정보 초기화 중 오류 발생: %v", err)
+		return err
+	}
+
+	if len(keys) > 0 {
+		redis.Del(context.Background(), keys...)
+	}
+	log.Println("레디스 사용자 정보 초기화 완료")
+	return nil
 }
