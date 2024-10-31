@@ -129,6 +129,11 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
+	var entryDate *time.Time
+	if user.UserProfile.EntryDate != nil && !user.UserProfile.EntryDate.IsZero() {
+		entryDate = user.UserProfile.EntryDate
+	}
+
 	//TODO 캐시 있다면 조회 없으면 데이터베이스 조회
 	//TODO 캐시에는 이미지 온라인 상태 , birthday 있음
 
@@ -141,6 +146,8 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
 		Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
 		Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
+		IsOnline:        _utils.GetValueOrDefault(user.IsOnline, false),
+		IsSubscribed:    _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
 		CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
 		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
 		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Departments, "id"),
@@ -149,8 +156,8 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
 		PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
 		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
-		EntryDate:       user.UserProfile.EntryDate,
-		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
+		EntryDate:       entryDate,
+		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}), //TODO
 		UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
 	}
 

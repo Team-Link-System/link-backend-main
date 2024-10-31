@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -30,6 +31,8 @@ func InitAdminUser(db *gorm.DB) {
 				if err != nil {
 					return err
 				}
+				createdAt := time.Now()
+				updatedAt := time.Now()
 
 				admin = model.User{
 					Name:     "System Administrator",
@@ -37,16 +40,20 @@ func InitAdminUser(db *gorm.DB) {
 					Password: hashedPassword,
 					Role:     model.RoleAdmin, // 시스템 관리자 권한 설정
 					// DepartmentID, TeamID, Group 필드를 설정하지 않음 (NULL 허용)
+					CreatedAt: createdAt,
+					UpdatedAt: updatedAt,
 				}
 
 				companyID := uint(1)
 				imageUrl := os.Getenv("DEFAULT_PROFILE_IMAGE_URL")
+				entryDate := time.Now()
 
 				admin.UserProfile = &model.UserProfile{
 					UserID:       admin.ID,
 					CompanyID:    &companyID,
 					IsSubscribed: true,
 					Image:        &imageUrl,
+					EntryDate:    entryDate,
 				}
 
 				if err := tx.Create(&admin).Error; err != nil {

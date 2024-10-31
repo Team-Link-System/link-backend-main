@@ -21,7 +21,8 @@ type GetUserByIdResponse struct {
 	Name            string     `json:"name,omitempty"`
 	Phone           string     `json:"phone,omitempty"`
 	Nickname        string     `json:"nickname,omitempty"`
-	IsOnline        bool       `json:"is_online,omitempty"`
+	IsOnline        bool       `json:"is_online"`
+	IsSubscribed    bool       `json:"is_subscribed"`
 	Role            uint       `json:"role,omitempty"`
 	Image           string     `json:"image,omitempty"`
 	Birthday        string     `json:"birthday,omitempty"`

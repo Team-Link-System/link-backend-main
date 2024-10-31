@@ -218,6 +218,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	userData, err := r.redisClient.HGetAll(context.Background(), cacheKey).Result()
 
 	if err == nil && len(userData) > 0 && r.IsUserCacheComplete(userData) {
+
+		fmt.Println("레디스 조회 성공")
+		fmt.Println("userData", userData)
 		departments := make([]*map[string]interface{}, len(userData["departments"]))
 		teams := make([]*map[string]interface{}, len(userData["teams"]))
 
@@ -232,7 +235,16 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		role, _ := strconv.ParseUint(userData["role"], 10, 64)
 		companyID, _ := strconv.ParseUint(userData["company_id"], 10, 64)
 		isSubscribed, _ := strconv.ParseBool(userData["is_subscribed"])
-		isOnline, _ := strconv.ParseBool(userData["is_online"])
+
+		var isOnline bool
+		if userData["is_online"] == "" {
+			isOnline = false
+		} else {
+			isOnline, _ = strconv.ParseBool(userData["is_online"])
+		}
+
+		//TODO 온라인 상태가 없다면 그냥 false로 줘야함
+
 		id := uint(userID)
 		email := userData["email"]
 		nickname := userData["nickname"]
@@ -310,6 +322,11 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		}
 	}
 
+	isOnline := false
+	if onlineStr, err := r.redisClient.HGet(context.Background(), cacheKey, "is_online").Result(); err == nil {
+		isOnline, _ = strconv.ParseBool(onlineStr)
+	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -317,6 +334,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		Name:     &user.Name,
 		Phone:    &user.Phone,
 		Role:     entity.UserRole(user.Role),
+		IsOnline: &isOnline,
 		UserProfile: &entity.UserProfile{
 			Image:        user.UserProfile.Image,
 			Birthday:     user.UserProfile.Birthday,
@@ -774,14 +792,6 @@ func (r *userPersistence) CreateUserTeam(userId uint, teamId uint) error {
 	return tx.Commit().Error
 }
 
-// 유저상태 업데이트
-func (r *userPersistence) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return r.db.Model(&entity.User{}).
-		Where("id = ?", userId).
-		Omit("updated_at").
-		Update("is_online", online).Error
-}
-
 // !---------------------------------------------- 관리자 관련
 
 func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error) {
@@ -996,9 +1006,10 @@ func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[ui
 // ! 캐시 데이터가 완전한지 확인하는 헬퍼 함수
 func (r *userPersistence) IsUserCacheComplete(userData map[string]string) bool {
 	requiredFields := []string{
-		"name", "email", "nickname", "role", "phone",
-		"birthday", "is_subscribed", "image", "company_id",
-		"position_id", "position_name",
+		"id", "name", "email", "nickname", "role",
+		"image", "company_id", "departments", "teams",
+		"is_online", "birthday", "is_subscribed",
+		"created_at", "updated_at", "entry_date",
 	}
 
 	for _, field := range requiredFields {
