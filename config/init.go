@@ -1,10 +1,12 @@
 package config
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -132,27 +134,17 @@ func AutoMigrate(db *gorm.DB) {
 	}
 }
 
-// TODO 서버 재시작하면, 모든 사용자 오프라인상태로 변경
-// 서버 재시작 시 모든 사용자 오프라인 상태로 변경
-// func UpdateAllUserOffline(db *gorm.DB) {
-// 	result := db.Model(&model.User{}).
-// 		Where("is_online", true).
-// 		Omit("updated_at").
-// 		Update("is_online", false)
-// 	if result.Error != nil {
-// 		log.Printf("모든 사용자 오프라인 상태로 변경 실패: %v", result.Error)
-// 	} else {
-// 		log.Printf("총 %d명의 사용자를 오프라인 상태로 변경했습니다.", result.RowsAffected)
-// 	}
-// }
+// TODO 레디스 사용자 정보 초기화
+func InitRedisUserState(redis *redis.Client) error {
+	keys, err := redis.Keys(context.Background(), "user:*").Result()
+	if err != nil {
+		log.Printf("레디스 사용자 정보 초기화 중 오류 발생: %v", err)
+		return err
+	}
 
-func StartServer() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("서버 시작 중 오류 발생:", r)
-			StartServer()
-		}
-	}()
-
-	log.Println("서버 시작")
+	if len(keys) > 0 {
+		redis.Del(context.Background(), keys...)
+	}
+	log.Println("레디스 사용자 정보 초기화 완료")
+	return nil
 }

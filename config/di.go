@@ -22,18 +22,23 @@ import (
 	userUsecase "link/internal/user/usecase"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/dig"
 	"gorm.io/gorm"
 )
 
-func BuildContainer(db *gorm.DB, redisClient *redis.Client, mongoClient *mongo.Client) *dig.Container {
+func BuildContainer(db *gorm.DB,
+	redisClient *redis.Client,
+	mongoClient *mongo.Client,
+	natsClient *nats.Conn) *dig.Container {
 	container := dig.New()
 
 	// DB 및 Redis 클라이언트 등록
 	container.Provide(func() *gorm.DB { return db })
 	container.Provide(func() *redis.Client { return redisClient })
 	container.Provide(func() *mongo.Client { return mongoClient })
+	container.Provide(func() *nats.Conn { return natsClient })
 
 	//ws 주입
 	container.Provide(ws.NewWebSocketHub)

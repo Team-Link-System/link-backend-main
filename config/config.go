@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/postgres"
@@ -23,6 +23,7 @@ type Config struct {
 	DB       *gorm.DB
 	Redis    *redis.Client
 	Mongo    *mongo.Client
+	Nats     *nats.Conn
 }
 
 func LoadConfig() *Config {
@@ -35,6 +36,7 @@ func LoadConfig() *Config {
 		DB:       InitDB(),
 		Redis:    InitRedis(),
 		Mongo:    InitMongo(),
+		Nats:     InitNats(),
 	}
 }
 
@@ -68,6 +70,8 @@ func InitDB() *gorm.DB {
 	if os.Getenv("GO_ENV") == "dev" {
 		db = db.Debug()
 	}
+
+	log.Println("POSTGRES DB 연결 성공")
 	return db
 }
 
@@ -84,6 +88,7 @@ func InitRedis() *redis.Client {
 		log.Fatal("레디스 연결 오류:", err)
 	}
 
+	log.Println("레디스 연결 성공")
 	return rdb
 }
 
@@ -103,13 +108,24 @@ func InitMongo() *mongo.Client {
 		log.Fatalf("몽고DB 연결 오류: %v", err)
 	}
 
-	fmt.Println("몽고DB 연결 성공")
+	log.Println("몽고DB 연결 성공")
 	return client
 }
 
 func parseRedisDB(db string) int {
 	i, _ := strconv.Atoi(db)
 	return i
+}
+
+func InitNats() *nats.Conn {
+	natsURL := os.Getenv("NATS_URL")
+	conn, err := nats.Connect(natsURL)
+	if err != nil {
+		log.Fatalf("NATS 연결 오류: %v", err)
+	}
+
+	log.Println("NATS 연결 성공")
+	return conn
 }
 
 func getEnv(key, fallback string) string {

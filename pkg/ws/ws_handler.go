@@ -264,8 +264,14 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	}()
 
 	//TODO 메모리에 유저 상태 확인
-	_, exists := h.hub.Clients.Load(uint(userIdUint))
-	if !exists {
+	oldConn, exists := h.hub.Clients.Load(uint(userIdUint))
+	if exists {
+		//TODO 있으면 웹소켓 종료
+		if oldWs, ok := oldConn.(*websocket.Conn); ok {
+			oldWs.Close()
+		}
+		h.hub.RegisterClient(conn, uint(userIdUint), 0)
+	} else {
 		//TODO 없으면 DB에서 확인
 		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
 		if err != nil {
