@@ -3,10 +3,12 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
@@ -211,11 +213,89 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 }
 
 func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
-	var user model.User
+
+	cacheKey := fmt.Sprintf("user:%d", id)
+	userData, err := r.redisClient.HGetAll(context.Background(), cacheKey).Result()
+
+	if err == nil && len(userData) > 0 && r.IsUserCacheComplete(userData) {
+
+		departments := make([]*map[string]interface{}, len(userData["departments"]))
+		teams := make([]*map[string]interface{}, len(userData["teams"]))
+
+		if depsStr, ok := userData["departments"]; ok {
+			json.Unmarshal([]byte(depsStr), &departments)
+		}
+		if teamsStr, ok := userData["teams"]; ok {
+			json.Unmarshal([]byte(teamsStr), &teams)
+		}
+
+		userID, _ := strconv.ParseUint(userData["id"], 10, 64)
+		role, _ := strconv.ParseUint(userData["role"], 10, 64)
+		companyID, _ := strconv.ParseUint(userData["company_id"], 10, 64)
+		isSubscribed, _ := strconv.ParseBool(userData["is_subscribed"])
+
+		var isOnline bool
+		if userData["is_online"] == "" {
+			isOnline = false
+		} else {
+			isOnline, _ = strconv.ParseBool(userData["is_online"])
+		}
+
+		//TODO 온라인 상태가 없다면 그냥 false로 줘야함
+
+		id := uint(userID)
+		email := userData["email"]
+		nickname := userData["nickname"]
+		name := userData["name"]
+		phone := userData["phone"]
+		cid := uint(companyID)
+		image := userData["image"]
+		birthday := userData["birthday"]
+		entryDate := userData["entry_date"]
+		var parsedEntryDate time.Time
+		if entryDate != "" {
+			parsedEntryDate, _ = time.Parse(time.RFC3339, entryDate)
+		}
+		createdAt := userData["created_at"]
+		updatedAt := userData["updated_at"]
+		var parsedCreatedAt time.Time
+		var parsedUpdatedAt time.Time
+		if createdAt != "" {
+			parsedCreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		}
+		if updatedAt != "" {
+			parsedUpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		}
+
+		return &entity.User{
+			ID:       &id,
+			Email:    &email,
+			Nickname: &nickname,
+			Name:     &name,
+			Phone:    &phone,
+			Role:     entity.UserRole(role),
+			IsOnline: &isOnline,
+			UserProfile: &entity.UserProfile{
+				Image:        &image,
+				Birthday:     birthday,
+				IsSubscribed: isSubscribed,
+				CompanyID:    &cid,
+				Departments:  departments,
+				Teams:        teams,
+				EntryDate:    &parsedEntryDate,
+			},
+			CreatedAt: &parsedCreatedAt,
+			UpdatedAt: &parsedUpdatedAt,
+		}, nil
+
+	}
 
 	//TODO UserProfile 조인 추가
-	err := r.db.
-		Preload("UserProfile").
+	var user model.User
+	err = r.db.
+		Preload("UserProfile.Departments").
+		Preload("UserProfile.Teams").
+		Preload("UserProfile.Position").
 		Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -240,6 +320,11 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		}
 	}
 
+	isOnline := false
+	if onlineStr, err := r.redisClient.HGet(context.Background(), cacheKey, "is_online").Result(); err == nil {
+		isOnline, _ = strconv.ParseBool(onlineStr)
+	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -247,6 +332,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		Name:     &user.Name,
 		Phone:    &user.Phone,
 		Role:     entity.UserRole(user.Role),
+		IsOnline: &isOnline,
 		UserProfile: &entity.UserProfile{
 			Image:        user.UserProfile.Image,
 			Birthday:     user.UserProfile.Birthday,
@@ -255,11 +341,42 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			Departments:  departments,
 			Teams:        teams,
 			PositionId:   user.UserProfile.PositionID,
+			EntryDate:    &user.UserProfile.EntryDate,
 			// Position:     user.UserProfile.Position,
 		},
 		CreatedAt: &user.CreatedAt,
 		UpdatedAt: &user.UpdatedAt,
 	}
+
+	//TODO 캐시 비동기 업데이트
+	go func() {
+		// departments와 teams를 JSON으로 변환
+		depsJSON, _ := json.Marshal(departments)
+		teamsJSON, _ := json.Marshal(teams)
+
+		cacheData := map[string]interface{}{
+			"id":            *entityUser.ID,
+			"email":         *entityUser.Email,
+			"nickname":      *entityUser.Nickname,
+			"name":          *entityUser.Name,
+			"phone":         *entityUser.Phone,
+			"role":          entityUser.Role,
+			"image":         *entityUser.UserProfile.Image,
+			"birthday":      entityUser.UserProfile.Birthday,
+			"is_subscribed": entityUser.UserProfile.IsSubscribed,
+			"company_id":    *entityUser.UserProfile.CompanyID,
+			"departments":   string(depsJSON),
+			"teams":         string(teamsJSON),
+			"entry_date":    *entityUser.UserProfile.EntryDate,
+			"created_at":    entityUser.CreatedAt,
+			"updated_at":    entityUser.UpdatedAt,
+		}
+
+		if err := r.UpdateCacheUser(id, cacheData); err != nil {
+			log.Printf("Redis 캐시 업데이트 실패: %v", err)
+		}
+	}()
+
 	return entityUser, nil
 }
 
@@ -671,14 +788,6 @@ func (r *userPersistence) CreateUserTeam(userId uint, teamId uint) error {
 	return tx.Commit().Error
 }
 
-// 유저상태 업데이트
-func (r *userPersistence) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return r.db.Model(&entity.User{}).
-		Where("id = ?", userId).
-		Omit("updated_at").
-		Update("is_online", online).Error
-}
-
 // !---------------------------------------------- 관리자 관련
 
 func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error) {
@@ -888,4 +997,21 @@ func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[ui
 	}
 
 	return userCacheMap, nil
+}
+
+// ! 캐시 데이터가 완전한지 확인하는 헬퍼 함수
+func (r *userPersistence) IsUserCacheComplete(userData map[string]string) bool {
+	requiredFields := []string{
+		"id", "name", "email", "nickname", "role",
+		"image", "company_id", "departments", "teams",
+		"is_online", "birthday", "is_subscribed",
+		"created_at", "updated_at", "entry_date",
+	}
+
+	for _, field := range requiredFields {
+		if _, exists := userData[field]; !exists {
+			return false
+		}
+	}
+	return true
 }

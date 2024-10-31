@@ -3,6 +3,7 @@ package usecase
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	_companyRepo "link/internal/company/repository"
@@ -129,6 +130,11 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
 	}
 
+	var entryDate *time.Time
+	if user.UserProfile.EntryDate != nil && !user.UserProfile.EntryDate.IsZero() {
+		entryDate = user.UserProfile.EntryDate
+	}
+
 	//TODO 캐시 있다면 조회 없으면 데이터베이스 조회
 	//TODO 캐시에는 이미지 온라인 상태 , birthday 있음
 
@@ -141,6 +147,8 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
 		Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
 		Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
+		IsOnline:        _utils.GetValueOrDefault(user.IsOnline, false),
+		IsSubscribed:    _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
 		CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
 		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
 		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Departments, "id"),
@@ -149,7 +157,8 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
 		PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
 		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
-		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
+		EntryDate:       entryDate,
+		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}), //TODO
 		UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
 	}
 
@@ -363,6 +372,8 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 		Order:  string(query.Order),
 	}
 
+	//TODO redis에서 먼저 회사 사용자 목록 먼저 조회시도
+
 	// 회사 ID로 사용자 목록 조회
 	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID, queryOptions)
 	if err != nil {
@@ -386,10 +397,9 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 	// 사용자 리스트 변환
 	return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
 		isOnline := false
-		if status, exists := onlineStatusMap[_utils.GetValueOrDefault(user.ID, 0)]["is_online"]; exists {
-			if online, ok := status.(bool); ok {
-				isOnline = online
-			}
+		if status, exists := onlineStatusMap[*user.ID]["is_online"]; exists {
+			//TODO 캐시에서 가져온 값이 문자열이라면 불리언으로 변환
+			isOnline, _ = strconv.ParseBool(status.(string))
 		}
 
 		return res.GetUserByIdResponse{
