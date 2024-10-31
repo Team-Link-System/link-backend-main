@@ -26,8 +26,11 @@ type AdminUsecase interface {
 
 	//Company관련
 	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error)
+	AdminUpdateCompany(requestUserID uint, request *req.AdminUpdateCompanyRequest) error
 	AdminDeleteCompany(requestUserID uint, companyID uint) error
 	AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error
+
+	//Department 관련
 }
 
 type adminUsecase struct {
@@ -247,3 +250,43 @@ func (u *adminUsecase) AdminAddUserToCompany(adminUserId uint, targetUserId uint
 
 	return nil
 }
+
+// TODO 회사 업데이트 - ADMIN
+func (u *adminUsecase) AdminUpdateCompany(requestUserID uint, request *req.AdminUpdateCompanyRequest) error {
+	adminUser, err := u.userRepository.GetUserByID(requestUserID)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생")
+	}
+
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 회사를 업데이트하려 했습니다: 요청자 ID %d", requestUserID)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+	}
+
+	//TODO request -> entity 변환
+	updateCompanyInfo := &_companyEntity.Company{
+		CpName:                    request.CpName,
+		CpNumber:                  request.CpNumber,
+		RepresentativeName:        request.RepresentativeName,
+		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
+		RepresentativeEmail:       request.RepresentativeEmail,
+		RepresentativeAddress:     request.RepresentativeAddress,
+		RepresentativePostalCode:  request.RepresentativePostalCode,
+		//! 해당 회사에서 부서를 업데이트 해서 사라지면 안되기때문에 넣으면안됨
+		//! 회사 업데이트 시 팀업데이트해서 중간테이블 미아되면 안되기때문에 빼놓음
+		Grade:      request.Grade,
+		IsVerified: request.IsVerified,
+	}
+
+	//TODO 회사 정보 업데이트
+	err = u.companyRepository.UpdateCompany(request.CompanyID, updateCompanyInfo)
+	if err != nil {
+		log.Printf("회사 업데이트 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "회사 업데이트 중 오류 발생")
+	}
+
+	return nil
+}
+
+//TODO ADMIN 회사 , 부서, 팀 별 사람 보기 (쿼리 파라미터로 구분 및 조회) - 회사가 없는 유저들도 봐야함

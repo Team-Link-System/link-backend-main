@@ -48,7 +48,7 @@ func startServer() {
 	// gin.SetMode(gin.ReleaseMode)
 
 	// dig 컨테이너 생성 및 의존성 주입
-	container := config.BuildContainer(cfg.DB, cfg.Redis, cfg.Mongo)
+	container := config.BuildContainer(cfg.DB, cfg.Redis, cfg.Mongo, cfg.Nats)
 
 	// Gin 라우터 설정
 	r := gin.Default()
@@ -176,6 +176,7 @@ func startServer() {
 			{
 				admin.POST("/signup", adminHandler.AdminCreateAdmin)
 				admin.POST("/company", adminHandler.AdminCreateCompany)
+				admin.PUT("/company", adminHandler.AdminUpdateCompany)
 				admin.DELETE("/company/:companyid", adminHandler.AdminDeleteCompany)
 				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                     //TODO 전체 사용자 조회
 				admin.GET("/user/company/:companyid", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회

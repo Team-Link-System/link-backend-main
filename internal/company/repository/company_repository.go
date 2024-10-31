@@ -3,8 +3,9 @@ package repository
 import "link/internal/company/entity"
 
 type CompanyRepository interface {
-	//TODO 관리자 전용
+	//TODO 회사 정보 관련
 	CreateCompany(company *entity.Company) (*entity.Company, error)
+	UpdateCompany(companyID uint, company *entity.Company) error
 	DeleteCompany(companyID uint) error
 
 	GetCompanyByID(companyID uint) (*entity.Company, error)

@@ -184,6 +184,33 @@ func (h *AdminHandler) AdminDeleteCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 삭제에 성공하였습니다.", nil))
 }
 
+// TODO 회사 업데이트 - ADMIN
+func (h *AdminHandler) AdminUpdateCompany(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		return
+	}
+
+	var request req.AdminUpdateCompanyRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		return
+	}
+
+	err := h.adminUsecase.AdminUpdateCompany(adminUserId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 업데이트에 성공하였습니다.", nil))
+}
+
 // TODO 회사에 속한 모든 사용자 리스트 조회 (관리자만)
 func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")

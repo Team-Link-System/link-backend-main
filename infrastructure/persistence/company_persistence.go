@@ -128,6 +128,34 @@ func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, er
 	return &companyEntity, nil
 }
 
+// TODO 회사 정보 업데이트
+func (r *companyPersistence) UpdateCompany(companyID uint, company *entity.Company) error {
+	var modelCompany model.Company
+	err := r.db.Where("id = ?", companyID).First(&modelCompany).Error
+	if err != nil {
+		return fmt.Errorf("회사 조회 중 오류 발생: %w", err)
+	}
+
+	modelCompany.CpName = company.CpName
+	modelCompany.CpNumber = company.CpNumber
+	modelCompany.RepresentativeName = company.RepresentativeName
+	modelCompany.RepresentativePhoneNumber = company.RepresentativePhoneNumber
+	modelCompany.RepresentativeEmail = company.RepresentativeEmail
+	modelCompany.RepresentativeAddress = company.RepresentativeAddress
+	modelCompany.RepresentativePostalCode = company.RepresentativePostalCode
+	modelCompany.Grade = model.CompanyGrade(company.Grade)
+	modelCompany.IsVerified = company.IsVerified
+
+	//TODO 회사 정보 업데이트 하면 사용자정보에 레디스에 저장된 내용들도 변경되어야함
+
+	err = r.db.Save(&modelCompany).Error
+	if err != nil {
+		return fmt.Errorf("회사 업데이트 중 오류 발생: %w", err)
+	}
+
+	return nil
+}
+
 func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
 	var companies []model.Company
 	err := r.db.Find(&companies).Error
