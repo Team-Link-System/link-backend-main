@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	_nats "link/pkg/nats"
 )
 
 type ChatUsecase interface {
@@ -32,10 +34,21 @@ type ChatUsecase interface {
 type chatUsecase struct {
 	chatRepository _chatRepo.ChatRepository
 	userRepository _userRepo.UserRepository
+	natsPublisher  *_nats.NatsPublisher
 }
 
-func NewChatUsecase(chatRepository _chatRepo.ChatRepository, userRepository _userRepo.UserRepository) ChatUsecase {
-	return &chatUsecase{chatRepository: chatRepository, userRepository: userRepository}
+func NewChatUsecase(
+	chatRepository _chatRepo.ChatRepository,
+	userRepository _userRepo.UserRepository,
+	natsPublisher *_nats.NatsPublisher,
+) ChatUsecase {
+	uc := &chatUsecase{
+		chatRepository: chatRepository,
+		userRepository: userRepository,
+		natsPublisher:  natsPublisher,
+	}
+
+	return uc
 }
 
 // TODO 채팅방 생성
@@ -186,10 +199,10 @@ func (uc *chatUsecase) GetChatRoomList(userId uint) ([]*res.ChatRoomInfoResponse
 	return chatRoomListResponse, nil
 }
 
-// TODO 채팅방 나가기
+// TODO 채팅방 나가기 - nats로 웹소켓에 전송
 func (uc *chatUsecase) LeaveChatRoom(userId uint, chatRoomId uint) error {
 	//TODO 사용자가 있는지 먼저 확인
-	_, err := uc.userRepository.GetUserByID(userId)
+	leaveUser, err := uc.userRepository.GetUserByID(userId)
 	if err != nil {
 		fmt.Printf("채팅방 나가기 중 사용자 조회 오류: %v", err)
 		return common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다", err)
@@ -207,6 +220,25 @@ func (uc *chatUsecase) LeaveChatRoom(userId uint, chatRoomId uint) error {
 		fmt.Printf("채팅방 나가기 중 DB 오류: %v", err)
 		return common.NewError(http.StatusInternalServerError, "채팅방 나가기에 실패했습니다", err)
 	}
+
+	//TODO []byte로 변환
+	auditLeaveData, err := json.Marshal(map[string]interface{}{
+		"roomId":        chatRoomId,
+		"userId":        userId,
+		"leaveUserName": leaveUser.Name,
+	})
+	if err != nil {
+		fmt.Printf("채팅방 나가기 중 데이터 변환 오류: %v", err)
+		return common.NewError(http.StatusInternalServerError, "채팅방 나가기에 실패했습니다", err)
+	}
+
+	// TODO 채팅방 나가기 이벤트 발생
+	err = uc.natsPublisher.PublishEvent("chat.room.leave", auditLeaveData)
+	if err != nil {
+		fmt.Printf("채팅방 나가기 중 NATS 이벤트 발생 오류: %v", err)
+		return common.NewError(http.StatusInternalServerError, "채팅방 나가기에 실패했습니다", err)
+	}
+
 	return nil
 }
 

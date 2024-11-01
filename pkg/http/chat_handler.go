@@ -20,7 +20,10 @@ type ChatHandler struct {
 	hub         *ws.WebSocketHub
 }
 
-func NewChatHandler(chatUsecase usecase.ChatUsecase, hub *ws.WebSocketHub) *ChatHandler {
+func NewChatHandler(
+	chatUsecase usecase.ChatUsecase,
+	hub *ws.WebSocketHub,
+) *ChatHandler {
 	return &ChatHandler{
 		chatUsecase: chatUsecase,
 		hub:         hub,

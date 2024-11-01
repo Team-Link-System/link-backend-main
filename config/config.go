@@ -2,6 +2,8 @@ package config
 
 import (
 	"context"
+	"fmt"
+	"link/pkg/logger"
 	"log"
 	"os"
 	"strconv"
@@ -53,9 +55,9 @@ func LoadEnv() {
 
 	err := godotenv.Load(envFile)
 	if err != nil {
-		log.Printf("에러 %s 파일 로드", envFile)
+		logger.LogError(fmt.Sprintf("에러 %s 파일 로드", envFile))
 	} else {
-		log.Printf("%s 파일 로드 성공", envFile)
+		logger.LogError(fmt.Sprintf("%s 파일 로드 성공", envFile))
 	}
 }
 
@@ -63,7 +65,7 @@ func InitDB() *gorm.DB {
 	dsn := os.Getenv("POSTGRES_DSN")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("POSTGRES DB 연결 오류: ", err)
+		logger.LogError(fmt.Sprintf("POSTGRES DB 연결 오류: %v", err))
 	}
 
 	// 개발자 모드에서 디버그 모드 활성화
@@ -71,7 +73,7 @@ func InitDB() *gorm.DB {
 		db = db.Debug()
 	}
 
-	log.Println("POSTGRES DB 연결 성공")
+	fmt.Println("POSTGRES DB 연결 성공")
 	return db
 }
 
@@ -85,7 +87,7 @@ func InitRedis() *redis.Client {
 	})
 
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
-		log.Fatal("레디스 연결 오류:", err)
+		logger.LogError(fmt.Sprintf("레디스 연결 오류: %v", err))
 	}
 
 	log.Println("레디스 연결 성공")
@@ -99,13 +101,13 @@ func InitMongo() *mongo.Client {
 	// MongoDB 클라이언트 초기화
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		log.Fatalf("몽고DB 연결 오류: %v", err)
+		logger.LogError(fmt.Sprintf("몽고DB 연결 오류: %v", err))
 	}
 
 	// 연결 확인
 	err = client.Ping(context.TODO(), nil)
 	if err != nil {
-		log.Fatalf("몽고DB 연결 오류: %v", err)
+		logger.LogError(fmt.Sprintf("몽고DB 연결 오류: %v", err))
 	}
 
 	log.Println("몽고DB 연결 성공")
@@ -121,10 +123,11 @@ func InitNats() *nats.Conn {
 	natsURL := os.Getenv("NATS_URL")
 	conn, err := nats.Connect(natsURL)
 	if err != nil {
-		log.Fatalf("NATS 연결 오류: %v", err)
+		fmt.Printf("NATS 연결 오류: %v", err)
+		logger.LogError(fmt.Sprintf("NATS 연결 오류: %v", err))
 	}
 
-	log.Println("NATS 연결 성공")
+	fmt.Println("NATS 연결 성공")
 	return conn
 }
 
@@ -138,7 +141,7 @@ func getEnv(key, fallback string) string {
 func EnsureDirectory(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, os.ModePerm); err != nil {
-			log.Fatalf("폴더 생성 실패: %s, 오류: %v", path, err)
+			logger.LogError(fmt.Sprintf("폴더 생성 실패: %s, 오류: %v", path, err))
 		}
 	}
 }

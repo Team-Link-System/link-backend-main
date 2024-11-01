@@ -74,7 +74,6 @@ func startServer() {
 	r.Use(interceptor.ErrorHandler())
 
 	wsHub := ws.NewWebSocketHub()
-
 	go wsHub.Run()
 
 	err := container.Invoke(func(

@@ -10,12 +10,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/nats-io/nats.go"
 
 	_chatUsecase "link/internal/chat/usecase"
 	_notificationUsecase "link/internal/notification/usecase"
 	_userUsecase "link/internal/user/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	_nats "link/pkg/nats"
 	"link/pkg/util"
 )
 
@@ -25,16 +27,61 @@ type WsHandler struct {
 	chatUsecase         _chatUsecase.ChatUsecase
 	notificationUsecase _notificationUsecase.NotificationUsecase
 	userUsecase         _userUsecase.UserUsecase
+	natsPublisher       *_nats.NatsPublisher
+	natsSubscriber      *_nats.NatsSubscriber
 }
 
 // NewWsHandler는 WebSocketHub를 받아서 새로운 WsHandler를 반환합니다.
-func NewWsHandler(hub *WebSocketHub, chatUsecase _chatUsecase.ChatUsecase, notificationUsecase _notificationUsecase.NotificationUsecase, userUsecase _userUsecase.UserUsecase) *WsHandler {
-	return &WsHandler{
+func NewWsHandler(hub *WebSocketHub,
+	chatUsecase _chatUsecase.ChatUsecase,
+	notificationUsecase _notificationUsecase.NotificationUsecase,
+	userUsecase _userUsecase.UserUsecase,
+	natsPublisher *_nats.NatsPublisher,
+	natsSubscriber *_nats.NatsSubscriber) *WsHandler {
+	ws := &WsHandler{
 		hub:                 hub,
 		chatUsecase:         chatUsecase,
 		notificationUsecase: notificationUsecase,
 		userUsecase:         userUsecase,
+		natsPublisher:       natsPublisher,
+		natsSubscriber:      natsSubscriber,
 	}
+	ws.setUpNatsSubscriber()
+
+	return ws
+}
+
+// nats sub 설정
+func (h *WsHandler) setUpNatsSubscriber() {
+	err := h.natsSubscriber.SubscribeEvent("chat.message.sent", func(msg *nats.Msg) {
+		fmt.Println("채팅 메시지 이벤트 수신")
+	})
+	if err != nil {
+		fmt.Printf("NATS 이벤트 수신 오류: %v", err)
+	}
+
+	err = h.natsSubscriber.SubscribeEvent("chat.room.leave", func(msg *nats.Msg) {
+
+		var message map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &message); err != nil {
+			fmt.Printf("메시지 파싱 오류: %v", err)
+			return
+		}
+
+		// leaveUserName := message["leaveUserName"].(string)
+		h.hub.SendMessageToChatRoom(uint(message["roomId"].(float64)), res.JsonResponse{
+			Success: true,
+			Message: "채팅방 나가기 이벤트 수신",
+			// Content: fmt.Sprintf("%s님이 채팅방을 나갔습니다.", leaveUserName),
+			Type: "chat",
+		})
+		h.hub.RemoveFromChatRoom(uint(message["roomId"].(float64)), uint(message["userId"].(float64)))
+
+	})
+	if err != nil {
+		fmt.Printf("NATS 이벤트 수신 오류: %v", err)
+	}
+
 }
 
 // TODO 채팅 웹소켓 연결 핸들러
