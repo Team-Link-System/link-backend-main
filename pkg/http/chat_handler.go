@@ -167,7 +167,7 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 			Content:       chatMessage.Content,
 			SenderID:      chatMessage.SenderID,
 			ChatRoomID:    chatMessage.ChatRoomID,
-			CreatedAt:     chatMessage.CreatedAt.Format(time.DateTime),
+			CreatedAt:     chatMessage.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -200,6 +200,7 @@ func (h *ChatHandler) DeleteChatMessage(c *gin.Context) {
 			fmt.Printf("채팅 메시지 삭제 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
+		return
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅 메시지 삭제 성공", nil))
