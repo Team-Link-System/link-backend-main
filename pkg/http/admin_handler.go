@@ -309,3 +309,5 @@ func (h *AdminHandler) AdminAddUserToCompany(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사에 사용자 추가에 성공하였습니다.", nil))
 }
+
+//! 회사에 일반 사용자 회사 관리자 권한 Role로 수정 - 이미 사용자 업데이트로 해놨음

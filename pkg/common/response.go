@@ -12,7 +12,7 @@ type Response struct {
 	Message    string      `json:"message"`
 	Success    bool        `json:"success"`
 	Payload    interface{} `json:"payload,omitempty"`
-	Err        error       `json:"error,omitempty"`
+	Err        error       `json:"-"`
 }
 
 type AppError struct {
@@ -54,7 +54,6 @@ func NewError(status int, message string, err error) *AppError {
 		StatusCode: status,
 		Success:    false,
 		Message:    message,
-		Err:        err,
 	}
 
 	logger.LogError(fmt.Sprintf("[%d] %s: %v", status, message, err))
