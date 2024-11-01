@@ -163,12 +163,44 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 	var response []res.GetChatMessagesResponse
 	for _, chatMessage := range chatMessages {
 		response = append(response, res.GetChatMessagesResponse{
-			Content:    chatMessage.Content,
-			SenderID:   chatMessage.SenderID,
-			ChatRoomID: chatMessage.ChatRoomID,
-			CreatedAt:  chatMessage.CreatedAt.Format(time.DateTime),
+			ChatMessageID: chatMessage.ID,
+			Content:       chatMessage.Content,
+			SenderID:      chatMessage.SenderID,
+			ChatRoomID:    chatMessage.ChatRoomID,
+			CreatedAt:     chatMessage.CreatedAt.Format(time.DateTime),
 		})
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅 내용 조회 성공", response))
+}
+
+// TODO 채팅 메시지 삭제
+func (h *ChatHandler) DeleteChatMessage(c *gin.Context) {
+	senderId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
+		return
+	}
+
+	var request req.DeleteChatMessageRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	//TODO 채팅 메시지 삭제
+	err := h.chatUsecase.DeleteChatMessage(senderId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("채팅 메시지 삭제 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("채팅 메시지 삭제 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅 메시지 삭제 성공", nil))
 }

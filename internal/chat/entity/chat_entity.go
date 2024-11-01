@@ -13,7 +13,7 @@ type ChatRoom struct {
 }
 
 type Chat struct {
-	ID          uint              `json:"id,omitempty"`
+	ID          string            `json:"id,omitempty"`
 	Content     string            `json:"content,omitempty"`
 	ChatRoomID  uint              `json:"chat_room_id,omitempty"`
 	ChatRoom    ChatRoom          `json:"chat_room,omitempty"` // 채팅방 정보

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"link/internal/user/entity"
+	"time"
 )
 
 // TODO 추상화
@@ -29,7 +30,7 @@ type UserRepository interface {
 	// GetUsersByTeam(teamId uint) ([]entity.User, error)
 
 	//TODO redis 캐시 관련
-	UpdateCacheUser(userId uint, fields map[string]interface{}) error
+	UpdateCacheUser(userId uint, fields map[string]interface{}, ttl time.Duration) error
 	GetCacheUser(userId uint, fields []string) (*entity.User, error)
 	GetCacheUsers(userIds []uint, fields []string) (map[uint]map[string]interface{}, error)
 	IsUserCacheComplete(userData map[string]string) bool

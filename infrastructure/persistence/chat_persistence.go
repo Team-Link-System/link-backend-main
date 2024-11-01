@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 
@@ -206,6 +207,7 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, 
 	entityChatMessages := make([]*chatEntity.Chat, len(chatMessages))
 	for i, chatMessage := range chatMessages {
 		entityChatMessages[i] = &chatEntity.Chat{
+			ID:         chatMessage.ID.Hex(),
 			Content:    chatMessage.Content,
 			ChatRoomID: chatMessage.ChatRoomID,
 			SenderID:   chatMessage.SenderID,
@@ -214,6 +216,25 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, 
 	}
 
 	return entityChatMessages, nil
+}
+
+// TODO 메시지 삭제
+func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chatMessageID string) error {
+	//mongodb에서 삭제
+	//string -> primitive.ObjectID
+	chatMessageIDObject, err := primitive.ObjectIDFromHex(chatMessageID)
+	if err != nil {
+		return fmt.Errorf("채팅 메시지 ID 변환 중 오류: %w", err)
+	}
+
+	collection := r.mongo.Database("link").Collection("messages")
+	filter := bson.M{"_id": chatMessageIDObject, "sender_id": senderID, "chat_room_id": chatRoomID}
+	_, err = collection.DeleteOne(context.Background(), filter)
+	if err != nil {
+		return fmt.Errorf("채팅 메시지 삭제 중 MongoDB 오류: %w", err)
+	}
+
+	return nil
 }
 
 // TODO 레디스 관련

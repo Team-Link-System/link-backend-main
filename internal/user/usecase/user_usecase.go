@@ -340,7 +340,7 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUs
 
 // TODO 유저 상태 업데이트
 func (u *userUsecase) UpdateUserOnlineStatus(userId uint, online bool) error {
-	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online})
+	return u.userRepo.UpdateCacheUser(userId, map[string]interface{}{"is_online": online}, 0)
 }
 
 // TODO 자기가 속한 회사에 사용자 리스트 가져오기(일반 사용자용)

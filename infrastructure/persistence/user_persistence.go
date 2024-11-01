@@ -122,7 +122,7 @@ func (r *userPersistence) CreateUser(user *entity.User) error {
 	redisUserFields["created_at"] = modelUser.CreatedAt
 	redisUserFields["updated_at"] = modelUser.UpdatedAt
 
-	if err := r.UpdateCacheUser(modelUser.ID, redisUserFields); err != nil {
+	if err := r.UpdateCacheUser(modelUser.ID, redisUserFields, 3*24*time.Hour); err != nil {
 		log.Printf("사용자 캐시 업데이트 중 오류: %v", err)
 		return fmt.Errorf("사용자 캐시 업데이트 중 오류: %w", err)
 	}
@@ -404,7 +404,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			cacheData["updated_at"] = entityUser.UpdatedAt
 		}
 
-		if err := r.UpdateCacheUser(id, cacheData); err != nil {
+		if err := r.UpdateCacheUser(id, cacheData, 3*24*time.Hour); err != nil {
 			log.Printf("Redis 캐시 업데이트 실패: %v", err)
 		}
 	}()
@@ -525,7 +525,7 @@ func (r *userPersistence) UpdateUser(id uint, updates map[string]interface{}, pr
 			cacheUpdates[k] = v
 		}
 
-		if err := r.UpdateCacheUser(id, cacheUpdates); err != nil {
+		if err := r.UpdateCacheUser(id, cacheUpdates, 3*24*time.Hour); err != nil {
 			log.Printf("Redis 캐시 업데이트 실패: %v", err)
 		}
 	}()
@@ -927,7 +927,7 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 }
 
 // !--------------------------- ! redis 캐시 관련
-func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}) error {
+func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}, ttl time.Duration) error {
 	cacheKey := fmt.Sprintf("user:%d", userId)
 	redisFields := make(map[string]interface{})
 	for key, value := range fields {
@@ -1000,7 +1000,7 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 	return user, nil
 }
 
-// TODO 여러명의 캐시 내용 가져오기
+// TODO 여러명의 캐시 내용 가져오기 - TTL 설정
 func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[uint]map[string]interface{}, error) {
 	userCacheMap := make(map[uint]map[string]interface{})
 

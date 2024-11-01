@@ -21,6 +21,7 @@ type ChatUsecase interface {
 
 	SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error)
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
+	DeleteChatMessage(senderID uint, request *req.DeleteChatMessageRequest) error
 
 	SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error
 	GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error)
@@ -176,7 +177,19 @@ func (uc *chatUsecase) GetChatMessages(chatRoomID uint) ([]*entity.Chat, error) 
 		log.Printf("채팅 내용 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "채팅 내용 조회에 실패했습니다", err)
 	}
+
 	return chatMessages, nil
+}
+
+// TODO 채팅 메시지 삭제
+func (uc *chatUsecase) DeleteChatMessage(senderID uint, request *req.DeleteChatMessageRequest) error {
+
+	err := uc.chatRepository.DeleteChatMessage(senderID, request.ChatRoomID, request.ChatMessageID)
+	if err != nil {
+		log.Printf("채팅 메시지 삭제 중 DB 오류: %v", err)
+		return common.NewError(http.StatusInternalServerError, "채팅 메시지 삭제에 실패했습니다", err)
+	}
+	return nil
 }
 
 func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error {

@@ -23,9 +23,10 @@ type ChatPayload struct {
 }
 
 type GetChatMessagesResponse struct {
-	Content    string `json:"content"`
-	SenderID   uint   `json:"sender_id"`
-	ChatRoomID uint   `json:"chat_room_id"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at,omitempty"`
+	ChatMessageID string `json:"chat_message_id"`
+	Content       string `json:"content"`
+	SenderID      uint   `json:"sender_id"`
+	ChatRoomID    uint   `json:"chat_room_id"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at,omitempty"`
 }
