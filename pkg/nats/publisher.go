@@ -1,7 +1,8 @@
 package nats
 
 import (
-	"log"
+	"fmt"
+	"link/pkg/common"
 
 	"github.com/nats-io/nats.go"
 )
@@ -18,9 +19,9 @@ func NewPublisher(conn *nats.Conn) *NatsPublisher {
 
 func (p *NatsPublisher) PublishEvent(subject string, data []byte) error {
 	if err := p.conn.Publish(subject, data); err != nil {
-		log.Printf("NATS 이벤트 발행 오류[TOPIC: %s]: %v ", subject, err)
-		return err
+		fmt.Printf("NATS 이벤트 발행 오류[TOPIC: %s]: %v ", subject, err)
+		return common.NewError(500, "NATS 이벤트 발행 오류", err)
 	}
-	log.Printf("NATS 이벤트 발행 성공[TOPIC: %s]: %v ", subject, data)
+	fmt.Printf("NATS 이벤트 발행 성공[TOPIC: %s]: %v ", subject, data)
 	return nil
 }

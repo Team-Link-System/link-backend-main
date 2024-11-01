@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 
@@ -206,6 +207,7 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, 
 	entityChatMessages := make([]*chatEntity.Chat, len(chatMessages))
 	for i, chatMessage := range chatMessages {
 		entityChatMessages[i] = &chatEntity.Chat{
+			ID:         chatMessage.ID.Hex(),
 			Content:    chatMessage.Content,
 			ChatRoomID: chatMessage.ChatRoomID,
 			SenderID:   chatMessage.SenderID,
@@ -214,6 +216,44 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, 
 	}
 
 	return entityChatMessages, nil
+}
+
+// TODO 메시지 삭제
+// TODO 메시지 삭제
+func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chatMessageID string) error {
+	// MongoDB에서 삭제
+	// string -> primitive.ObjectID
+	chatMessageIDObject, err := primitive.ObjectIDFromHex(chatMessageID)
+	if err != nil {
+		return fmt.Errorf("채팅 메시지 ID 변환 중 오류: %w", err)
+	}
+
+	collection := r.mongo.Database("link").Collection("messages")
+	filter := bson.M{"_id": chatMessageIDObject}
+
+	// 먼저 메시지가 일치하는지 확인
+	var message bson.M
+	err = collection.FindOne(context.Background(), filter).Decode(&message)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return fmt.Errorf("채팅 메시지를 찾을 수 없습니다")
+		}
+		return fmt.Errorf("채팅 메시지 조회 중 MongoDB 오류: %w", err)
+	}
+
+	// senderID와 chatRoomID가 일치하는지 확인
+	//TODO uint로 변환
+	if uint(message["sender_id"].(int64)) != senderID || uint(message["chat_room_id"].(int64)) != chatRoomID {
+		return fmt.Errorf("삭제 권한이 없습니다: 발신자 ID 또는 채팅방 ID가 일치하지 않습니다")
+	}
+
+	// 조건이 일치하면 삭제 수행
+	_, err = collection.DeleteOne(context.Background(), filter)
+	if err != nil {
+		return fmt.Errorf("채팅 메시지 삭제 중 MongoDB 오류: %w", err)
+	}
+
+	return nil
 }
 
 // TODO 레디스 관련

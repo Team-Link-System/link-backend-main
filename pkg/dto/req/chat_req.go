@@ -12,3 +12,8 @@ type SendMessageRequest struct {
 	RoomID   uint   `json:"chat_room_id"`
 	Type     string `json:"type"`
 }
+
+type DeleteChatMessageRequest struct {
+	ChatRoomID    uint   `json:"chat_room_id"`
+	ChatMessageID string `json:"chat_message_id"`
+}

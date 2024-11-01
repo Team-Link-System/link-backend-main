@@ -110,7 +110,7 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	targetUserId := c.Param("id")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
 

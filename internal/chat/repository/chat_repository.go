@@ -12,6 +12,7 @@ type ChatRepository interface {
 	//TODO 메시지 관련
 	SaveMessage(chat *entity.Chat) error
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
+	DeleteChatMessage(senderID uint, chatRoomID uint, chatMessageID string) error
 
 	//TODO 레디스 관련
 	SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error
