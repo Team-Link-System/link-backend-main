@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -41,11 +42,21 @@ func LogError(message string) error {
 		}
 	}
 
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	logEntry := fmt.Sprintf("[%s] %s\n", timestamp, message)
+	// timestamp := time.Now().Format("2006-01-02 15:04:05")
+	// logEntry := fmt.Sprintf("[%s] %s\n", timestamp, message)
 
-	_, err := logger.errorFile.WriteString(logEntry)
-	return err
+	// _, err := logger.errorFile.WriteString(logEntry)
+	// return err
+
+	// runtime.Caller를 통해 파일 경로와 라인 번호 얻기
+	_, file, line, ok := runtime.Caller(2) // 2는 호출 스택의 깊이
+	if ok {
+		timestamp := time.Now().Format("2006-01-02 15:04:05")
+		logEntry := fmt.Sprintf("[%s] %s:%d - %s\n", timestamp, file, line, message)
+		_, err := logger.errorFile.WriteString(logEntry)
+		return err
+	}
+	return fmt.Errorf("파일 경로나 라인 번호를 가져오지 못했습니다")
 }
 
 func CloseLogger() {

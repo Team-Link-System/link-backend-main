@@ -36,7 +36,8 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 
 		ext := strings.ToLower(filepath.Ext(file.Filename))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
-			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다"))
+			fmt.Printf("허용되지 않는 파일 형식입니다: %s", ext)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다", nil))
 			c.Abort()
 			return
 		}
@@ -48,7 +49,8 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 		// 폴더가 없으면 생성
 		if _, err := os.Stat(folderPath); os.IsNotExist(err) {
 			if err := os.MkdirAll(folderPath, os.ModePerm); err != nil {
-				c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "폴더 생성 실패"))
+				fmt.Printf("폴더 생성 실패: %v", err)
+				c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "폴더 생성 실패", err))
 				c.Abort()
 				return
 			}
@@ -61,7 +63,8 @@ func (i *ImageUploadMiddleware) ProfileImageUploadMiddleware() gin.HandlerFunc {
 
 		// 원본 파일 저장
 		if err := c.SaveUploadedFile(file, filePath); err != nil {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패"))
+			fmt.Printf("파일 저장 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패", err))
 			c.Abort()
 			return
 		}
@@ -93,7 +96,8 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 		for _, file := range formFiles {
 			ext := strings.ToLower(filepath.Ext(file.Filename))
 			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
-				c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다"))
+				fmt.Printf("허용되지 않는 파일 형식입니다: %s", ext)
+				c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다", nil))
 				c.Abort()
 				return
 			}
@@ -106,7 +110,8 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 			filePath := filepath.Join(folderPath, fileName)
 
 			if err := c.SaveUploadedFile(file, filePath); err != nil {
-				c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패"))
+				fmt.Printf("파일 저장 실패: %v", err)
+				c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패", err))
 				c.Abort()
 				return
 			}

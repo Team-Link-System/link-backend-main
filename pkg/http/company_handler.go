@@ -1,13 +1,13 @@
 package http
 
 import (
+	"fmt"
 	_companyUsecase "link/internal/company/usecase"
 	_notificationUsecase "link/internal/notification/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/ws"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -35,9 +35,11 @@ func (h *CompanyHandler) GetAllCompanies(c *gin.Context) {
 	companies, err := h.companyUsecase.GetAllCompanies()
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 전체 목록 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 전체 목록 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -49,16 +51,19 @@ func (h *CompanyHandler) GetAllCompanies(c *gin.Context) {
 func (h *CompanyHandler) GetCompanyInfo(c *gin.Context) {
 	companyId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	company, err := h.companyUsecase.GetCompanyInfo(uint(companyId))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 상세 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 상세 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -72,7 +77,8 @@ func (h *CompanyHandler) SearchCompany(c *gin.Context) {
 	request := req.SearchCompanyRequest{}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
@@ -80,9 +86,11 @@ func (h *CompanyHandler) SearchCompany(c *gin.Context) {
 
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 검색 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 검색 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -94,20 +102,22 @@ func (h *CompanyHandler) SearchCompany(c *gin.Context) {
 func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	companyAdminId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	companyId, err := strconv.Atoi(c.Param("companyId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	var request req.NotificationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Println("회사 초대 요청 바디 검증 오류", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("회사 초대 요청 바디 검증 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
@@ -119,12 +129,13 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	response, err := h.notificationUsecase.CreateInvite(request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
-			return
+			fmt.Printf("회사 초대 알림 저장 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
-			return
+			fmt.Printf("회사 초대 알림 저장 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
+		return
 	}
 
 	//TODO 해당 사용자에게 알림 전송 - 웹소켓 허브에 전송

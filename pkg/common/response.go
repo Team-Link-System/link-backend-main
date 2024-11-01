@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"link/pkg/logger"
 	"log"
 	"net/http"
 )
@@ -11,33 +12,15 @@ type Response struct {
 	Message    string      `json:"message"`
 	Success    bool        `json:"success"`
 	Payload    interface{} `json:"payload,omitempty"`
-	Err        error       `json:"-"`
+	Err        error       `json:"error,omitempty"`
 }
 
 type AppError struct {
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
 	Success    bool   `json:"success"`
-	Err        error  `json:"-"`
+	Err        error  `json:"error,omitempty"`
 }
-
-// func Success(message string, data interface{}) Response {
-// 	return Response{
-// 		StatusCode: http.StatusOK,
-// 		Message:    message,
-// 		Success:    true,
-// 		Payload:    data,
-// 	}
-// }
-
-// func Created(message string, data interface{}) Response {
-// 	return Response{
-// 		StatusCode: http.StatusCreated,
-// 		Message:    message,
-// 		Success:    true,
-// 		Payload:    data,
-// 	}
-// }
 
 func (r *Response) SuccessResponse() interface{} {
 	return Response{
@@ -49,6 +32,7 @@ func (r *Response) SuccessResponse() interface{} {
 }
 
 func NewResponse(status int, message string, payload interface{}) Response {
+
 	return Response{
 		StatusCode: status,
 		Message:    message,
@@ -65,10 +49,14 @@ func (e *AppError) Error() string {
 	return e.Message
 }
 
-func NewError(status int, message string) *AppError {
-	return &AppError{
+func NewError(status int, message string, err error) *AppError {
+	appErr := &AppError{
 		StatusCode: status,
 		Success:    false,
 		Message:    message,
+		Err:        err,
 	}
+
+	logger.LogError(fmt.Sprintf("[%d] %s: %v", status, message, err))
+	return appErr
 }

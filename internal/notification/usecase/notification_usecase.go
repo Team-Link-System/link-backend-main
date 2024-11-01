@@ -54,10 +54,10 @@ func NewNotificationUsecase(
 func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
 	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
 	if err != nil {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 	if len(users) != 2 {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	//alarmType에 따른 처리
@@ -74,7 +74,7 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 
 	notification, err = n.notificationRepo.CreateNotification(notification)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
 	}
 
 	response := &res.CreateNotificationResponse{
@@ -103,32 +103,32 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
 	if err != nil {
 		log.Println("senderId 또는 receiverId가 존재하지 않습니다")
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	if len(users) != 2 {
 		log.Println("senderId 또는 receiverId가 존재하지 않습니다")
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	if users[1].UserProfile.CompanyID != nil {
 		log.Println("receiverId가 회사에 속해있습니다")
-		return nil, common.NewError(http.StatusBadRequest, "receiverId가 회사에 속해있습니다")
+		return nil, common.NewError(http.StatusBadRequest, "receiverId가 회사에 속해있습니다", err)
 	}
 
 	if users[0].Role > 3 {
 		log.Println("senderId가 관리자가 아닙니다")
-		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다")
+		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다", err)
 	}
 
 	if users[1].Role <= 2 {
 		log.Println("운영자는 초대할 수 없습니다")
-		return nil, common.NewError(http.StatusBadRequest, "운영자는 초대할 수 없습니다")
+		return nil, common.NewError(http.StatusBadRequest, "운영자는 초대할 수 없습니다", err)
 	}
 
 	if req.InviteType == "" {
 		log.Println("invite_type이 필요합니다")
-		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다")
+		return nil, common.NewError(http.StatusBadRequest, "invite_type이 필요합니다", err)
 	}
 
 	var Content string
@@ -140,7 +140,7 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		CompanyInfo, err := n.companyRepo.GetCompanyByID(uint(req.CompanyID))
 		if err != nil {
 			log.Println("회사 정보 조회 오류", err)
-			return nil, common.NewError(http.StatusInternalServerError, "회사 정보 조회에 실패했습니다")
+			return nil, common.NewError(http.StatusInternalServerError, "회사 정보 조회에 실패했습니다", err)
 		}
 
 		CompanyName = CompanyInfo.CpName
@@ -148,14 +148,15 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	} else if string(req.InviteType) == "DEPARTMENT" {
 		DepartmentInfo, err := n.departmentRepo.GetDepartmentByID(req.DepartmentID)
 		if err != nil {
-			return nil, common.NewError(http.StatusInternalServerError, "부서 정보 조회에 실패했습니다")
+			return nil, common.NewError(http.StatusInternalServerError, "부서 정보 조회에 실패했습니다", err)
 		}
 		DepartmentName = DepartmentInfo.Name
 		Content = fmt.Sprintf("[DEPARTMENT INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, DepartmentName)
 	} else if string(req.InviteType) == "TEAM" {
 		TeamInfo, err := n.teamRepo.GetTeamByID(req.TeamID)
 		if err != nil {
-			return nil, common.NewError(http.StatusInternalServerError, "팀 정보 조회에 실패했습니다")
+			log.Println("팀 정보 조회 오류", err)
+			return nil, common.NewError(http.StatusInternalServerError, "팀 정보 조회에 실패했습니다", err)
 		}
 		TeamName = TeamInfo.Name
 		Content = fmt.Sprintf("[TEAM INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, TeamName)
@@ -182,7 +183,7 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	//TODO 알림 저장
 	notification, err = n.notificationRepo.CreateNotification(notification)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
 	}
 
 	//TODO 회사 초대 , 혹은 부서 초대, 팀 초대라면 메시지 달라야하고,
@@ -211,18 +212,18 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
 	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
 	if err != nil {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 	if len(users) != 2 {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	if users[1].Role > 3 {
-		return nil, common.NewError(http.StatusBadRequest, "receiverId가 관리자가 아닙니다")
+		return nil, common.NewError(http.StatusBadRequest, "receiverId가 관리자가 아닙니다", err)
 	}
 
 	if req.RequestType == "" {
-		return nil, common.NewError(http.StatusBadRequest, "request_type이 필요합니다")
+		return nil, common.NewError(http.StatusBadRequest, "request_type이 필요합니다", err)
 	}
 
 	notification := &entity.Notification{
@@ -238,7 +239,7 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 
 	notification, err = n.notificationRepo.CreateNotification(notification)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
 	}
 
 	response := &res.CreateNotificationResponse{
@@ -266,16 +267,16 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 	// 알림 존재 여부 확인
 	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
 	if err != nil || notification == nil {
-		return nil, common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
 
 	if notification.ReceiverId != receiverId {
 		log.Println("알림 수신자가 아닙니다")
-		return nil, common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다")
+		return nil, common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다", err)
 	}
 
 	if notification.Status == "ACCEPTED" || notification.Status == "REJECTED" {
-		return nil, common.NewError(http.StatusBadRequest, "이미 처리된 요청입니다")
+		return nil, common.NewError(http.StatusBadRequest, "이미 처리된 요청입니다", err)
 	}
 	// 읽음 처리 및 상태 업데이트
 	notification.IsRead = true
@@ -288,17 +289,17 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 	// 데이터베이스에 업데이트 적용
 	updatedNotification, err := n.notificationRepo.UpdateNotificationStatus(notification) //TODO 이거 확인
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 상태 업데이트에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "알림 상태 업데이트에 실패했습니다", err)
 	}
 
 	users, err := n.userRepo.GetUserByIds([]uint{updatedNotification.SenderId, updatedNotification.ReceiverId})
 	if err != nil {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	// 두 사용자가 모두 존재하는지 확실히 체크
 	if len(users) != 2 {
-		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
 	//TODO -> receiver가 회사가 속해있는지 확인
@@ -312,7 +313,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			//TODO 사용자 정보에 회사 추가
 			err = n.userRepo.UpdateUser(*users[1].ID, nil, map[string]interface{}{"company_id": updatedNotification.CompanyId})
 			if err != nil {
-				return nil, common.NewError(http.StatusInternalServerError, "회사 추가에 실패했습니다")
+				return nil, common.NewError(http.StatusInternalServerError, "회사 추가에 실패했습니다", err)
 			}
 
 		} else if updatedNotification.InviteType == "DEPARTMENT" {
@@ -328,7 +329,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 				// 사용자-부서 중간테이블에 추가
 				err = n.userRepo.CreateUserDepartment(*users[1].ID, updatedNotification.DepartmentId)
 				if err != nil {
-					return nil, common.NewError(http.StatusInternalServerError, "부서 할당에 실패했습니다")
+					return nil, common.NewError(http.StatusInternalServerError, "부서 할당에 실패했습니다", err)
 				}
 
 			}
@@ -344,7 +345,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 				//TODO 여기서 사용자_팀 중간테이블에서 추가하는 로직
 				err = n.userRepo.CreateUserTeam(*users[1].ID, updatedNotification.TeamId)
 				if err != nil {
-					return nil, common.NewError(http.StatusInternalServerError, "팀 할당에 실패했습니다")
+					return nil, common.NewError(http.StatusInternalServerError, "팀 할당에 실패했습니다", err)
 				}
 			}
 		}
@@ -367,7 +368,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 
 		if err != nil {
 			log.Println("요청에 대한 응답 알림 생성 오류", err)
-			return nil, common.NewError(http.StatusInternalServerError, "요청에 대한 응답 알림 생성에 실패했습니다")
+			return nil, common.NewError(http.StatusInternalServerError, "요청에 대한 응답 알림 생성에 실패했습니다", err)
 		}
 
 		response := &res.UpdateNotificationStatusResponseMessage{
@@ -405,7 +406,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		responseNotification, err := n.notificationRepo.CreateNotification(notification)
 		if err != nil {
 			log.Println("거절 응답 알림 생성 오류", err)
-			return nil, common.NewError(http.StatusInternalServerError, "거절 응답 알림 생성에 실패했습니다")
+			return nil, common.NewError(http.StatusInternalServerError, "거절 응답 알림 생성에 실패했습니다", err)
 		}
 
 		response := &res.UpdateNotificationStatusResponseMessage{
@@ -433,11 +434,11 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
 	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
 	if err != nil || notification == nil {
-		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다")
+		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
 
 	if notification.ReceiverId != receiverId {
-		return common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다")
+		return common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다", err)
 	}
 
 	notification.IsRead = true
@@ -452,7 +453,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 
 	_, err = n.notificationRepo.UpdateNotificationReadStatus(updatedNotification)
 	if err != nil {
-		return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다")
+		return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다", err)
 	}
 
 	return nil
@@ -463,16 +464,16 @@ func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notificat
 	//TODO 수신자 id가 존재하는지 확인
 	user, err := n.userRepo.GetUserByID(userId)
 	if err != nil {
-		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다", err)
 	}
 	if user == nil {
-		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다")
+		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다", err)
 	}
 
 	//TODO 수신자 id로 알림 조회
 	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다")
+		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다", err)
 	}
 
 	return notifications, nil
