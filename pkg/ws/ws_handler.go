@@ -68,11 +68,16 @@ func (h *WsHandler) setUpNatsSubscriber() {
 			return
 		}
 
-		// leaveUserName := message["leaveUserName"].(string)
+		leaveUserName := message["leaveUserName"].(string)
 		h.hub.SendMessageToChatRoom(uint(message["roomId"].(float64)), res.JsonResponse{
 			Success: true,
 			Message: "채팅방 나가기 이벤트 수신",
-			// Content: fmt.Sprintf("%s님이 채팅방을 나갔습니다.", leaveUserName),
+			Payload: &res.ChatPayload{
+				ChatRoomID: uint(message["roomId"].(float64)),
+				SenderID:   uint(message["userId"].(float64)),
+				SenderName: leaveUserName,
+				Content:    fmt.Sprintf("%s님이 채팅방을 나갔습니다.", leaveUserName),
+			},
 			Type: "chat",
 		})
 		h.hub.RemoveFromChatRoom(uint(message["roomId"].(float64)), uint(message["userId"].(float64)))
