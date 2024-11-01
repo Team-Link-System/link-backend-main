@@ -299,17 +299,15 @@ func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chat
 }
 
 // TODO 레디스 관련
-func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoom *chatEntity.ChatRoom) error {
-	//key는 chat:roomID
-	//value는 chatRoom
+func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error {
 	//json으로 변환
-	chatRoomJson, err := json.Marshal(chatRoom)
+	chatRoomJson, err := json.Marshal(chatUsersInfo)
 	if err != nil {
 		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
 	}
 
 	//redis에 저장
-	r.redis.Set(context.Background(), fmt.Sprintf("chat:room:%d", roomId), chatRoomJson, 0)
+	r.redis.Set(context.Background(), fmt.Sprintf("chatroom:%d", roomId), chatRoomJson, 0)
 
 	return nil
 }
@@ -317,7 +315,7 @@ func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoom *chatEntity.C
 func (r *chatPersistence) GetChatRoomByIdFromRedis(roomId uint) (*chatEntity.ChatRoom, error) {
 
 	//redis에서 조회
-	chatRoomJson, err := r.redis.Get(context.Background(), fmt.Sprintf("chat:room:%d", roomId)).Result()
+	chatRoomJson, err := r.redis.Get(context.Background(), fmt.Sprintf("chatroom:%d", roomId)).Result()
 	if err != nil {
 		return nil, fmt.Errorf("채팅방 조회 중 Redis 오류: %w", err)
 	}

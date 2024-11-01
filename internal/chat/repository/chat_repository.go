@@ -15,6 +15,6 @@ type ChatRepository interface {
 	DeleteChatMessage(senderID uint, chatRoomID uint, chatMessageID string) error
 
 	//TODO 레디스 관련
-	SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error
+	SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error
 	GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error)
 }

@@ -25,7 +25,7 @@ type ChatUsecase interface {
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
 	DeleteChatMessage(senderID uint, request *req.DeleteChatMessageRequest) error
 
-	SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error
+	SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error
 	GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error)
 }
 
@@ -266,12 +266,12 @@ func (uc *chatUsecase) DeleteChatMessage(senderID uint, request *req.DeleteChatM
 	return nil
 }
 
-func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatRoom *entity.ChatRoom) error {
-	if roomId == 0 || chatRoom == nil {
+func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error {
+	if roomId == 0 || chatUsersInfo == nil {
 		return common.NewError(http.StatusBadRequest, "채팅방 또는 채팅방 ID가 유효하지 않습니다", nil)
 	}
 
-	uc.chatRepository.SetChatRoomToRedis(roomId, chatRoom)
+	uc.chatRepository.SetChatRoomToRedis(roomId, chatUsersInfo)
 
 	return nil
 }

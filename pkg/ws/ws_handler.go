@@ -110,15 +110,13 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	_, exists := h.hub.ChatRooms.Load(uint(roomIdUint))
 	if !exists {
 		//TODO 1단계  메모리에 없으면 redis에서 조회
-		fmt.Println("메모리에 없으면 redis에서 조회")
-
 		chatRoomFromRedis, err := h.chatUsecase.GetChatRoomByIdFromRedis(uint(roomIdUint))
 		if err == nil && chatRoomFromRedis != nil {
 			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		} else {
 			//TODO 2단계 postgres에서 채팅방 조회
-			chatRoomEntity, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
-			if err != nil || chatRoomEntity == nil {
+			chatRoomResponse, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
+			if err != nil || chatRoomResponse == nil {
 				log.Printf("DB 채팅방 조회 실패: %v", err)
 				conn.WriteJSON(res.JsonResponse{
 					Success: false,
@@ -127,8 +125,18 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 				})
 				return
 			}
-			// DB에서 가져온 채팅방을 메모리에 추가
-			// h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatRoomId)
+
+			chatUsersInfo := make([]map[string]interface{}, len(chatRoomResponse))
+			for i, user := range chatRoomResponse {
+				chatUsersInfo[i] = map[string]interface{}{
+					"id":         user.ID,
+					"name":       user.Name,
+					"email":      user.Email,
+					"alias_name": user.AliasName,
+				}
+			}
+			// DB에서 가져온 채팅방을 메모리에 추가 -> 수정해야함
+			h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatUsersInfo)
 			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		}
 
