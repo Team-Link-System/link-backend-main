@@ -122,6 +122,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.UserProfile{},
 		&model.Department{},
 		&model.ChatRoom{},
+		&model.ChatRoomUser{},
 		&model.Post{},
 		&model.PostImage{},
 		&model.Comment{},

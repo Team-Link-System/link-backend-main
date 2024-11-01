@@ -129,6 +129,7 @@ func startServer() {
 				//! 채팅방 관련 핸들러
 				chat.GET("/list", chatHandler.GetChatRoomList)
 				chat.GET("/:chatroomid", chatHandler.GetChatRoomById)
+				chat.DELETE("/:chatroomid", chatHandler.LeaveChatRoom)
 				chat.POST("", chatHandler.CreateChatRoom)
 				chat.GET("/:chatroomid/messages", chatHandler.GetChatMessages)
 				chat.DELETE("/messages", chatHandler.DeleteChatMessage)

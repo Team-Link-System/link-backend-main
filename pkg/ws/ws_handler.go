@@ -128,7 +128,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 				return
 			}
 			// DB에서 가져온 채팅방을 메모리에 추가
-			h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatRoomEntity)
+			// h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatRoomId)
 			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		}
 

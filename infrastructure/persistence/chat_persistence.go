@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,25 +30,52 @@ func NewChatPersistence(db *gorm.DB, mongo *mongo.Client, redis *redis.Client) r
 }
 
 func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
-
 	// entity.ChatRoom을 model.ChatRoom으로 변환
 	modelChatRoom := model.ChatRoom{
 		Name:      chatRoom.Name,
 		IsPrivate: chatRoom.IsPrivate,
-		Users:     make([]*model.User, len(chatRoom.Users)),
 	}
 
-	for i, user := range chatRoom.Users {
-		modelChatRoom.Users[i] = &model.User{
-			ID: *user.ID,
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("chatRoom 생성 중 DB 오류: %w", tx.Error)
+	}
+
+	// ChatRoom 저장
+	if err := tx.Create(&modelChatRoom).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("chatRoom 생성 중 DB 오류: %w", err)
+	}
+
+	// ChatRoomUser 중간 테이블에 직접 유저 추가 (joined_at 포함)
+	for _, user := range chatRoom.Users {
+		chatRoomUser := model.ChatRoomUser{
+			ChatRoomID: modelChatRoom.ID,
+			UserID:     *user.ID,
+			JoinedAt:   time.Now(),
+		}
+		//TODO 1:1 채팅방이 아니라면 alias이름은 다 name을 그대로 넣고 1:1 채팅방이면 서로의 이름으로 설정
+		// 1:1 채팅방이면 채팅방 alias를 상대방의 이름으로 설정
+		if chatRoom.IsPrivate && len(chatRoom.Users) == 2 {
+			for _, otherUser := range chatRoom.Users {
+				if otherUser.ID != user.ID {
+					chatRoomUser.ChatRoomAlias = fmt.Sprintf("%s님과의 채팅방", *otherUser.Name)
+					break
+				}
+			}
+		} else {
+			chatRoomUser.ChatRoomAlias = modelChatRoom.Name
+		}
+
+		if err := tx.Create(&chatRoomUser).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("chatRoomUsers 생성 중 DB 오류: %w", err)
 		}
 	}
-	// 저장 전 IsPrivate 값 확인
 
-	result := r.db.Create(&modelChatRoom)
-
-	if result.Error != nil {
-		return fmt.Errorf("chatRoom 생성 중 DB 오류: %w", result.Error)
+	// 트랜잭션 커밋
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %w", err)
 	}
 
 	return nil
@@ -56,7 +84,10 @@ func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
 func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, error) {
 	var chatRooms []model.ChatRoom
 	// 해당 사용자가 속한 그룹 채팅방 조회
-	err := r.db.Preload("Users").Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
+	err := r.db.
+		Preload("ChatRoomUsers").
+		Preload("ChatRoomUsers.User").
+		Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
 		Where("chat_room_users.user_id = ?", userId).
 		Find(&chatRooms).Error
 
@@ -67,12 +98,17 @@ func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, 
 	// 결과 변환
 	result := make([]*chatEntity.ChatRoom, len(chatRooms))
 	for i, chatRoom := range chatRooms {
-		users := make([]*userEntity.User, len(chatRoom.Users))
-		for j, user := range chatRoom.Users {
+		users := make([]*userEntity.User, len(chatRoom.ChatRoomUsers))
+		for j, chatRoomUser := range chatRoom.ChatRoomUsers {
 			users[j] = &userEntity.User{
-				ID:    &user.ID,
-				Name:  &user.Name,
-				Email: &user.Email,
+				ID:    &chatRoomUser.UserID,
+				Name:  &chatRoomUser.User.Name,
+				Email: &chatRoomUser.User.Email,
+				ChatRoomUsers: []map[string]interface{}{
+					{
+						"alias_name": chatRoomUser.ChatRoomAlias,
+					},
+				},
 			}
 		}
 		result[i] = &chatEntity.ChatRoom{
@@ -105,7 +141,7 @@ func (r *chatPersistence) FindPrivateChatRoomByUsers(userID1, userID2 uint) (*ch
 	// entity.ChatRoom으로 변환
 	return &chatEntity.ChatRoom{
 		ID:        chatRoom.ID,
-		Users:     make([]*userEntity.User, len(chatRoom.Users)),
+		Users:     make([]*userEntity.User, len(chatRoom.ChatRoomUsers)),
 		Name:      chatRoom.Name,
 		IsPrivate: chatRoom.IsPrivate,
 	}, nil
@@ -158,22 +194,28 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 	var chatRoom model.ChatRoom
 
 	// ChatRoom과 Users를 함께 조회
-	err := r.db.Preload("Users"). // Users를 미리 불러오기 위한 Preload 사용
-					Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
-					Where("chat_rooms.id = ?", chatRoomID).
-					First(&chatRoom).Error
+	err := r.db.
+		Preload("ChatRoomUsers").
+		Preload("ChatRoomUsers.User").
+		Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
+		Where("chat_rooms.id = ?", chatRoomID).
+		First(&chatRoom).Error
 	if err != nil {
 		return nil, fmt.Errorf("채팅방 조회 중 DB 오류: %w", err)
 	}
 
 	// Users를 chatEntity.User로 변환
-	users := make([]*userEntity.User, len(chatRoom.Users))
-	for i, user := range chatRoom.Users {
+	users := make([]*userEntity.User, len(chatRoom.ChatRoomUsers))
+	for i, chatRoomUser := range chatRoom.ChatRoomUsers {
 		users[i] = &userEntity.User{
-			ID:    &user.ID,
-			Name:  &user.Name,
-			Email: &user.Email,
-			// 필요한 필드를 추가
+			ID:    &chatRoomUser.UserID,
+			Name:  &chatRoomUser.User.Name,
+			Email: &chatRoomUser.User.Email,
+			ChatRoomUsers: []map[string]interface{}{
+				{
+					"alias_name": chatRoomUser.ChatRoomAlias,
+				},
+			},
 		}
 	}
 
@@ -288,6 +330,27 @@ func (r *chatPersistence) GetChatRoomByIdFromRedis(roomId uint) (*chatEntity.Cha
 	}
 
 	return &chatRoom, nil
+}
+
+// TODO 채팅방 나가기
+func (r *chatPersistence) LeaveChatRoom(userId uint, chatRoomId uint) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("채팅방 나가기 중 DB 오류: %w", tx.Error)
+	}
+
+	//TODO 삭제
+	err := tx.Delete(&model.ChatRoomUser{}, "user_id = ? AND chat_room_id = ?", userId, chatRoomId).Error
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("채팅방 나가기 중 DB 오류: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %w", err)
+	}
+
+	return nil
 }
 
 //TODO 그룹 채팅방일 때 나가면 해당 유저 삭제

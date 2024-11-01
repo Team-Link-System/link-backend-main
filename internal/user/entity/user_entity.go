@@ -14,17 +14,18 @@ const (
 )
 
 type User struct {
-	ID          *uint        `json:"id,omitempty"`
-	Name        *string      `json:"name,omitempty" `
-	Email       *string      `json:"email,omitempty" `
-	Nickname    *string      `json:"nickname,omitempty"`
-	Password    *string      `json:"password,omitempty"`
-	Phone       *string      `json:"phone,omitempty"`
-	Role        UserRole     `json:"role,omitempty"`
-	UserProfile *UserProfile `json:"user_profile,omitempty"`
-	CreatedAt   *time.Time   `json:"created_at,omitempty"`
-	UpdatedAt   *time.Time   `json:"updated_at,omitempty"`
-	IsOnline    *bool        `json:"is_online,omitempty"`
+	ID            *uint                    `json:"id,omitempty"`
+	Name          *string                  `json:"name,omitempty" `
+	Email         *string                  `json:"email,omitempty" `
+	Nickname      *string                  `json:"nickname,omitempty"`
+	Password      *string                  `json:"password,omitempty"`
+	Phone         *string                  `json:"phone,omitempty"`
+	Role          UserRole                 `json:"role,omitempty"`
+	UserProfile   *UserProfile             `json:"user_profile,omitempty"`
+	CreatedAt     *time.Time               `json:"created_at,omitempty"`
+	UpdatedAt     *time.Time               `json:"updated_at,omitempty"`
+	IsOnline      *bool                    `json:"is_online,omitempty"`
+	ChatRoomUsers []map[string]interface{} `json:"chat_room_users,omitempty"`
 }
 
 type UserProfile struct {

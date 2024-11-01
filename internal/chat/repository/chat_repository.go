@@ -8,7 +8,7 @@ type ChatRepository interface {
 
 	FindPrivateChatRoomByUsers(userID1, userID2 uint) (*entity.ChatRoom, error)
 	GetChatRoomById(chatRoomID uint) (*entity.ChatRoom, error)
-
+	LeaveChatRoom(userId uint, chatRoomId uint) error
 	//TODO 메시지 관련
 	SaveMessage(chat *entity.Chat) error
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)

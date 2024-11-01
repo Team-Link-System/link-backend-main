@@ -24,6 +24,8 @@ func NewNotificationHandler(
 	return &NotificationHandler{notificationUsecase: notificationUsecase, hub: hub}
 }
 
+//TODO 초대 알림 보내기 nats sub으로 받아서 처리 -> 웹소켓 알림 전달
+
 // TODO 알림 조회 핸들러
 func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 
