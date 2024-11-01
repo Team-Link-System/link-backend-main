@@ -60,14 +60,9 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 	} else {
 		//TODO userClient가 메모리에있는지 확인
 		// 기존 연결 확인
-		oldConn, existingConnection := hub.Clients.Load(userID)
+		_, existingConnection := hub.Clients.Load(userID)
 		if existingConnection {
-			// 기존 연결이 있는 경우 (재연결)
-			if oldWs, ok := oldConn.(*websocket.Conn); ok {
-				oldWs.Close()
-			}
-			hub.Clients.Store(userID, conn)
-			// 재연결은 단순히 연결만 업데이트 (상태 변경 없음)
+			fmt.Println("기존 연결이 있음")
 			conn.WriteJSON(res.JsonResponse{
 				Success: true,
 				Message: fmt.Sprintf("User %d 재연결 성공", userID),

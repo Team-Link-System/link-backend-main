@@ -30,7 +30,7 @@ func NewCompanyUsecase(companyRepository _companyRepo.CompanyRepository, userRep
 func (u *companyUsecase) GetAllCompanies() ([]res.GetCompanyInfoResponse, error) {
 	companies, err := u.companyRepository.GetAllCompanies()
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "서버 에러")
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
 
 	response := make([]res.GetCompanyInfoResponse, len(companies))
@@ -53,7 +53,7 @@ func (u *companyUsecase) GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
 func (u *companyUsecase) GetCompanyInfo(id uint) (*res.GetCompanyInfoResponse, error) {
 	company, err := u.companyRepository.GetCompanyByID(id)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "서버 에러")
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
 
 	response := &res.GetCompanyInfoResponse{
@@ -73,7 +73,7 @@ func (u *companyUsecase) GetCompanyInfo(id uint) (*res.GetCompanyInfoResponse, e
 func (u *companyUsecase) SearchCompany(companyName string) ([]res.GetCompanyInfoResponse, error) {
 	companies, err := u.companyRepository.SearchCompany(companyName)
 	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "서버 에러")
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
 
 	response := make([]res.GetCompanyInfoResponse, len(companies))
@@ -98,23 +98,23 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 
 	adminUser, err := u.userRepository.GetUserByID(requestUserId)
 	if err != nil {
-		return common.NewError(http.StatusInternalServerError, "서버 에러")
+		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
 	if adminUser.Role > 3 {
 		log.Println("권한이 없습니다")
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	//TODO 만약에 Role이 3이라면 자기 회사만 사용자 추가 가능
 	if *adminUser.UserProfile.CompanyID != companyId && adminUser.Role == 3 {
 		log.Println("권한이 없습니다")
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	//TODO 사용자 companyId 업데이트
 	err = u.userRepository.UpdateUser(userId, nil, map[string]interface{}{"company_id": companyId})
 	if err != nil {
-		return common.NewError(http.StatusInternalServerError, "서버 에러")
+		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
 
 	return nil

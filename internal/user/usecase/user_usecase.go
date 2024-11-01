@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -49,8 +49,8 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*res.Regis
 
 	hashedPassword, err := _utils.HashPassword(request.Password)
 	if err != nil {
-		log.Printf("비밀번호 해싱 오류: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다")
+		fmt.Printf("비밀번호 해싱 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다", err)
 	}
 	user := &entity.User{
 		Name:     &request.Name,
@@ -65,8 +65,8 @@ func (u *userUsecase) RegisterUser(request *req.RegisterUserRequest) (*res.Regis
 	}
 
 	if err := u.userRepo.CreateUser(user); err != nil {
-		log.Printf("사용자 생성 오류: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 생성에 실패했습니다")
+		fmt.Printf("사용자 생성 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 생성에 실패했습니다", err)
 	}
 
 	response := res.RegisterUserResponse{
@@ -86,10 +86,10 @@ func (u *userUsecase) ValidateEmail(email string) error {
 	user, err := u.userRepo.ValidateEmail(email)
 	if err != nil {
 		//TODO ErrRecordNotFound면 오류 안나게 하기
-		return common.NewError(http.StatusInternalServerError, "이메일 확인 중 오류가 발생했습니다")
+		return common.NewError(http.StatusInternalServerError, "이메일 확인 중 오류가 발생했습니다", err)
 	}
 	if user != nil {
-		return common.NewError(http.StatusBadRequest, "이미 사용 중인 이메일입니다")
+		return common.NewError(http.StatusBadRequest, "이미 사용 중인 이메일입니다", err)
 	}
 	return nil
 }
@@ -99,12 +99,12 @@ func (u *userUsecase) ValidateNickname(nickname string) error {
 	user, err := u.userRepo.ValidateNickname(nickname)
 	if err != nil {
 		//TODO ErrRecordNotFound면 오류 안나게 하기
-		log.Printf("닉네임 중복확인에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "닉네임 중복확인에 실패했습니다")
+		fmt.Printf("닉네임 중복확인에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "닉네임 중복확인에 실패했습니다", err)
 	}
 
 	if user != nil {
-		return common.NewError(http.StatusBadRequest, "이미 사용 중인 닉네임입니다")
+		return common.NewError(http.StatusBadRequest, "이미 사용 중인 닉네임입니다", err)
 	}
 
 	return nil
@@ -114,19 +114,19 @@ func (u *userUsecase) ValidateNickname(nickname string) error {
 func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string) (*res.GetUserByIdResponse, error) {
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
-		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+		fmt.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
 	user, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
 	if (requestUser.Role >= entity.RoleCompanyManager) && (user.Role <= entity.RoleAdmin) {
-		log.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다")
+		fmt.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	var entryDate *time.Time
@@ -168,8 +168,8 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 func (u *userUsecase) GetUserMyInfo(userId uint) (*entity.User, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
 	return user, nil
@@ -180,33 +180,33 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	// 요청 사용자 조회
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
-		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
+		fmt.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다", err)
 	}
 
 	// 대상 사용자 조회
 	targetUser, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
-		log.Printf("대상 사용자 조회에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다")
+		fmt.Printf("대상 사용자 조회에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다", err)
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
 	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+		fmt.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	//TODO 루트 관리자는 절대 변경 불가
 	if targetUser.Role == entity.RoleAdmin {
-		log.Printf("루트 관리자는 변경할 수 없습니다")
-		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다")
+		fmt.Printf("루트 관리자는 변경할 수 없습니다")
+		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다", err)
 	}
 
 	//TODO 관리자가 아니면, Role 변경 불가
 	if requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin && request.Role != nil {
-		log.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+		fmt.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	// 업데이트할 필드 준비
@@ -222,7 +222,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	if request.Password != nil {
 		hashedPassword, err := _utils.HashPassword(*request.Password)
 		if err != nil {
-			return common.NewError(http.StatusInternalServerError, "비밀번호 해싱 실패")
+			return common.NewError(http.StatusInternalServerError, "비밀번호 해싱 실패", err)
 		}
 		userUpdates["password"] = hashedPassword
 	}
@@ -257,14 +257,14 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	//TODO db 업데이트 하고
 	err = u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
 	if err != nil {
-		log.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다")
+		fmt.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다", err)
 	}
 	// //TODO redis 캐시 업데이트
 	// err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
 	// if err != nil {
 	// 	log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
-	// 	return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다")
+	// 	return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다", err)
 	// }
 	// Persistence 레이어로 업데이트 요청 전달
 	return nil
@@ -275,27 +275,27 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 	requestUser, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
-		log.Printf("요청 사용자 조회에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다")
+		fmt.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "요청 사용자를 찾을 수 없습니다", err)
 	}
 
 	// 대상 사용자 조회
 	targetUser, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
-		log.Printf("대상 사용자 조회에 실패했습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다")
+		fmt.Printf("대상 사용자 조회에 실패했습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다", err)
 	}
 
 	//TODO 본인이 아니거나 시스템 관리자가 아니라면 삭제 불가
 	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다")
+		fmt.Printf("권한이 없는 사용자가 사용자 정보를 삭제하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	//TODO 삭제하려는 대상에 시스템관리자는 불가능함
 	if targetUser.Role == entity.RoleAdmin {
-		log.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "시스템 관리자 계정은 삭제가 불가능합니다")
+		fmt.Printf("시스템 관리자는 삭제 불가능합니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
+		return common.NewError(http.StatusForbidden, "시스템 관리자 계정은 삭제가 불가능합니다", err)
 	}
 
 	return u.userRepo.DeleteUser(targetUserId)
@@ -313,8 +313,8 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUs
 
 	users, err := u.userRepo.SearchUser(&user)
 	if err != nil {
-		log.Printf("사용자 검색에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다")
+		fmt.Printf("사용자 검색에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다", err)
 	}
 
 	var response []res.SearchUserResponse
@@ -348,14 +348,14 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 
 	user, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
-		log.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다")
+		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
 	// 회사 ID 유효성 검사
 	if user.UserProfile == nil || user.UserProfile.CompanyID == nil || *user.UserProfile.CompanyID == 0 {
-		log.Printf("사용자의 회사 ID가 없습니다: 사용자 ID %d", requestUserId)
-		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다")
+		fmt.Printf("사용자의 회사 ID가 없습니다: 사용자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 ID가 없습니다", err)
 	}
 
 	// 쿼리 기본값 설정
@@ -376,8 +376,8 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 	// 회사 ID로 사용자 목록 조회
 	users, err := u.userRepo.GetUsersByCompany(*user.UserProfile.CompanyID, queryOptions)
 	if err != nil {
-		log.Printf("회사 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다")
+		fmt.Printf("회사 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다", err)
 	}
 
 	// 사용자 ID 배열 생성
@@ -389,8 +389,8 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 	// 온라인 상태 조회
 	onlineStatusMap, err := u.userRepo.GetCacheUsers(userIds, []string{"is_online"})
 	if err != nil {
-		log.Printf("온라인 상태 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다")
+		fmt.Printf("온라인 상태 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다", err)
 	}
 
 	// 사용자 리스트 변환
@@ -430,8 +430,8 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, error) {
 	users, err := u.userRepo.GetUsersByDepartment(departmentId)
 	if err != nil {
-		log.Printf("부서 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "부서 사용자 조회에 실패했습니다")
+		fmt.Printf("부서 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "부서 사용자 조회에 실패했습니다", err)
 	}
 	return users, nil
 }

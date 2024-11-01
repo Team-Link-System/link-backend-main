@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"link/internal/post/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -22,19 +23,22 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	//TODO 게시물 생성
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다."))
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.CreatePostRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	post, err := h.postUsecase.CreatePost(userId.(uint), &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+		fmt.Printf("게시물 생성 오류: %v", err)
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		return
 	}
 

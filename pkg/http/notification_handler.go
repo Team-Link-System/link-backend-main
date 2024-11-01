@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,16 +30,19 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	//TODO 로그인한 사람 확인
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("알림 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("알림 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -51,22 +55,26 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	var request req.UpdateNotificationStatusRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다"))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	notification, err := h.notificationUsecase.UpdateInviteNotificationStatus(userId.(uint), request.ID.Hex(), request.Status)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("알림 상태 수정 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("알림 상태 수정 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -96,7 +104,8 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
@@ -105,9 +114,11 @@ func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {
 	err := h.notificationUsecase.UpdateNotificationReadStatus(userId.(uint), notificationId)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("알림 읽음 처리 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("알림 읽음 처리 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}

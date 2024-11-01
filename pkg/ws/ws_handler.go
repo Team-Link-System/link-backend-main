@@ -266,20 +266,10 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	}()
 
 	//TODO 메모리에 유저 상태 확인
-	oldConn, exists := h.hub.Clients.Load(uint(userIdUint))
-	if exists {
-		//TODO 기존 연결이 있는 경우
-		if oldWs, ok := oldConn.(*websocket.Conn); ok {
-			oldWs.Close()
-		}
-		h.hub.RegisterClient(conn, uint(userIdUint), 0)
-		conn.WriteJSON(res.JsonResponse{
-			Success: true,
-			Message: "재연결 성공",
-			Type:    "reconnection",
-		})
-	} else {
+	_, exists := h.hub.Clients.Load(uint(userIdUint))
+	if !exists {
 		// 새로운 연결 인 경우
+		fmt.Println("새로운 연결")
 		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
 		if err != nil {
 			log.Printf("사용자 조회에 실패했습니다: %v", err)

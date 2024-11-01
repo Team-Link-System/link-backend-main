@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	_adminUsecase "link/internal/admin/usecase"
 	"strconv"
 
@@ -29,23 +30,27 @@ func (h *AdminHandler) AdminCreateAdmin(c *gin.Context) {
 	//TODO 운영자 등록 로직 구현
 	userId, exists := c.Get("userId") //루트 관리자인지 확인
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	var request req.AdminCreateAdminRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
 	admin, err := h.adminUsecase.AdminRegisterAdmin(userId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("운영자 등록 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("운영자 등록 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -66,13 +71,15 @@ func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 	// 사용자 정보를 데이터베이스에서 조회
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	requestUserID, ok := userId.(uint)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		fmt.Printf("사용자 ID 형식이 잘못되었습니다")
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
 
@@ -80,9 +87,11 @@ func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 	users, err := h.adminUsecase.AdminGetAllUsers(requestUserID)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("사용자 전체 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("사용자 전체 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -122,28 +131,33 @@ func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 func (h *AdminHandler) AdminCreateCompany(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	requestUserID, ok := userId.(uint)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		fmt.Printf("사용자 ID 형식이 잘못되었습니다")
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
 
 	var request req.AdminCreateCompanyRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
 	company, err := h.adminUsecase.AdminCreateCompany(requestUserID, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 생성 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 생성 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -155,28 +169,33 @@ func (h *AdminHandler) AdminCreateCompany(c *gin.Context) {
 func (h *AdminHandler) AdminDeleteCompany(c *gin.Context) {
 	companyID, err := strconv.Atoi(c.Param("companyid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	requestUserID, ok := userId.(uint)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다"))
+		fmt.Printf("사용자 ID 형식이 잘못되었습니다")
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
 
 	err = h.adminUsecase.AdminDeleteCompany(requestUserID, uint(companyID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 삭제 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 삭제 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -188,22 +207,26 @@ func (h *AdminHandler) AdminDeleteCompany(c *gin.Context) {
 func (h *AdminHandler) AdminUpdateCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	var request req.AdminUpdateCompanyRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
 	err := h.adminUsecase.AdminUpdateCompany(adminUserId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사 업데이트 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사 업데이트 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -215,13 +238,15 @@ func (h *AdminHandler) AdminUpdateCompany(c *gin.Context) {
 func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	companyID, err := strconv.Atoi(c.Param("companyid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
@@ -242,9 +267,11 @@ func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 	users, err := h.adminUsecase.AdminGetUsersByCompany(adminUserId.(uint), uint(companyID), &queryOptions)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사에 속한 사용자 목록 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사에 속한 사용자 목록 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}
@@ -256,22 +283,26 @@ func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 func (h *AdminHandler) AdminAddUserToCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다"))
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	var request req.AdminAddUserToCompanyRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다."))
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
 
 	err := h.adminUsecase.AdminAddUserToCompany(adminUserId.(uint), request.UserID, request.CompanyID)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message))
+			fmt.Printf("회사에 사용자 추가 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러"))
+			fmt.Printf("회사에 사용자 추가 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
 	}

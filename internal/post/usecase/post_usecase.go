@@ -41,7 +41,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	//TODO requestUserId가 존재하는지 조회
 	user, err := uc.userRepo.GetUserByID(requestUserId)
 	if err != nil {
-		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다")
+		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
 	//TODO visibility는 PUBLIC, COMPANY, DEPARTMENT, TEAM 중 하나
@@ -85,21 +85,21 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	if companyId != nil {
 		_, err = uc.companyRepo.GetCompanyByID(*companyId)
 		if err != nil {
-			return nil, common.NewError(http.StatusBadRequest, "회사가 없습니다")
+			return nil, common.NewError(http.StatusBadRequest, "회사가 없습니다", err)
 		}
 	}
 
 	for _, deptId := range departmentIds {
 		_, err = uc.departmentRepo.GetDepartmentByID(*deptId)
 		if err != nil {
-			return nil, common.NewError(http.StatusBadRequest, "부서가 없습니다")
+			return nil, common.NewError(http.StatusBadRequest, "부서가 없습니다", err)
 		}
 	}
 
 	for _, teamID := range teamIds {
 		_, err = uc.teamRepo.GetTeamByID(*teamID)
 		if err != nil {
-			return nil, common.NewError(http.StatusBadRequest, "팀이 없습니다")
+			return nil, common.NewError(http.StatusBadRequest, "팀이 없습니다", err)
 		}
 	}
 
@@ -116,7 +116,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	postResponse, err := uc.postRepo.CreatePost(requestUserId, postEntity)
 	if err != nil {
-		return nil, common.NewError(http.StatusBadRequest, "게시물 생성 실패")
+		return nil, common.NewError(http.StatusBadRequest, "게시물 생성 실패", err)
 	}
 
 	//TODO 응답 가공 엔티티
