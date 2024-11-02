@@ -21,6 +21,8 @@ import (
 	postUsecase "link/internal/post/usecase"
 	userUsecase "link/internal/user/usecase"
 
+	_nats "link/pkg/nats"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,6 +41,9 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(func() *redis.Client { return redisClient })
 	container.Provide(func() *mongo.Client { return mongoClient })
 	container.Provide(func() *nats.Conn { return natsClient })
+
+	container.Provide(_nats.NewPublisher)
+	container.Provide(_nats.NewSubscriber)
 
 	//ws 주입
 	container.Provide(ws.NewWebSocketHub)
@@ -83,6 +88,8 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(http.NewPostHandler)
 
 	container.Provide(http.NewAdminHandler)
+
+	container.Provide(ws.NewWebSocketHub)
 
 	return container
 }

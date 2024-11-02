@@ -20,7 +20,10 @@ type ChatHandler struct {
 	hub         *ws.WebSocketHub
 }
 
-func NewChatHandler(chatUsecase usecase.ChatUsecase, hub *ws.WebSocketHub) *ChatHandler {
+func NewChatHandler(
+	chatUsecase usecase.ChatUsecase,
+	hub *ws.WebSocketHub,
+) *ChatHandler {
 	return &ChatHandler{
 		chatUsecase: chatUsecase,
 		hub:         hub,
@@ -136,6 +139,45 @@ func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅방 리스트 조회 성공", chatRooms))
 }
+
+//TODO 1:1 채팅의 경우 초대 없음 그룹 채팅은 초대 알림 가도록 만들기
+
+// // TODO 채팅방 나가기
+func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	chatRoomId := c.Param("chatroomid")
+
+	chatRoomIdUint, err := strconv.ParseUint(chatRoomId, 10, 64)
+	if err != nil {
+		fmt.Printf("유효하지 않은 채팅방 ID입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다", err))
+		return
+	}
+
+	err = h.chatUsecase.LeaveChatRoom(userId.(uint), uint(chatRoomIdUint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("채팅방 나가기 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("채팅방 나가기 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅방 나가기 성공", nil))
+
+	//TODO 웹소켓으로 해당 채팅방에 메시지 전송
+}
+
+//TODO 채팅방 삭제 - 둘다 나가면 채팅 내용 삭제?? 이건 고민
 
 // TODO 채팅방의 채팅 내용 가져오기
 func (h *ChatHandler) GetChatMessages(c *gin.Context) {

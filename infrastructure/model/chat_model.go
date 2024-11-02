@@ -6,7 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Chat 과 User은 다대다 관계
 type Chat struct {
 	ID          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	ChatRoomID  uint               `json:"chat_room_id" bson:"chat_room_id"` // PostgreSQL에서 관리하는 채팅방 ID

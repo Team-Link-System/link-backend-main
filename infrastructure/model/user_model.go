@@ -15,14 +15,15 @@ const (
 
 // User 모델: 사용자 핵심 정보
 type User struct {
-	ID          uint         `json:"id" gorm:"primaryKey"`
-	Name        string       `json:"name" binding:"required"`
-	Email       string       `json:"email" binding:"required,email" gorm:"unique"`
-	Nickname    string       `json:"nickname" binding:"required,nickname" gorm:"unique"`
-	Password    string       `json:"password"`
-	Phone       string       `json:"phone"`
-	Role        UserRole     `json:"role" binding:"required" gorm:"not null;default:4"`
-	UserProfile *UserProfile `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"` // 1:1 관계 설정
-	CreatedAt   time.Time    `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	ID             uint           `json:"id" gorm:"primaryKey"`
+	Name           string         `json:"name" binding:"required"`
+	Email          string         `json:"email" binding:"required,email" gorm:"unique"`
+	Nickname       string         `json:"nickname" binding:"required,nickname" gorm:"unique"`
+	Password       string         `json:"password"`
+	Phone          string         `json:"phone"`
+	Role           UserRole       `json:"role" binding:"required" gorm:"not null;default:4"`
+	UserProfile    *UserProfile   `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"` // 1:1 관계 설정
+	CreatedAt      time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	ChatRoomsUsers []ChatRoomUser `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }

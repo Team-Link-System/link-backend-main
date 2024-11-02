@@ -42,10 +42,11 @@ var Upgrader = websocket.Upgrader{
 
 // NewWebSocketHub는 새로운 WebSocketHub를 생성합니다.
 func NewWebSocketHub() *WebSocketHub {
-	return &WebSocketHub{
+	hub := &WebSocketHub{
 		Register:   make(chan ClientRegistration),
 		Unregister: make(chan *websocket.Conn),
 	}
+	return hub
 }
 
 // 클라이언트 등록
