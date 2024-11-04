@@ -142,7 +142,7 @@ func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 
 //TODO 1:1 채팅의 경우 초대 없음 그룹 채팅은 초대 알림 가도록 만들기
 
-// // TODO 채팅방 나가기
+// TODO 채팅방 나가기
 func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {

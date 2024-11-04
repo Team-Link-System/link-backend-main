@@ -178,8 +178,10 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 				return
 			}
 
-			chatUsersInfo := make([]map[string]interface{}, len(chatRoomResponse))
-			for i, user := range chatRoomResponse {
+			//TODO 만약에 1:1 채팅방이면 해당 상대를 다시 추가하고
+
+			chatUsersInfo := make([]map[string]interface{}, len(chatRoomResponse.Users))
+			for i, user := range chatRoomResponse.Users {
 				chatUsersInfo[i] = map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,
@@ -232,6 +234,27 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			})
 			continue
 		}
+
+		//TODO 1:1 채팅방일 때 메시지를 보내는데 상대가 있는지 확인
+		//TODO 1:1 채팅일 때, 상대가 joined 되어있는지 확인 아니라면 추가하고 전송
+		//TODO step 1 레디스에서 가져오기
+		_, err = h.chatUsecase.GetChatRoomByIdFromRedis(message.RoomID)
+
+		//! 수정중
+		// if err == nil && chatRoomFromRedis != nil {
+
+		// 	//TODO isPrivate일 때 한명의 참가자가 있는지 둘다 JoinedAt이 있어야함
+		// 	if len(chatRoomFromRedis.Users) == 2 {
+		// 		for _, user := range chatRoomFromRedis.Users {
+		// 			//TODO 보내는 사람도 받는사람도 JoinedAt이 있고, left_at이 없어야함
+		// 		}
+		// 	}
+
+		// }
+
+		//TODO redis에 없으면 db에서 가져오고 redis 업데이트
+
+		//TODO 상대를 채팅방에 추가하고, 클라이언트로 등록도 해야함
 
 		// 메시지 저장
 		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
@@ -375,32 +398,5 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		// // 알림 생성 -> upsert로 해야함
-		// response, err := h.notificationUsecase.CreateNotification(message.SenderId, message.ReceiverId, message.AlarmType)
-		// if err != nil {
-		// 	log.Printf("알림 저장 실패: %v", err)
-		// 	conn.WriteJSON(res.JsonResponse{
-		// 		Success: false,
-		// 		Message: "알림 저장 실패",
-		// 		Type:    "notification",
-		// 	})
-		// 	continue
-		// }
-
-		// h.hub.SendMessageToUser(response.ReceiverId, res.JsonResponse{
-		// 	Success: true,
-		// 	Type:    "notification",
-		// 	Payload: &res.NotificationPayload{
-		// 		ID:         response.ID,
-		// 		SenderID:   response.SenderId,
-		// 		ReceiverID: response.ReceiverId,
-		// 		Content:    response.Content,
-		// 		CreatedAt:  response.CreatedAt.Format(time.RFC3339),
-		// 		AlarmType:  response.AlarmType,
-		// 		Title:      response.Title,
-		// 		IsRead:     response.IsRead,
-		// 		Status:     response.Status,
-		// 	},
-		// })
 	}
 }

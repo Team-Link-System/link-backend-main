@@ -20,7 +20,7 @@ import (
 type ChatUsecase interface {
 	CreateChatRoom(userId uint, request *req.CreateChatRoomRequest) (*res.CreateChatRoomResponse, error)
 	GetChatRoomList(userId uint) ([]*res.ChatRoomInfoResponse, error)
-	GetChatRoomById(roomId uint) ([]*res.UserInfoResponse, error)
+	GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, error)
 	LeaveChatRoom(userId uint, chatRoomId uint) error
 
 	SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error)
@@ -134,16 +134,17 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRe
 }
 
 // TODO 채팅방 조회
-func (uc *chatUsecase) GetChatRoomById(roomId uint) ([]*res.UserInfoResponse, error) {
+func (uc *chatUsecase) GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, error) {
 	chatRoom, err := uc.chatRepository.GetChatRoomById(roomId)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회에 실패했습니다", err)
 	}
 
-	userResponse := make([]*res.UserInfoResponse, len(chatRoom.Users))
+	// Users 필드를 UserInfoResponse로 변환
+	userResponse := make([]res.UserInfoResponse, len(chatRoom.Users))
 	for i, user := range chatRoom.Users {
-		userResponse[i] = &res.UserInfoResponse{
+		userResponse[i] = res.UserInfoResponse{
 			ID:    user.ID,
 			Name:  user.Name,
 			Email: user.Email,
@@ -156,7 +157,14 @@ func (uc *chatUsecase) GetChatRoomById(roomId uint) ([]*res.UserInfoResponse, er
 		}
 	}
 
-	return userResponse, nil
+	chatRoomResponse := &res.ChatRoomInfoResponse{
+		ID:        chatRoom.ID,
+		Name:      chatRoom.Name,
+		IsPrivate: &chatRoom.IsPrivate,
+		Users:     userResponse,
+	}
+
+	return chatRoomResponse, nil
 }
 
 // TODO 해당 사용자가 참여중인 채팅방 리스트 조회
@@ -241,6 +249,65 @@ func (uc *chatUsecase) LeaveChatRoom(userId uint, chatRoomId uint) error {
 
 	return nil
 }
+
+// TODO 채팅방 사용자 추가 1:1 채팅의 경우
+func (uc *chatUsecase) AddUserChatRoom(requestUserId uint, targetUserId uint, chatRoomId uint) error {
+	//TODO 요청 사용자가 있는지 확인
+	_, err := uc.userRepository.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("채팅방 사용자 추가 중 요청 사용자 조회 오류: %v", err)
+		return common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다", err)
+	}
+
+	//TODO 대상 사용자가 있는지 확인
+	_, err = uc.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		fmt.Printf("채팅방 사용자 추가 중 대상 사용자 조회 오류: %v", err)
+		return common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다", err)
+	}
+
+	//TODO 채팅방에 요청 사용자 있는지 확인
+	if !uc.chatRepository.IsUserInChatRoom(requestUserId, chatRoomId) {
+		fmt.Printf("채팅방 사용자 추가 중 요청 사용자 조회 오류: %v", err)
+		return common.NewError(http.StatusNotFound, "요청 사용자가 채팅방에 없습니다", err)
+	}
+
+	//TODO 초대할 대상이 채팅방에 있는지 확인
+	if uc.chatRepository.IsUserInChatRoom(targetUserId, chatRoomId) {
+		fmt.Printf("채팅방 사용자 추가 중 대상 사용자 조회 오류: %v", err)
+		return common.NewError(http.StatusNotFound, "대상 사용자가 이미 채팅방에 있습니다", err)
+	}
+
+	chatRoom, err := uc.chatRepository.GetChatRoomById(chatRoomId)
+	if err != nil {
+		fmt.Printf("채팅방 사용자 추가 중 채팅방 조회 오류: %v", err)
+		return common.NewError(http.StatusNotFound, "존재하지 않는 채팅방입니다", err)
+	}
+
+	// case 1 : 1:1 채팅에 새로 한사람 추가시 -> isPrivate  false로 변경하고 추가해야함
+	// case 2 : 그룹채팅에 새로 한사람 추가시 -> 초대 알림을 보내주고 응답을 받아야 추가
+	// case 3 : 1:1 채팅인데 상대방이 나갔고 혼자만 남은 상황에서 다시 초대할 때 그냥 추가
+
+	//TODO 1:1 채팅방 사용자 추가
+	if chatRoom.IsPrivate {
+		err = uc.chatRepository.AddUserToPrivateChatRoom(requestUserId, targetUserId, chatRoomId)
+		if err != nil {
+			fmt.Printf("채팅방 사용자 추가 중 DB 오류: %v", err)
+			return common.NewError(http.StatusInternalServerError, "채팅방 사용자 추가에 실패했습니다", err)
+		}
+	} else if !chatRoom.IsPrivate && len(chatRoom.Users) >= 2 {
+		//TODO 그룹 채팅방 사용자 추가
+		err = uc.chatRepository.AddUserToGroupChatRoom(requestUserId, targetUserId, chatRoomId)
+		if err != nil {
+			fmt.Printf("채팅방 사용자 추가 중 DB 오류: %v", err)
+			return common.NewError(http.StatusInternalServerError, "채팅방 사용자 추가에 실패했습니다", err)
+		}
+	}
+
+	return nil
+}
+
+// TODO 단체방 채팅 초대
 
 // TODO 메시지 저장
 func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error) {
