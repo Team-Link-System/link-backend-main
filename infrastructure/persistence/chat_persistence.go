@@ -215,6 +215,8 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 			ChatRoomUsers: []map[string]interface{}{
 				{
 					"alias_name": chatRoomUser.ChatRoomAlias,
+					"joined_at":  chatRoomUser.JoinedAt,
+					"left_at":    chatRoomUser.LeftAt,
 				},
 			},
 		}
@@ -300,9 +302,9 @@ func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chat
 }
 
 // TODO 레디스 관련
-func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error {
+func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoomInfo map[string]interface{}) error {
 	//json으로 변환
-	chatRoomJson, err := json.Marshal(chatUsersInfo)
+	chatRoomJson, err := json.Marshal(chatRoomInfo)
 	if err != nil {
 		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
 	}
@@ -371,7 +373,7 @@ func (r *chatPersistence) IsUserInChatRoom(userId uint, chatRoomId uint) bool {
 		Where("joined_at IS NOT NULL AND left_at IS NULL").
 		First(&chatRoomUser).Error
 
-	// 에러가 ErrRecordNotFound인 경우 false 반환, 그 외에는 true
+	// 에러가 ErrRecordNotFound인 경우 나간사람임
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return false
 	}
@@ -407,7 +409,6 @@ func (r *chatPersistence) AddUserToPrivateChatRoom(requestUserId uint, targetUse
 		return fmt.Errorf("채팅방 조회 중 DB 오류: %w", err)
 	}
 
-	//TODO case 1  채팅방이 1:1 채팅방에 2명일 때 새로 추가하면 isPrivate를 false로 업데이트
 	//TODO 채팅방 이름도 변경
 	if chatRoom.IsPrivate && len(chatRoom.Users) == 2 {
 		// 채팅방 업데이트
@@ -421,22 +422,6 @@ func (r *chatPersistence) AddUserToPrivateChatRoom(requestUserId uint, targetUse
 			return fmt.Errorf("채팅방 업데이트 중 DB 오류: %w", err)
 		}
 
-		//TODO 중간테이블에 추가
-		chatRoomUser := model.ChatRoomUser{
-			ChatRoomID:    chatRoomId,
-			UserID:        targetUserId,
-			JoinedAt:      time.Now(),
-			ChatRoomAlias: fmt.Sprintf("%s님 외 %d명", *chatRoom.Users[0].Name, len(chatRoom.Users)-1),
-		}
-		if err := tx.Create(&chatRoomUser).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("채팅방 사용자 추가 중 DB 오류: %w", err)
-		}
-
-	} else if chatRoom.IsPrivate && len(chatRoom.Users) == 1 {
-		//TODO case 2  채팅방이 1:1 채팅인데 참여자가 1명일때 isPrivate true 유지
-		//TODO 채팅방 참여자 업데이트 -> 중간테이블에 joined_at 업데이트 혹은 새로 추가
-		// 중간테이블 업데이트
 		if err := tx.Model(&model.ChatRoomUser{}).
 			Where("user_id = ? AND chat_room_id = ?", targetUserId, chatRoomId).
 			Updates(map[string]interface{}{
@@ -447,6 +432,7 @@ func (r *chatPersistence) AddUserToPrivateChatRoom(requestUserId uint, targetUse
 			tx.Rollback() // 트랜잭션 롤백 추가
 			return fmt.Errorf("채팅방 사용자 업데이트 중 DB 오류: %w", err)
 		}
+
 	}
 
 	if err := tx.Commit().Error; err != nil {

@@ -179,22 +179,27 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			}
 
 			//TODO 만약에 1:1 채팅방이면 해당 상대를 다시 추가하고
+			chatRoomInfo := make(map[string]interface{})
+			chatRoomInfo["id"] = chatRoomResponse.ID
+			chatRoomInfo["is_private"] = chatRoomResponse.IsPrivate
+			chatRoomInfo["name"] = chatRoomResponse.Name
 
-			chatUsersInfo := make([]map[string]interface{}, len(chatRoomResponse.Users))
-			for i, user := range chatRoomResponse.Users {
-				chatUsersInfo[i] = map[string]interface{}{
-					"id":         user.ID,
-					"name":       user.Name,
-					"email":      user.Email,
-					"alias_name": user.AliasName,
+			for _, user := range chatRoomResponse.Users {
+				chatRoomInfo["users"] = []map[string]interface{}{
+					{
+						"id":         user.ID,
+						"name":       user.Name,
+						"email":      user.Email,
+						"alias_name": user.AliasName,
+						"joined_at":  user.JoinedAt,
+						"left_at":    user.LeftAt,
+					},
 				}
 			}
 			// DB에서 가져온 채팅방을 메모리에 추가 -> 수정해야함
-			h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatUsersInfo)
+			h.chatUsecase.SetChatRoomToRedis(uint(roomIdUint), chatRoomInfo)
 			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		}
-
-		//TODO 3단계 1 2단계에 정보 없으면 메모리에 추가
 	}
 
 	h.hub.RegisterClient(conn, uint(userIdUint), uint(roomIdUint))
@@ -235,26 +240,92 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		//TODO 1:1 채팅방일 때 메시지를 보내는데 상대가 있는지 확인
-		//TODO 1:1 채팅일 때, 상대가 joined 되어있는지 확인 아니라면 추가하고 전송
-		//TODO step 1 레디스에서 가져오기
-		_, err = h.chatUsecase.GetChatRoomByIdFromRedis(message.RoomID)
+		// Redis에서 채팅방 정보 가져오기 없으면 DB에서 가져오기
+		chatRoomFromRedis, err := h.chatUsecase.GetChatRoomByIdFromRedis(message.RoomID)
+		if err != nil || chatRoomFromRedis == nil {
+			log.Printf("레디스 채팅방 조회 실패: %v", err)
 
-		//! 수정중
-		// if err == nil && chatRoomFromRedis != nil {
+			// DB에서 채팅방 정보 가져오기
+			chatRoomFromDB, err := h.chatUsecase.GetChatRoomById(message.RoomID)
+			if err != nil || chatRoomFromDB == nil {
+				log.Printf("DB 채팅방 조회 실패: %v", err)
+				return
+			}
 
-		// 	//TODO isPrivate일 때 한명의 참가자가 있는지 둘다 JoinedAt이 있어야함
-		// 	if len(chatRoomFromRedis.Users) == 2 {
-		// 		for _, user := range chatRoomFromRedis.Users {
-		// 			//TODO 보내는 사람도 받는사람도 JoinedAt이 있고, left_at이 없어야함
-		// 		}
-		// 	}
+			// Redis에 캐싱하기 위해 사용자 정보 준비
+			chatRoomInfo := make(map[string]interface{})
+			chatRoomInfo["id"] = chatRoomFromDB.ID
+			chatRoomInfo["is_private"] = chatRoomFromDB.IsPrivate
+			chatRoomInfo["name"] = chatRoomFromDB.Name
 
-		// }
+			for _, user := range chatRoomFromDB.Users {
+				chatRoomInfo["users"] = []map[string]interface{}{
+					{
+						"id":         user.ID,
+						"name":       user.Name,
+						"email":      user.Email,
+						"alias_name": user.AliasName,
+						"joined_at":  user.JoinedAt,
+						"left_at":    user.LeftAt,
+					},
+				}
+			}
+			// Redis에 캐싱
+			h.chatUsecase.SetChatRoomToRedis(message.RoomID, chatRoomInfo)
+			chatRoomFromRedis = chatRoomFromDB
+		}
 
-		//TODO redis에 없으면 db에서 가져오고 redis 업데이트
+		// 1:1 채팅방에 두 사용자 참여 여부 확인 및 처리
+		var senderInRoom, otherUserInRoom bool
+		var otherUserId uint
 
-		//TODO 상대를 채팅방에 추가하고, 클라이언트로 등록도 해야함
+		// 채팅방의 사용자를 순회하면서 현재 사용자와 상대방의 참여 상태 확인
+		for i, user := range chatRoomFromRedis.Users {
+			if *user.ID == message.SenderID {
+				// 메시지 보낸 사람이 현재 채팅방에 참여 중인지 확인
+				if chatRoomFromRedis.Users[i].AliasName != nil && chatRoomFromRedis.Users[i].JoinedAt != nil && chatRoomFromRedis.Users[i].LeftAt == nil {
+					senderInRoom = true
+				}
+			} else {
+				// 상대방의 ID를 저장
+				otherUserId = *user.ID
+				// 상대방이 현재 채팅방에 참여 중인지 확인
+				if chatRoomFromRedis.Users[i].AliasName != nil && chatRoomFromRedis.Users[i].JoinedAt != nil && chatRoomFromRedis.Users[i].LeftAt == nil {
+					otherUserInRoom = true
+				}
+			}
+		}
+
+		// 상황에 따른 처리
+		// 메시지를 보낸 사용자가 채팅방에 참여하지 않았다면 추가
+		if !senderInRoom {
+			requestUserId := otherUserId
+			joinedUserId := message.SenderID
+			roomId := message.RoomID
+
+			// NATS 이벤트 발행: 메시지를 보낸 사용자가 채팅방에 추가됨
+			go func() {
+				eventData := fmt.Sprintf(`{"requestUserId": %d, "joinedUserId": %d, "roomId": %d}`, requestUserId, joinedUserId, roomId)
+				if err := h.natsPublisher.PublishEvent("chat_room.joined", []byte(eventData)); err != nil {
+					log.Printf("NATS 이벤트 발행 오류: %v", err)
+				}
+			}()
+		}
+
+		// 상대방이 채팅방에 참여하지 않았다면 추가
+		if !otherUserInRoom {
+			requestUserId := message.SenderID
+			joinedUserId := otherUserId
+			roomId := message.RoomID
+
+			// 상대방이 참여 중이지 않을 때만 NATS 이벤트 발행하여 추가 처리
+			go func() {
+				eventData := fmt.Sprintf(`{"requestUserId": %d, "joinedUserId": %d, "roomId": %d}`, requestUserId, joinedUserId, roomId)
+				if err := h.natsPublisher.PublishEvent("chat_room.joined", []byte(eventData)); err != nil {
+					log.Printf("NATS 이벤트 발행 오류: %v", err)
+				}
+			}()
+		}
 
 		// 메시지 저장
 		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
@@ -336,7 +407,6 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		return
 	}
 
-	// 연결이 종료��� 때 WebSocket 정리
 	defer func() {
 		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
 		conn.Close()

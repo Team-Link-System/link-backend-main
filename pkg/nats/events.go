@@ -13,4 +13,15 @@ const (
 	RoleCreatedEvent = "role.created"
 	RoleUpdatedEvent = "role.updated"
 	RoleDeletedEvent = "role.deleted"
+
+	//채팅방 참가
+	ChatRoomJoinedEvent = "chat_room.joined"
+	ChatRoomLeftEvent   = "chat_room.left"
+	//채팅 메시지
+	ChatMessageSentEvent = "chat_message.sent"
+
+	//채팅방 관련
+	ChatRoomCreatedEvent = "chat_room.created"
+	ChatRoomUpdatedEvent = "chat_room.updated"
+	ChatRoomDeletedEvent = "chat_room.deleted"
 )

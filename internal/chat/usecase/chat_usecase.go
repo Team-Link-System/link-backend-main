@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nats-io/nats.go"
+
 	"link/internal/chat/entity"
 	_chatRepo "link/internal/chat/repository"
 	_userEntity "link/internal/user/entity"
@@ -27,28 +29,61 @@ type ChatUsecase interface {
 	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
 	DeleteChatMessage(senderID uint, request *req.DeleteChatMessageRequest) error
 
-	SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error
-	GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error)
+	SetChatRoomToRedis(roomId uint, chatRoomInfo map[string]interface{}) error
+	GetChatRoomByIdFromRedis(roomId uint) (*res.ChatRoomInfoResponse, error)
 }
 
 type chatUsecase struct {
 	chatRepository _chatRepo.ChatRepository
 	userRepository _userRepo.UserRepository
 	natsPublisher  *_nats.NatsPublisher
+	natsSubscriber *_nats.NatsSubscriber
 }
 
 func NewChatUsecase(
 	chatRepository _chatRepo.ChatRepository,
 	userRepository _userRepo.UserRepository,
 	natsPublisher *_nats.NatsPublisher,
+	natsSubscriber *_nats.NatsSubscriber,
 ) ChatUsecase {
+
 	uc := &chatUsecase{
 		chatRepository: chatRepository,
 		userRepository: userRepository,
 		natsPublisher:  natsPublisher,
+		natsSubscriber: natsSubscriber,
 	}
 
+	uc.setUpNatsSubscriber()
+
 	return uc
+}
+
+func (uc *chatUsecase) setUpNatsSubscriber() {
+
+	//TODO 이벤트 토픽별로 로직 달라야함
+	err := uc.natsSubscriber.SubscribeEvent("chat_room.joined", func(msg *nats.Msg) {
+		fmt.Println("채팅방 참가 이벤트 수신")
+
+		var message map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &message); err != nil {
+			fmt.Printf("메시지 파싱 오류: %v", err)
+			return
+		}
+		//이미 참가중인 사용자와 새로 참가할 사용자
+		requestUserId := uint(message["requestUserId"].(float64))
+		joinedUserId := uint(message["joinedUserId"].(float64))
+		joinedChatRoomId := uint(message["roomId"].(float64))
+
+		err := uc.AddUserChatRoom(requestUserId, joinedUserId, joinedChatRoomId)
+		if err != nil {
+			fmt.Printf("채팅방 사용자 추가 중 오류: %v", err)
+			return
+		}
+	})
+	if err != nil {
+		fmt.Printf("NATS 이벤트 수신 오류: %v", err)
+	}
 }
 
 // TODO 채팅방 생성
@@ -153,6 +188,12 @@ func (uc *chatUsecase) GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, 
 		for _, chatRoomUser := range user.ChatRoomUsers {
 			if aliasName, ok := chatRoomUser["alias_name"].(string); ok {
 				userResponse[i].AliasName = &aliasName
+			}
+			if joinedAt, ok := chatRoomUser["joined_at"].(time.Time); ok {
+				userResponse[i].JoinedAt = &joinedAt
+			}
+			if leftAt, ok := chatRoomUser["left_at"].(time.Time); ok {
+				userResponse[i].LeftAt = &leftAt
 			}
 		}
 	}
@@ -288,7 +329,7 @@ func (uc *chatUsecase) AddUserChatRoom(requestUserId uint, targetUserId uint, ch
 	// case 2 : 그룹채팅에 새로 한사람 추가시 -> 초대 알림을 보내주고 응답을 받아야 추가
 	// case 3 : 1:1 채팅인데 상대방이 나갔고 혼자만 남은 상황에서 다시 초대할 때 그냥 추가
 
-	//TODO 1:1 채팅방 사용자 추가
+	//TODO 1:1 채팅방 사용자 추가는 나간사람이 다시 초대받는거임
 	if chatRoom.IsPrivate {
 		err = uc.chatRepository.AddUserToPrivateChatRoom(requestUserId, targetUserId, chatRoomId)
 		if err != nil {
@@ -365,21 +406,43 @@ func (uc *chatUsecase) DeleteChatMessage(senderID uint, request *req.DeleteChatM
 	return nil
 }
 
-func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error {
-	if roomId == 0 || chatUsersInfo == nil {
+func (uc *chatUsecase) SetChatRoomToRedis(roomId uint, chatRoomInfo map[string]interface{}) error {
+	if roomId == 0 || chatRoomInfo == nil {
 		return common.NewError(http.StatusBadRequest, "채팅방 또는 채팅방 ID가 유효하지 않습니다", nil)
 	}
 
-	uc.chatRepository.SetChatRoomToRedis(roomId, chatUsersInfo)
+	uc.chatRepository.SetChatRoomToRedis(roomId, chatRoomInfo)
 
 	return nil
 }
 
-func (uc *chatUsecase) GetChatRoomByIdFromRedis(roomId uint) (*entity.ChatRoom, error) {
+func (uc *chatUsecase) GetChatRoomByIdFromRedis(roomId uint) (*res.ChatRoomInfoResponse, error) {
 	chatRoom, err := uc.chatRepository.GetChatRoomByIdFromRedis(roomId)
 	if err != nil {
 		log.Printf("채팅방 조회 중 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "채팅방 조회에 실패했습니다", err)
 	}
-	return chatRoom, nil
+
+	userResponse := make([]res.UserInfoResponse, len(chatRoom.Users))
+	for i, user := range chatRoom.Users {
+		userResponse[i] = res.UserInfoResponse{
+			ID:    user.ID,
+			Name:  user.Name,
+			Email: user.Email,
+		}
+		for _, chatRoomUser := range user.ChatRoomUsers {
+			if aliasName, ok := chatRoomUser["alias_name"].(string); ok {
+				userResponse[i].AliasName = &aliasName
+			}
+		}
+	}
+
+	chatRoomResponse := &res.ChatRoomInfoResponse{
+		ID:        chatRoom.ID,
+		Name:      chatRoom.Name,
+		IsPrivate: &chatRoom.IsPrivate,
+		Users:     userResponse,
+	}
+
+	return chatRoomResponse, nil
 }
