@@ -167,7 +167,7 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
 	}
 
-	if adminUser.Role <= _userEntity.RoleSubAdmin {
+	if adminUser.Role > _userEntity.RoleSubAdmin {
 		log.Printf("권한이 없는 사용자가 회사 사용자 조회하려 했습니다: 요청자 ID %d", adminUserId)
 		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다", err)
 	}
