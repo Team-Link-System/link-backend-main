@@ -84,11 +84,12 @@ func (r *chatPersistence) CreateChatRoom(chatRoom *chatEntity.ChatRoom) error {
 func (r *chatPersistence) GetChatRoomList(userId uint) ([]*chatEntity.ChatRoom, error) {
 	var chatRooms []model.ChatRoom
 	// 해당 사용자가 속한 그룹 채팅방 조회
+	// TODO JOINEDAT이 NOT NULL이고 , leftAt이 NULL인 경우
 	err := r.db.
 		Preload("ChatRoomUsers").
 		Preload("ChatRoomUsers.User").
 		Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
-		Where("chat_room_users.user_id = ?", userId).
+		Where("chat_room_users.user_id = ? AND chat_room_users.joined_at IS NOT NULL AND chat_room_users.left_at IS NULL", userId).
 		Find(&chatRooms).Error
 
 	if err != nil {
@@ -214,6 +215,8 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 			ChatRoomUsers: []map[string]interface{}{
 				{
 					"alias_name": chatRoomUser.ChatRoomAlias,
+					"joined_at":  chatRoomUser.JoinedAt,
+					"left_at":    chatRoomUser.LeftAt,
 				},
 			},
 		}
@@ -299,9 +302,9 @@ func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chat
 }
 
 // TODO 레디스 관련
-func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatUsersInfo []map[string]interface{}) error {
+func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoomInfo map[string]interface{}) error {
 	//json으로 변환
-	chatRoomJson, err := json.Marshal(chatUsersInfo)
+	chatRoomJson, err := json.Marshal(chatRoomInfo)
 	if err != nil {
 		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
 	}
@@ -337,8 +340,16 @@ func (r *chatPersistence) LeaveChatRoom(userId uint, chatRoomId uint) error {
 		return fmt.Errorf("채팅방 나가기 중 DB 오류: %w", tx.Error)
 	}
 
-	//TODO 삭제
-	err := tx.Delete(&model.ChatRoomUser{}, "user_id = ? AND chat_room_id = ?", userId, chatRoomId).Error
+	// err := tx.Delete(&model.ChatRoomUser{}, "user_id = ? AND chat_room_id = ?", userId, chatRoomId).Error
+	// if err != nil {
+	// 	tx.Rollback()
+	// 	return fmt.Errorf("채팅방 나가기 중 DB 오류: %w", err)
+	// }
+	//TODO 삭제가 아니라 leftAt을 현재 시간으로 설정, JoinedAt은 null로 설정
+	err := tx.Model(&model.ChatRoomUser{}).
+		Where("user_id = ? AND chat_room_id = ?", userId, chatRoomId).
+		Update("left_at", time.Now()).
+		Update("joined_at", nil).Error
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("채팅방 나가기 중 DB 오류: %w", err)
@@ -351,6 +362,109 @@ func (r *chatPersistence) LeaveChatRoom(userId uint, chatRoomId uint) error {
 	return nil
 }
 
-//TODO 그룹 채팅방일 때 나가면 해당 유저 삭제
+// TODO 채팅방 사용자 추가
+// TODO 채팅방에 사용자 있는지 확인
+func (r *chatPersistence) IsUserInChatRoom(userId uint, chatRoomId uint) bool {
+	var chatRoomUser model.ChatRoomUser
+
+	// 채팅방에 사용자가 있는지 확인 (joined_at이 있고 left_at이 NULL인 경우)
+	err := r.db.
+		Where("user_id = ? AND chat_room_id = ?", userId, chatRoomId).
+		Where("joined_at IS NOT NULL AND left_at IS NULL").
+		First(&chatRoomUser).Error
+
+	// 에러가 ErrRecordNotFound인 경우 나간사람임
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false
+	}
+	return err == nil
+}
+
+// TODO 1:1 채팅방인지 확인
+func (r *chatPersistence) IsPrivateChatRoom(chatRoomId uint) bool {
+	var chatRoom model.ChatRoom
+
+	// 1:1 채팅방인지 확인
+	err := r.db.
+		Where("id = ? AND is_private = ?", chatRoomId, true).
+		First(&chatRoom).Error
+
+	// 에러가 ErrRecordNotFound인 경우 false 반환, 그 외에는 true
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false
+	}
+	return err == nil
+}
+
+// TODO 1:1 채팅방에 혼자만 있는 경우
+func (r *chatPersistence) AddUserToPrivateChatRoom(requestUserId uint, targetUserId uint, chatRoomId uint) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("채팅방 사용자 추가 중 DB 오류: %w", tx.Error)
+	}
+
+	chatRoom, err := r.GetChatRoomById(chatRoomId)
+	if err != nil {
+		tx.Rollback() // 트랜잭션 롤백 추가
+		return fmt.Errorf("채팅방 조회 중 DB 오류: %w", err)
+	}
+
+	//TODO 채팅방 이름도 변경
+	if chatRoom.IsPrivate && len(chatRoom.Users) == 2 {
+		// 채팅방 업데이트
+		if err := tx.Model(&model.ChatRoom{}).
+			Where("id = ?", chatRoomId).
+			Updates(map[string]interface{}{
+				"is_private": false,
+				"name":       fmt.Sprintf("%s님 외 %d명", *chatRoom.Users[0].Name, len(chatRoom.Users)),
+			}).Error; err != nil {
+			tx.Rollback() // 트랜잭션 롤백 추가
+			return fmt.Errorf("채팅방 업데이트 중 DB 오류: %w", err)
+		}
+
+		if err := tx.Model(&model.ChatRoomUser{}).
+			Where("user_id = ? AND chat_room_id = ?", targetUserId, chatRoomId).
+			Updates(map[string]interface{}{
+				"joined_at":       time.Now(),
+				"left_at":         nil,
+				"chat_room_alias": fmt.Sprintf("%s님 외 %d명", *chatRoom.Users[0].Name, len(chatRoom.Users)),
+			}).Error; err != nil {
+			tx.Rollback() // 트랜잭션 롤백 추가
+			return fmt.Errorf("채팅방 사용자 업데이트 중 DB 오류: %w", err)
+		}
+
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %w", err)
+	}
+
+	return nil
+}
+
+// TODO 그룹 채팅방 사용자 추가
+func (r *chatPersistence) AddUserToGroupChatRoom(requestUserId uint, targetUserId uint, chatRoomId uint) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("채팅방 사용자 추가 중 DB 오류: %w", tx.Error)
+	}
+
+	chatRoom, err := r.GetChatRoomById(chatRoomId)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("채팅방 조회 중 DB 오류: %w", err)
+	}
+
+	if chatRoom.IsPrivate {
+		tx.Rollback()
+		return fmt.Errorf("채팅방이 1:1 채팅방입니다")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %w", err)
+	}
+
+	return nil
+}
 
 //TODO 그룹 채팅방일 때 초대하면 추가

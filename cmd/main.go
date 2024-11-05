@@ -128,10 +128,10 @@ func startServer() {
 				//! 채팅방 관련 핸들러
 				chat.GET("/list", chatHandler.GetChatRoomList)
 				chat.GET("/:chatroomid", chatHandler.GetChatRoomById)
-				chat.DELETE("/:chatroomid", chatHandler.LeaveChatRoom)
+				chat.DELETE("/:chatroomid", chatHandler.LeaveChatRoom) //! 채팅방 나가기
 				chat.POST("", chatHandler.CreateChatRoom)
 				chat.GET("/:chatroomid/messages", chatHandler.GetChatMessages)
-				chat.DELETE("/messages", chatHandler.DeleteChatMessage)
+				chat.DELETE("/messages", chatHandler.DeleteChatMessage) //! 채팅 메시지 삭제
 
 				// chat.GET("/:id", chatHandler.GetChatRoom) // 채팅방 정보
 			}
