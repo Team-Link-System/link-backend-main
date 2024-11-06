@@ -105,6 +105,16 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
+	user, err := u.userRepository.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
+	}
+
+	if user.UserProfile.CompanyID != nil {
+		log.Println("이미 회사에 소속된 사용자입니다")
+		return common.NewError(http.StatusBadRequest, "이미 회사에 소속된 사용자입니다", err)
+	}
+
 	//TODO 만약에 Role이 3이라면 자기 회사만 사용자 추가 가능
 	if *adminUser.UserProfile.CompanyID != companyId && adminUser.Role == 3 {
 		log.Println("권한이 없습니다")
