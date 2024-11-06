@@ -191,12 +191,15 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 	response := []res.AdminGetUserByIdResponse{}
 	for _, user := range users {
 		if user.UserProfile.CompanyID != nil && *user.UserProfile.CompanyID == companyID {
+
 			response = append(response, res.AdminGetUserByIdResponse{
 				ID:           *user.ID,
 				Email:        *user.Email,
 				Name:         *user.Name,
 				Phone:        *user.Phone,
 				Nickname:     *user.Nickname,
+				CompanyID:    *user.UserProfile.CompanyID,
+				CompanyName:  (*user.UserProfile.Company)["name"].(string),
 				IsSubscribed: &user.UserProfile.IsSubscribed,
 				EntryDate:    user.UserProfile.EntryDate,
 				CreatedAt:    *user.CreatedAt,

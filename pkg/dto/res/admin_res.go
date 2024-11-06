@@ -56,6 +56,8 @@ type AdminGetUserByIdResponse struct {
 	Phone          string     `json:"phone,omitempty"`
 	Nickname       string     `json:"nickname,omitempty"`
 	IsSubscribed   *bool      `json:"is_subscribed,omitempty"`
+	CompanyID      uint       `json:"company_id,omitempty"`
+	CompanyName    string     `json:"company_name,omitempty"`
 	DepartmentId   uint       `json:"department_id,omitempty"`
 	DepartmentName string     `json:"department_name,omitempty"`
 	TeamId         uint       `json:"team_id,omitempty"`
