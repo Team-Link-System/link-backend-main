@@ -184,11 +184,21 @@ func (r *companyPersistence) SearchCompany(companyName string) ([]entity.Company
 	var companies []model.Company
 
 	// Trigram을 이용한 부분 일치 검색 쿼리
-	err := r.db.
-		Where("cp_name % ?", companyName).
-		Find(&companies).Error
-	if err != nil {
-		return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
+
+	if len(companyName) <= 2 && len(companyName) > 0 {
+		err := r.db.
+			Where("cp_name ILIKE ?", "%"+companyName+"%").
+			Find(&companies).Error
+		if err != nil {
+			return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
+		}
+	} else if len(companyName) > 2 {
+		err := r.db.
+			Where("cp_name % ?", companyName).
+			Find(&companies).Error
+		if err != nil {
+			return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
+		}
 	}
 
 	// 검색 결과를 엔티티로 변환
