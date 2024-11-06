@@ -140,7 +140,6 @@ func startServer() {
 				user.GET("/:id", userHandler.GetUserInfo)
 				user.PUT("/:id", imageUploadMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
-				user.GET("/search", userHandler.SearchUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
 			}
@@ -148,6 +147,7 @@ func startServer() {
 			company := protectedRoute.Group("company")
 			{
 				company.POST("/:companyId/invite", companyHandler.InviteUserToCompany)
+				company.GET("/search", userHandler.SearchUser)
 			}
 			department := protectedRoute.Group("department")
 			{
@@ -181,7 +181,7 @@ func startServer() {
 				admin.DELETE("/company/:companyid", adminHandler.AdminDeleteCompany)
 				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                     //TODO 전체 사용자 조회
 				admin.GET("/user/company/:companyid", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회
-				admin.GET("/user/search/:companyid", adminHandler.AdminSearchUser)
+				admin.GET("/user/search", adminHandler.AdminSearchUser)
 				admin.POST("/user/company", adminHandler.AdminAddUserToCompany) //TODO 회사에 사용자 추가
 			}
 		}

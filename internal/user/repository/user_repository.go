@@ -17,9 +17,12 @@ type UserRepository interface {
 	GetUserByIds(ids []uint) ([]entity.User, error)
 	UpdateUser(id uint, updates map[string]interface{}, profileUpdates map[string]interface{}) error
 	DeleteUser(id uint) error
-	SearchUser(user *entity.User) ([]entity.User, error)
+	SearchUser(companyId uint, searchTerm string) ([]entity.User, error)
 
 	GetUsersByCompany(companyId uint, query *entity.UserQueryOptions) ([]entity.User, error)
+
+	//관리자 관련
+	AdminSearchUser(searchTerm string) ([]entity.User, error)
 
 	//TODO 부서
 	CreateUserDepartment(userId uint, departmentId uint) error

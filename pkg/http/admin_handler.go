@@ -235,7 +235,7 @@ func (h *AdminHandler) AdminUpdateCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 업데이트에 성공하였습니다.", nil))
 }
 
-// TODO 회사에 속한 모든 사용자 리스트 조회 (관리자만)
+// TODO 선택한 회사에 속한 모든 사용자 리스트 조회 (관리자만)
 func (h *AdminHandler) AdminGetUsersByCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")
 	if !exists {
@@ -320,48 +320,21 @@ func (h *AdminHandler) AdminSearchUser(c *gin.Context) {
 		return
 	}
 
-	companyID, err := strconv.Atoi(c.Param("companyid"))
-	fmt.Println(companyID)
+	searchTerm := c.Query("searchTerm")
+	decodedSearchTerm, err := url.QueryUnescape(searchTerm)
 	if err != nil {
-		fmt.Printf("회사 ID가 잘못되었습니다: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 ID가 잘못되었습니다.", err))
+		fmt.Printf("검색어 인코딩 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "검색어 인코딩 오류", err))
 		return
 	}
 
-	decodedName, err := url.QueryUnescape(c.Query("name"))
-	if err != nil {
-		fmt.Printf("이름 인코딩 오류: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이름 인코딩 오류", err))
-		return
-	}
-
-	decodedEmail, err := url.QueryUnescape(c.Query("email"))
-	if err != nil {
-		fmt.Printf("이메일 인코딩 오류: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 인코딩 오류", err))
-		return
-	}
-
-	decodedNickname, err := url.QueryUnescape(c.Query("nickname"))
-	if err != nil {
-		fmt.Printf("닉네임 인코딩 오류: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임 인코딩 오류", err))
-		return
-	}
-
-	var request req.AdminSearchUserRequest
-	request.Name = decodedName
-	request.Email = decodedEmail
-	request.Nickname = decodedNickname
-	request.CompanyID = uint(companyID)
-
-	if request.Name == "" && request.Email == "" && request.Nickname == "" {
+	if decodedSearchTerm == "" {
 		fmt.Printf("이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다", fmt.Errorf("이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다")))
 		return
 	}
 
-	users, err := h.adminUsecase.AdminSearchUser(adminUserId.(uint), &request)
+	users, err := h.adminUsecase.AdminSearchUser(adminUserId.(uint), decodedSearchTerm)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("사용자 검색 오류: %v", appError.Err)

@@ -26,7 +26,7 @@ type UserUsecase interface {
 
 	UpdateUserInfo(requestUserId, targetUserId uint, request *req.UpdateUserRequest) error
 	DeleteUser(targetUserId, requestUserId uint) error
-	SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error)
+	SearchUser(requestUserId uint, searchTerm string) ([]res.SearchUserResponse, error)
 
 	UpdateUserOnlineStatus(userId uint, online bool) error
 
@@ -303,16 +303,16 @@ func (u *userUsecase) DeleteUser(targetUserId, requestUserId uint) error {
 }
 
 // TODO 사용자 검색
-func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUserResponse, error) {
-	// 사용자 저장소에서 검색
-	//request를 entity.User로 변환
-	user := entity.User{
-		Email:    &request.Email,
-		Name:     &request.Name,
-		Nickname: &request.Nickname,
+func (u *userUsecase) SearchUser(requestUserId uint, searchTerm string) ([]res.SearchUserResponse, error) {
+	requestUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("요청 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "요청 사용자 조회에 실패했습니다", err)
 	}
 
-	users, err := u.userRepo.SearchUser(&user)
+	companyId := *requestUser.UserProfile.CompanyID
+
+	users, err := u.userRepo.SearchUser(companyId, searchTerm)
 	if err != nil {
 		log.Printf("사용자 검색 중 오류 발생: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색 중 오류 발생", err)
