@@ -323,8 +323,8 @@ func (h *AdminHandler) AdminSearchUser(c *gin.Context) {
 	companyID, err := strconv.Atoi(c.Param("companyid"))
 	fmt.Println(companyID)
 	if err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		fmt.Printf("회사 ID가 잘못되었습니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 ID가 잘못되었습니다.", err))
 		return
 	}
 
