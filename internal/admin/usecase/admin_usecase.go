@@ -22,7 +22,7 @@ type AdminUsecase interface {
 	//사용자 관련 도메인
 	AdminRegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error)
 	AdminGetAllUsers(requestUserId uint) ([]_userEntity.User, error)
-	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error)
+	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]res.AdminGetUserByIdResponse, error)
 
 	//Company관련
 	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error)
@@ -159,8 +159,7 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 	return response, nil
 }
 
-func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]_userEntity.User, error) {
-
+func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]res.AdminGetUserByIdResponse, error) {
 	adminUser, err := c.userRepository.GetUserByID(adminUserId)
 	if err != nil {
 		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
@@ -188,7 +187,26 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 		log.Printf("회사 사용자 조회 중 오류 발생: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회 중 오류 발생", err)
 	}
-	return users, nil
+
+	response := []res.AdminGetUserByIdResponse{}
+	for _, user := range users {
+		if user.UserProfile.CompanyID != nil && *user.UserProfile.CompanyID == companyID {
+			response = append(response, res.AdminGetUserByIdResponse{
+				ID:           *user.ID,
+				Email:        *user.Email,
+				Name:         *user.Name,
+				Phone:        *user.Phone,
+				Nickname:     *user.Nickname,
+				IsSubscribed: &user.UserProfile.IsSubscribed,
+				EntryDate:    user.UserProfile.EntryDate,
+				CreatedAt:    *user.CreatedAt,
+				UpdatedAt:    *user.UpdatedAt,
+				Role:         uint(user.Role),
+			})
+		}
+	}
+
+	return response, nil
 }
 
 // TODO 회사 삭제 - ADMIN
@@ -221,19 +239,24 @@ func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) er
 
 // TODO 사용자 companyId 업데이트
 func (u *adminUsecase) AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error {
-	userIds := []uint{adminUserId, targetUserId}
-	users, err := u.userRepository.GetUserByIds(userIds)
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
 	if err != nil {
-		log.Printf("사용자 조회 중 오류 발생: %v", err)
-		return common.NewError(http.StatusInternalServerError, "사용자 조회 중 오류 발생", err)
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
 	}
 
-	if users[0].Role > _userEntity.RoleSubAdmin {
+	if adminUser.Role > _userEntity.RoleSubAdmin {
 		log.Printf("운영자 권한이 없는 사용자가 사용자를 회사에 추가하려 했습니다: 요청자 ID %d", adminUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
-	if users[1].UserProfile.CompanyID != nil {
+	targetUser, err := u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("존재하지 않는 사용자입니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "존재하지 않는 사용자입니다", err)
+	}
+
+	if targetUser.UserProfile.CompanyID != nil {
 		log.Printf("이미 회사에 소속된 사용자입니다: 사용자 ID %d", targetUserId)
 		return common.NewError(http.StatusBadRequest, "이미 회사에 소속된 사용자입니다", err)
 	}
