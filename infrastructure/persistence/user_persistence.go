@@ -550,29 +550,42 @@ func (r *userPersistence) DeleteUser(id uint) error {
 func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 	var users []model.User
 
-	// 기본 쿼리: 관리자를 제외함 (role != 1)
-	query := r.db.Where("role != ? AND role != ?", 1, 2)
+	// 기본 쿼리: 관리자를 제외함 (role != 1, 2)
+	query := r.db.Model(&model.User{}).Where("role != ? AND role != ?", 1, 2)
+
 	// 이메일이 입력된 경우 이메일로 검색 조건 추가
-	if user.Email != nil {
-		query = query.Where("email LIKE ?", "%"+*user.Email+"%")
+	if user.Email != nil && *user.Email != "" {
+		query = query.Where("email ILIKE ?", "%"+*user.Email+"%")
 	}
 
 	// 이름이 입력된 경우 이름으로 검색 조건 추가
-	if user.Name != nil {
-		query = query.Where("name LIKE ?", "%"+*user.Name+"%")
+	if user.Name != nil && *user.Name != "" {
+		query = query.Where("name ILIKE ?", "%"+*user.Name+"%")
 	}
 
-	if user.Nickname != nil {
-		query = query.Where("nickname LIKE ?", "%"+*user.Nickname+"%")
+	// 닉네임이 입력된 경우 닉네임으로 검색 조건 추가
+	if user.Nickname != nil && *user.Nickname != "" {
+		query = query.Where("nickname ILIKE ?", "%"+*user.Nickname+"%")
 	}
 
-	//!TODO 입력된 것 토대로 조건
+	// 회사 ID로 검색 조건 추가
+	if user.UserProfile != nil && user.UserProfile.CompanyID != nil {
+		query = query.Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
+			Where("user_profiles.company_id = ?", *user.UserProfile.CompanyID)
+	}
 
 	// 최종 쿼리 실행
-	if err := query.Preload("UserProfile").Find(&users).Error; err != nil {
+	err := query.Preload("UserProfile").Preload("UserProfile.Company").Find(&users).Error
+	if err != nil {
 		return nil, fmt.Errorf("사용자 검색 중 DB 오류: %w", err)
 	}
 
+	// 쿼리의 결과가 없으면 빈 배열로 응답
+	if len(users) == 0 {
+		return []entity.User{}, nil
+	}
+
+	// 데이터 변환
 	entityUsers := make([]entity.User, len(users))
 	for i, user := range users {
 		entityUsers[i] = entity.User{
@@ -580,6 +593,7 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 			Email:    &user.Email,
 			Nickname: &user.Nickname,
 			Name:     &user.Name,
+			Phone:    &user.Phone,
 			Role:     entity.UserRole(user.Role),
 			UserProfile: &entity.UserProfile{
 				Image:        user.UserProfile.Image,
@@ -589,6 +603,15 @@ func (r *userPersistence) SearchUser(user *entity.User) ([]entity.User, error) {
 			},
 			CreatedAt: &user.CreatedAt,
 			UpdatedAt: &user.UpdatedAt,
+		}
+
+		// Company 정보가 있을 경우에만 추가
+		if user.UserProfile != nil && user.UserProfile.Company != nil {
+			entityUsers[i].UserProfile.Company = &map[string]interface{}{
+				"name": user.UserProfile.Company.CpName,
+			}
+		} else {
+			entityUsers[i].UserProfile.Company = nil
 		}
 	}
 

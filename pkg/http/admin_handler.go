@@ -10,6 +10,7 @@ import (
 	"link/pkg/dto/res"
 	"link/pkg/util"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 )
@@ -310,4 +311,67 @@ func (h *AdminHandler) AdminAddUserToCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사에 사용자 추가에 성공하였습니다.", nil))
 }
 
-//! 회사에 일반 사용자 회사 관리자 권한 Role로 수정 - 이미 사용자 업데이트로 해놨음
+// TODO 사용자 검색
+func (h *AdminHandler) AdminSearchUser(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("인증되지 않은 요청입니다")))
+		return
+	}
+
+	companyID, err := strconv.Atoi(c.Param("companyid"))
+	fmt.Println(companyID)
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	decodedName, err := url.QueryUnescape(c.Query("name"))
+	if err != nil {
+		fmt.Printf("이름 인코딩 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이름 인코딩 오류", err))
+		return
+	}
+
+	decodedEmail, err := url.QueryUnescape(c.Query("email"))
+	if err != nil {
+		fmt.Printf("이메일 인코딩 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 인코딩 오류", err))
+		return
+	}
+
+	decodedNickname, err := url.QueryUnescape(c.Query("nickname"))
+	if err != nil {
+		fmt.Printf("닉네임 인코딩 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임 인코딩 오류", err))
+		return
+	}
+
+	var request req.AdminSearchUserRequest
+	request.Name = decodedName
+	request.Email = decodedEmail
+	request.Nickname = decodedNickname
+	request.CompanyID = uint(companyID)
+
+	if request.Name == "" && request.Email == "" && request.Nickname == "" {
+		fmt.Printf("이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다", fmt.Errorf("이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다")))
+		return
+	}
+
+	users, err := h.adminUsecase.AdminSearchUser(adminUserId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("사용자 검색 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("사용자 검색 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색에 성공하였습니다.", users))
+}

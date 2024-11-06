@@ -23,6 +23,7 @@ type AdminUsecase interface {
 	AdminRegisterAdmin(requestUserId uint, request *req.AdminCreateAdminRequest) (*_userEntity.User, error)
 	AdminGetAllUsers(requestUserId uint) ([]_userEntity.User, error)
 	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]res.AdminGetUserByIdResponse, error)
+	AdminSearchUser(adminUserId uint, query *req.AdminSearchUserRequest) ([]res.AdminGetUserByIdResponse, error)
 
 	//Company관련
 	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error)
@@ -313,6 +314,56 @@ func (u *adminUsecase) AdminUpdateCompany(requestUserID uint, request *req.Admin
 	}
 
 	return nil
+}
+
+// TODO 사용자 검색 Query 파라미터로 해당 회사의 사용자 검색 구분자는 company 전체로보는게 default 부서는 department 팀은 team
+func (u *adminUsecase) AdminSearchUser(adminUserId uint, query *req.AdminSearchUserRequest) ([]res.AdminGetUserByIdResponse, error) {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 사용자를 검색하려 했습니다: 요청자 ID %d", adminUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	queryOptions := _userEntity.User{
+		Name:     &query.Name,
+		Email:    &query.Email,
+		Nickname: &query.Nickname,
+		UserProfile: &_userEntity.UserProfile{
+			CompanyID: &query.CompanyID,
+		},
+	}
+
+	users, err := u.userRepository.SearchUser(&queryOptions)
+	if err != nil {
+		log.Printf("사용자 검색 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색 중 오류 발생", err)
+	}
+
+	response := []res.AdminGetUserByIdResponse{}
+	for i, user := range users {
+		response = append(response, res.AdminGetUserByIdResponse{
+			ID:        *user.ID,
+			Email:     *user.Email,
+			Name:      *user.Name,
+			Phone:     *user.Phone,
+			Nickname:  *user.Nickname,
+			CompanyID: *user.UserProfile.CompanyID,
+			EntryDate: user.UserProfile.EntryDate,
+			CreatedAt: *user.CreatedAt,
+			UpdatedAt: *user.UpdatedAt,
+			Role:      uint(user.Role),
+		})
+		if user.UserProfile.Company != nil {
+			response[i].CompanyName = utils.GetFirstOrEmpty(utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), "")
+		}
+	}
+
+	return response, nil
 }
 
 //TODO ADMIN 회사 , 부서, 팀 별 사람 보기 (쿼리 파라미터로 구분 및 조회) - 회사가 없는 유저들도 봐야함

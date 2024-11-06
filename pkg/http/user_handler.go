@@ -261,12 +261,6 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 		return
 	}
 
-	if len(users) == 0 {
-		fmt.Printf("사용자를 찾을 수 없습니다.")
-		c.JSON(http.StatusNotFound, common.NewError(http.StatusNotFound, "사용자를 찾을 수 없습니다", nil))
-		return
-	}
-
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색 성공", users))
 }
 
