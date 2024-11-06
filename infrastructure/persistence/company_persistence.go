@@ -183,23 +183,12 @@ func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
 func (r *companyPersistence) SearchCompany(companyName string) ([]entity.Company, error) {
 	var companies []model.Company
 
-	// Full Text Search를 위한 쿼리로 수정
-	if len(companyName) <= 2 {
-		// 검색어가 매우 짧은 경우 부분 문자열 검색
-		err := r.db.
-			Where("cp_name ILIKE ?", "%"+companyName+"%").
-			Find(&companies).Error
-		if err != nil {
-			return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
-		}
-	} else {
-		// Full Text Search를 통한 정밀 검색
-		err := r.db.
-			Where("to_tsvector('simple', cp_name) @@ plainto_tsquery('simple', ?)", companyName).
-			Find(&companies).Error
-		if err != nil {
-			return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
-		}
+	// Trigram을 이용한 부분 일치 검색 쿼리
+	err := r.db.
+		Where("cp_name % ?", companyName).
+		Find(&companies).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 검색 중 오류 발생: %w", err)
 	}
 
 	// 검색 결과를 엔티티로 변환
