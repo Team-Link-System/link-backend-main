@@ -217,39 +217,25 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // TODO 사용자 검색 핸들러
 // 사용자 검색 핸들러
 func (h *UserHandler) SearchUser(c *gin.Context) {
+	requestUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
 	// 검색 요청 데이터 받기
-	searchReq := req.SearchUserRequest{
-		Email:    c.Query("email"),
-		Name:     c.Query("name"),
-		Nickname: c.Query("nickname"),
-	}
-
-	// 쿼리 내용이 아무것도 없는 경우
-	if searchReq.Email == "" && searchReq.Name == "" && searchReq.Nickname == "" {
-		fmt.Printf("이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일 혹은 이름 혹은 닉네임이 입력되지 않았습니다.", nil))
-		return
-	}
-
-	decodedName, err := url.QueryUnescape(searchReq.Name)
+	searchTerm := c.Query("searchTerm")
+	decodedSearchTerm, err := url.QueryUnescape(searchTerm)
 	if err != nil {
-		fmt.Printf("이름 인코딩 오류: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이름 인코딩 오류", err))
+		fmt.Printf("검색어 인코딩 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "검색어 인코딩 오류", err))
 		return
 	}
-	searchReq.Name = decodedName
-
-	decodedNickname, err := url.QueryUnescape(searchReq.Nickname)
-	if err != nil {
-		fmt.Printf("닉네임 인코딩 오류: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임 인코딩 오류", err))
-		return
-	}
-	searchReq.Nickname = decodedNickname
 
 	// 사용자 검색
 	//TODO 검색 조건 나중에 회사사람만 검색가능하도록 해야함
-	users, err := h.userUsecase.SearchUser(&searchReq)
+	users, err := h.userUsecase.SearchUser(requestUserId.(uint), decodedSearchTerm)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("사용자 검색 오류: %v", appError.Err)
