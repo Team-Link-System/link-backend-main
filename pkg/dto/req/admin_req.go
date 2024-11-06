@@ -37,3 +37,10 @@ type AdminUpdateCompanyRequest struct {
 	IsVerified                bool   `json:"is_verified,omitempty"`
 	Grade                     int    `json:"grade,omitempty"`
 }
+
+type AdminSearchUserRequest struct {
+	CompanyID uint   `json:"company_id" binding:"required"`
+	Name      string `json:"name,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Nickname  string `json:"nickname,omitempty"`
+}

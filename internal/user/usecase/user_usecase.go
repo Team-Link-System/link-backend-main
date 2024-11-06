@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -313,8 +314,12 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUs
 
 	users, err := u.userRepo.SearchUser(&user)
 	if err != nil {
-		fmt.Printf("사용자 검색에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색에 실패했습니다", err)
+		log.Printf("사용자 검색 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 검색 중 오류 발생", err)
+	}
+
+	if len(users) == 0 {
+		return []res.SearchUserResponse{}, nil
 	}
 
 	var response []res.SearchUserResponse
@@ -325,9 +330,12 @@ func (u *userUsecase) SearchUser(request *req.SearchUserRequest) ([]res.SearchUs
 			ID:        *user.ID,
 			Name:      *user.Name,
 			Email:     *user.Email, // 민감 정보 포함할지 여부에 따라 처리
+			Phone:     *user.Phone,
 			Nickname:  *user.Nickname,
+			CompanyID: _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
 			Role:      uint(user.Role),
 			Image:     user.UserProfile.Image,
+			EntryDate: user.UserProfile.EntryDate,
 			CreatedAt: *user.CreatedAt,
 			UpdatedAt: *user.UpdatedAt,
 		}

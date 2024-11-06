@@ -45,6 +45,10 @@ type UserProfile struct {
 }
 
 type UserQueryOptions struct {
-	SortBy string
-	Order  string
+	CompanyID *uint  `json:"company_id,omitempty"`
+	SortBy    string `json:"sort_by,omitempty"`
+	Order     string `json:"order,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Nickname  string `json:"nickname,omitempty"`
 }
