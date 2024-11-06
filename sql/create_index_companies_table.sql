@@ -1,0 +1,1 @@
+CREATE INDEX idx_companies_cp_name ON companies USING gin(to_tsvector('simple', cp_name));

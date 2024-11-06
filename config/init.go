@@ -133,6 +133,11 @@ func AutoMigrate(db *gorm.DB) {
 	); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
+
+	// GIN 인덱스 생성
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_companies_cp_name ON companies USING gin(to_tsvector('simple', cp_name))").Error; err != nil {
+		log.Fatalf("GIN 인덱스 생성 중 오류 발생: %v", err)
+	}
 }
 
 // TODO 레디스 사용자 정보 초기화
