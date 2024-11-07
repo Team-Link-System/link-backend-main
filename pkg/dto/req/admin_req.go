@@ -44,3 +44,8 @@ type AdminSearchUserRequest struct {
 	Email     string `json:"email,omitempty"`
 	Nickname  string `json:"nickname,omitempty"`
 }
+
+type AdminUpdateUserRoleRequest struct {
+	UserID uint `json:"user_id" binding:"required"`
+	Role   uint `json:"role" binding:"required"`
+}

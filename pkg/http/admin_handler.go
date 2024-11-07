@@ -348,3 +348,30 @@ func (h *AdminHandler) AdminSearchUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 검색에 성공하였습니다.", users))
 }
+
+// TODO 사용자 권한 수정
+func (h *AdminHandler) AdminUpdateUserRole(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+	}
+
+	var request req.AdminUpdateUserRoleRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	err := h.adminUsecase.AdminUpdateUserRole(adminUserId.(uint), request.UserID, request.Role)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("사용자 권한 수정 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("사용자 권한 수정 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 권한 수정에 성공하였습니다.", nil))
+}
