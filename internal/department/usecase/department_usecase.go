@@ -1,14 +1,15 @@
 package usecase
 
 import (
+	"log"
+	"net/http"
+
 	_departmentEntity "link/internal/department/entity"
 	_departmentRepo "link/internal/department/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
-	"log"
-	"net/http"
 )
 
 type DepartmentUsecase interface {
@@ -82,7 +83,7 @@ func (du *departmentUsecase) UpdateDepartment(targetDepartmentID uint, requestUs
 		return nil, common.NewError(http.StatusNotFound, "요청 사용자를 찾을 수 없습니다", err)
 	}
 
-	if requestUser.Role != _userEntity.RoleAdmin && requestUser.Role != _userEntity.RoleSubAdmin {
+	if requestUser.Role > _userEntity.RoleCompanySubManager {
 		log.Printf("권한이 없는 사용자가 부서를 수정하려 했습니다: 사용자 ID %d", requestUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}

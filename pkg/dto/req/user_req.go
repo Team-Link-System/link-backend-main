@@ -29,6 +29,7 @@ type UpdateUserRequest struct {
 	DepartmentID *uint   `form:"department_id,omitempty" json:"department_id,omitempty"`
 	TeamID       *uint   `form:"team_id,omitempty" json:"team_id,omitempty"`
 	PositionID   *uint   `form:"position_id,omitempty" json:"position_id,omitempty"`
+	EntryDate    *string `form:"entry_date,omitempty" json:"entry_date,omitempty"`
 	Image        *string `form:"image,omitempty" json:"image,omitempty"`
 }
 

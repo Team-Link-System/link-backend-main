@@ -7,10 +7,11 @@ import (
 type UserRole int
 
 const (
-	RoleAdmin          UserRole = iota + 1 // 1: 최고 관리자
-	RoleSubAdmin                           // 2: 부관리자
-	RoleCompanyManager                     // 3: 회사 관리자
-	RoleUser                               // 4: 일반 사용자
+	RoleAdmin             UserRole = iota + 1 // 1: 최고 관리자
+	RoleSubAdmin                              // 2: 부관리자
+	RoleCompanyManager                        // 3: 회사 관리자
+	RoleCompanySubManager                     // 4: 회사 부관리자
+	RoleUser                                  // 5: 일반 사용자
 )
 
 type User struct {

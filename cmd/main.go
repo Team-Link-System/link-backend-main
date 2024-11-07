@@ -184,6 +184,7 @@ func startServer() {
 				admin.GET("/user/search", adminHandler.AdminSearchUser)
 				admin.POST("/user/company", adminHandler.AdminAddUserToCompany) //TODO 회사에 사용자 추가
 				admin.PUT("/user/role", adminHandler.AdminUpdateUserRole)
+				admin.DELETE("/user/:userid", adminHandler.AdminRemoveUserFromCompany) //TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
 			}
 		}
 	})

@@ -23,7 +23,6 @@ type Company struct {
 	Grade                     CompanyGrade `json:"grade,omitempty" gorm:"default:null"`                              // 인증 받으면 Basic 등급이 됨
 	Departments               []Department `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`                 // hasmany
 	Teams                     []Team       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	//TODO 나중에 직원수 추가
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt                 time.Time    `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt                 time.Time    `json:"updated_at"`
 }

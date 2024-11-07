@@ -1,12 +1,14 @@
 package usecase
 
 import (
+	"log"
+	"net/http"
+
 	_companyRepo "link/internal/company/repository"
+	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/res"
-	"log"
-	"net/http"
 )
 
 type CompanyUsecase interface {
@@ -100,7 +102,7 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
-	if adminUser.Role > 3 {
+	if adminUser.Role > _userEntity.RoleCompanySubManager {
 		log.Println("권한이 없습니다")
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
@@ -116,7 +118,7 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 	}
 
 	//TODO 만약에 Role이 3이라면 자기 회사만 사용자 추가 가능
-	if *adminUser.UserProfile.CompanyID != companyId && adminUser.Role == 3 {
+	if *adminUser.UserProfile.CompanyID != companyId && adminUser.Role > _userEntity.RoleCompanySubManager {
 		log.Println("권한이 없습니다")
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}

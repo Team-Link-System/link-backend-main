@@ -2,17 +2,17 @@ package http
 
 import (
 	"fmt"
-	_adminUsecase "link/internal/admin/usecase"
+	"net/http"
+	"net/url"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
+	_adminUsecase "link/internal/admin/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/util"
-	"net/http"
-	"net/url"
-
-	"github.com/gin-gonic/gin"
 )
 
 type AdminHandler struct {
@@ -374,4 +374,34 @@ func (h *AdminHandler) AdminUpdateUserRole(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 권한 수정에 성공하였습니다.", nil))
+}
+
+// TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
+func (h *AdminHandler) AdminRemoveUserFromCompany(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	targetUserId, err := strconv.Atoi(c.Param("userid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	err = h.adminUsecase.AdminRemoveUserFromCompany(adminUserId.(uint), uint(targetUserId))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("사용자 회사에서 퇴출 오류: %v", appError.Err)
+		} else {
+			fmt.Printf("사용자 회사에서 퇴출 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 회사에서 퇴출에 성공하였습니다.", nil))
 }
