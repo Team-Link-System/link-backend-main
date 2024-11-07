@@ -24,6 +24,7 @@ type AdminUsecase interface {
 	AdminGetAllUsers(requestUserId uint) ([]_userEntity.User, error)
 	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]res.AdminGetUserByIdResponse, error)
 	AdminSearchUser(adminUserId uint, searchTerm string) ([]res.AdminGetUserByIdResponse, error)
+	AdminUpdateUserRole(adminUserId uint, targetUserId uint, role uint) error
 
 	//Company관련
 	AdminCreateCompany(requestUserID uint, request *req.AdminCreateCompanyRequest) (*res.AdminRegisterCompanyResponse, error)
@@ -363,4 +364,43 @@ func (u *adminUsecase) AdminSearchUser(adminUserId uint, searchTerm string) ([]r
 	return response, nil
 }
 
-//TODO ADMIN 회사 , 부서, 팀 별 사람 보기 (쿼리 파라미터로 구분 및 조회) - 회사가 없는 유저들도 봐야함
+// TODO role 1 , 2 가 회사 일반 사용자(role 3, 4) 권한 수정
+func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, role uint) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+
+	if adminUser.Role != _userEntity.RoleAdmin && adminUser.Role != _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 사용자 권한을 수정하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	if targetUserId == adminUserId {
+		log.Printf("자기 자신의 권한을 수정할 수 없습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusBadRequest, "자기 자신의 권한을 수정할 수 없습니다", err)
+	}
+
+	_, err = u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("해당 사용자가 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "해당 사용자가 존재하지 않습니다", err)
+	}
+
+	if role != 3 && role != 4 {
+		log.Printf("잘못된 권한 값입니다: 권한 값 %d", role)
+		return common.NewError(http.StatusBadRequest, "일반 사용자 권한만 수정할 수 있습니다", err)
+	}
+
+	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{
+		"role": role,
+	}, map[string]interface{}{})
+
+	if err != nil {
+		log.Printf("사용자 권한 수정 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 권한 수정 중 오류 발생", err)
+	}
+
+	return nil
+}

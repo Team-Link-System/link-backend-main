@@ -183,6 +183,7 @@ func startServer() {
 				admin.GET("/user/company/:companyid", adminHandler.AdminGetUsersByCompany) //TODO 회사 사용자 조회
 				admin.GET("/user/search", adminHandler.AdminSearchUser)
 				admin.POST("/user/company", adminHandler.AdminAddUserToCompany) //TODO 회사에 사용자 추가
+				admin.PUT("/user/role", adminHandler.AdminUpdateUserRole)
 			}
 		}
 	})
