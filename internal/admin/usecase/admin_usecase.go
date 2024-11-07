@@ -382,13 +382,13 @@ func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, 
 		return common.NewError(http.StatusBadRequest, "자기 자신의 권한을 수정할 수 없습니다", err)
 	}
 
-	targetUser, err := u.userRepository.GetUserByID(targetUserId)
+	_, err = u.userRepository.GetUserByID(targetUserId)
 	if err != nil {
 		log.Printf("해당 사용자가 존재하지 않습니다: %v", err)
 		return common.NewError(http.StatusInternalServerError, "해당 사용자가 존재하지 않습니다", err)
 	}
 
-	if targetUser.Role != 3 && targetUser.Role != 4 {
+	if role != 3 && role != 4 {
 		log.Printf("잘못된 권한 값입니다: 권한 값 %d", role)
 		return common.NewError(http.StatusBadRequest, "일반 사용자 권한만 수정할 수 있습니다", err)
 	}
