@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"link/internal/notification/entity"
-
 	_companyRepo "link/internal/company/repository"
 	_departmentRepo "link/internal/department/repository"
+	_notificationEntity "link/internal/notification/entity"
 	_notificationRepo "link/internal/notification/repository"
 	_teamRepo "link/internal/team/repository"
-
+	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -20,7 +19,7 @@ import (
 )
 
 type NotificationUsecase interface {
-	GetNotifications(userId uint) ([]*entity.Notification, error)
+	GetNotifications(userId uint) ([]*_notificationEntity.Notification, error)
 	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
@@ -61,8 +60,8 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 	}
 
 	//alarmType에 따른 처리
-	var notification *entity.Notification
-	notification = &entity.Notification{
+	var notification *_notificationEntity.Notification
+	notification = &_notificationEntity.Notification{
 		SenderId:   *users[0].ID,
 		ReceiverId: *users[1].ID,
 		Title:      "Mention",
@@ -116,12 +115,12 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusBadRequest, "receiverId가 회사에 속해있습니다", err)
 	}
 
-	if users[0].Role > 3 {
+	if users[0].Role > _userEntity.RoleCompanySubManager {
 		log.Println("senderId가 관리자가 아닙니다")
 		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다", err)
 	}
 
-	if users[1].Role <= 2 {
+	if users[1].Role <= _userEntity.RoleSubAdmin {
 		log.Println("운영자는 초대할 수 없습니다")
 		return nil, common.NewError(http.StatusBadRequest, "운영자는 초대할 수 없습니다", err)
 	}
@@ -162,7 +161,7 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		Content = fmt.Sprintf("[TEAM INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, TeamName)
 	}
 
-	notification := &entity.Notification{
+	notification := &_notificationEntity.Notification{
 		SenderId:       *users[0].ID,
 		ReceiverId:     *users[1].ID,
 		Title:          "INVITE",
@@ -218,7 +217,7 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
-	if users[1].Role > 3 {
+	if users[1].Role > _userEntity.RoleCompanySubManager {
 		return nil, common.NewError(http.StatusBadRequest, "receiverId가 관리자가 아닙니다", err)
 	}
 
@@ -226,7 +225,7 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 		return nil, common.NewError(http.StatusBadRequest, "request_type이 필요합니다", err)
 	}
 
-	notification := &entity.Notification{
+	notification := &_notificationEntity.Notification{
 		SenderId:    *users[0].ID,
 		ReceiverId:  *users[1].ID,
 		Title:       "REQUEST",
@@ -351,7 +350,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		}
 
 		//TODO INVITE는 일반 사용자 처리하는 것 이므로 receiver를 업데이트 해야하고,
-		notification := &entity.Notification{
+		notification := &_notificationEntity.Notification{
 			SenderId:    updatedNotification.ReceiverId,
 			ReceiverId:  updatedNotification.SenderId,
 			Title:       Title,
@@ -390,7 +389,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		Title := "REJECTED"
 		Content := fmt.Sprintf("[REJECTED] %s님이 %s님의 [%s] 초대를 거절했습니다", *users[1].Name, *users[0].Name, updatedNotification.InviteType)
 		// Create a new notification for the rejection response
-		notification := &entity.Notification{
+		notification := &_notificationEntity.Notification{
 			SenderId:    updatedNotification.ReceiverId,
 			ReceiverId:  updatedNotification.SenderId,
 			Title:       Title,
@@ -445,7 +444,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 	notification.UpdatedAt = time.Now()
 
 	//TODO entity 변경
-	updatedNotification := &entity.Notification{
+	updatedNotification := &_notificationEntity.Notification{
 		ID:        notification.ID,
 		IsRead:    true,
 		UpdatedAt: time.Now(),
@@ -459,7 +458,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 	return nil
 }
 
-func (n *notificationUsecase) GetNotifications(userId uint) ([]*entity.Notification, error) {
+func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEntity.Notification, error) {
 
 	//TODO 수신자 id가 존재하는지 확인
 	user, err := n.userRepo.GetUserByID(userId)

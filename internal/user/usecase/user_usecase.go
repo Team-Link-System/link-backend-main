@@ -119,47 +119,44 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
-	user, err := u.userRepo.GetUserByID(targetUserId)
+	targetUser, err := u.userRepo.GetUserByID(targetUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
-	if (requestUser.Role >= entity.RoleCompanyManager) && (user.Role <= entity.RoleAdmin) {
+	if requestUser.Role > entity.RoleSubAdmin {
 		fmt.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	var entryDate *time.Time
-	if user.UserProfile.EntryDate != nil && !user.UserProfile.EntryDate.IsZero() {
-		entryDate = user.UserProfile.EntryDate
+	if targetUser.UserProfile.EntryDate != nil && !targetUser.UserProfile.EntryDate.IsZero() {
+		entryDate = targetUser.UserProfile.EntryDate
 	}
 
-	//TODO 캐시 있다면 조회 없으면 데이터베이스 조회
-	//TODO 캐시에는 이미지 온라인 상태 , birthday 있음
-
 	response := res.GetUserByIdResponse{
-		ID:              _utils.GetValueOrDefault(user.ID, 0),
-		Email:           _utils.GetValueOrDefault(user.Email, ""),
-		Name:            _utils.GetValueOrDefault(user.Name, ""),
-		Phone:           _utils.GetValueOrDefault(user.Phone, ""),
-		Nickname:        _utils.GetValueOrDefault(user.Nickname, ""),
-		Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
-		Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
-		Birthday:        _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
-		IsOnline:        _utils.GetValueOrDefault(user.IsOnline, false),
-		IsSubscribed:    _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
-		CompanyID:       _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
-		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
-		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Departments, "id"),
-		DepartmentNames: _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
-		TeamIds:         _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Teams, "id"),
-		TeamNames:       _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
-		PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
-		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
+		ID:              _utils.GetValueOrDefault(targetUser.ID, 0),
+		Email:           _utils.GetValueOrDefault(targetUser.Email, ""),
+		Name:            _utils.GetValueOrDefault(targetUser.Name, ""),
+		Phone:           _utils.GetValueOrDefault(targetUser.Phone, ""),
+		Nickname:        _utils.GetValueOrDefault(targetUser.Nickname, ""),
+		Role:            uint(_utils.GetValueOrDefault(&targetUser.Role, entity.RoleUser)),
+		Image:           _utils.GetValueOrDefault(targetUser.UserProfile.Image, ""),
+		Birthday:        _utils.GetValueOrDefault(&targetUser.UserProfile.Birthday, ""),
+		IsOnline:        _utils.GetValueOrDefault(targetUser.IsOnline, false),
+		IsSubscribed:    _utils.GetValueOrDefault(&targetUser.UserProfile.IsSubscribed, false),
+		CompanyID:       _utils.GetValueOrDefault(targetUser.UserProfile.CompanyID, 0),
+		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Company}, "name"), ""),
+		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](targetUser.UserProfile.Departments, "id"),
+		DepartmentNames: _utils.ExtractValuesFromMapSlice[string](targetUser.UserProfile.Departments, "name"),
+		TeamIds:         _utils.ExtractValuesFromMapSlice[uint](targetUser.UserProfile.Teams, "id"),
+		TeamNames:       _utils.ExtractValuesFromMapSlice[string](targetUser.UserProfile.Teams, "name"),
+		PositionId:      _utils.GetValueOrDefault(targetUser.UserProfile.PositionId, 0),
+		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Position}, "name"), ""),
 		EntryDate:       entryDate,
-		CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}), //TODO
-		UpdatedAt:       _utils.GetValueOrDefault(user.UpdatedAt, time.Time{}),
+		CreatedAt:       _utils.GetValueOrDefault(targetUser.CreatedAt, time.Time{}), //TODO
+		UpdatedAt:       _utils.GetValueOrDefault(targetUser.UpdatedAt, time.Time{}),
 	}
 
 	return &response, nil
@@ -205,9 +202,15 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	}
 
 	//TODO 관리자가 아니면, Role 변경 불가
-	if requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin && request.Role != nil {
+	if requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
 		fmt.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	//TODO 관리자일때 비밀번호가 본인이 아니면 변경 불가
+	if request.Password != nil && *requestUser.ID != targetUserId {
+		fmt.Printf("비밀번호는 본인 외에는 변경 불가 합니다")
+		return common.NewError(http.StatusForbidden, "비밀번호는 본인 외에는 변경 불가 합니다", err)
 	}
 
 	// 업데이트할 필드 준비
@@ -251,6 +254,9 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	if request.PositionID != nil {
 		profileUpdates["position_id"] = *request.PositionID
 	}
+	if request.EntryDate != nil {
+		profileUpdates["entry_date"] = *request.EntryDate
+	}
 	if request.Image != nil {
 		profileUpdates["image"] = *request.Image
 	}
@@ -261,13 +267,7 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 		fmt.Printf("Postgres 사용자 업데이트에 실패했습니다: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 업데이트에 실패했습니다", err)
 	}
-	// //TODO redis 캐시 업데이트
-	// err = u.userRepo.UpdateCacheUser(targetUserId, profileUpdates)
-	// if err != nil {
-	// 	log.Printf("Redis 사용자 캐시 업데이트에 실패했습니다: %v", err)
-	// 	return common.NewError(http.StatusInternalServerError, "사용자 캐시 업데이트에 실패했습니다", err)
-	// }
-	// Persistence 레이어로 업데이트 요청 전달
+
 	return nil
 }
 
