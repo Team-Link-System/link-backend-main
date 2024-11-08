@@ -125,7 +125,7 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
 	}
 
-	if requestUser.Role > entity.RoleSubAdmin {
+	if targetUser.Role > entity.RoleSubAdmin && requestUser.Role >= entity.RoleCompanyManager {
 		fmt.Printf("권한이 없는 사용자가 관리자 정보를 조회하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
