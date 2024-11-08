@@ -189,8 +189,8 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 		return common.NewError(http.StatusInternalServerError, "대상 사용자를 찾을 수 없습니다", err)
 	}
 
-	//TODO 본인이 아니거나 시스템 관리자가 아니라면 업데이트 불가
-	if requestUserId != targetUserId && requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
+	//TODO 본인이 아닐때 관리자가 아니라면 수정불가
+	if requestUserId != targetUserId && requestUser.Role > entity.RoleSubAdmin {
 		fmt.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
@@ -201,14 +201,8 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 		return common.NewError(http.StatusForbidden, "루트 관리자는 변경할 수 없습니다", err)
 	}
 
-	//TODO 관리자가 아니면, Role 변경 불가
-	if requestUser.Role != entity.RoleAdmin && requestUser.Role != entity.RoleSubAdmin {
-		fmt.Printf("권한이 없는 사용자가 권한을 변경하려 했습니다: 요청자 ID %d, 대상 ID %d", requestUserId, targetUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
-	}
-
 	//TODO 관리자일때 비밀번호가 본인이 아니면 변경 불가
-	if request.Password != nil && *requestUser.ID != targetUserId {
+	if *requestUser.ID != targetUserId && request.Password != nil {
 		fmt.Printf("비밀번호는 본인 외에는 변경 불가 합니다")
 		return common.NewError(http.StatusForbidden, "비밀번호는 본인 외에는 변경 불가 합니다", err)
 	}
