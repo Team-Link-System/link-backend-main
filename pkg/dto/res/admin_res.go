@@ -63,6 +63,7 @@ type AdminGetUserByIdResponse struct {
 	TeamId         uint       `json:"team_id,omitempty"`
 	TeamName       string     `json:"team_name,omitempty"`
 	EntryDate      *time.Time `json:"entry_date,omitempty"`
+	Image          *string    `json:"image,omitempty"`
 	CreatedAt      time.Time  `json:"created_at,omitempty"`
 	UpdatedAt      time.Time  `json:"updated_at,omitempty"`
 	Role           uint       `json:"role,omitempty"`
