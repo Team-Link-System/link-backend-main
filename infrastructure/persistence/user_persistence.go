@@ -599,7 +599,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		Joins("LEFT JOIN user_profile_teams ON user_profile_teams.user_profile_user_id = users.id").
 		Joins("LEFT JOIN teams ON teams.id = user_profile_teams.team_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
-		Where("user_profiles.company_id = ? AND (users.role = ? OR users.role = ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
+		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
 
 	sortBy := "users.id"
 	if queryOptions.SortBy != "" {
