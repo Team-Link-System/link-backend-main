@@ -438,6 +438,8 @@ func (h *AdminHandler) AdminUpdateDepartment(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
 	}
 
 	companyID, err := strconv.Atoi(c.Param("companyid"))
@@ -453,6 +455,8 @@ func (h *AdminHandler) AdminUpdateDepartment(c *gin.Context) {
 	var request req.AdminUpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
 	}
 
 	err = h.adminUsecase.AdminUpdateDepartment(adminUserId.(uint), uint(companyID), uint(departmentID), &request)
