@@ -7,7 +7,7 @@ type Position struct {
 	ID        uint      `gorm:"primaryKey"`
 	Name      string    `gorm:"type:varchar(255);not null;unique"`
 	CompanyID uint      `gorm:"not null"`
-	Company   Company   `gorm:"foreignKey:CompanyID"`
+	Company   Company   `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

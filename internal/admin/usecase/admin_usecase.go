@@ -504,6 +504,12 @@ func (u *adminUsecase) AdminCreateDepartment(adminUserId uint, request *req.Admi
 		CompanyID: request.CompanyID,
 	}
 
+	_, err = u.companyRepository.GetCompanyByID(request.CompanyID)
+	if err != nil {
+		log.Printf("존재하지 않는 회사입니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "존재하지 않는 회사입니다", err)
+	}
+
 	err = u.departmentRepository.CreateDepartment(department)
 	if err != nil {
 		log.Printf("부서 생성 중 오류 발생: %v", err)
@@ -528,8 +534,8 @@ func (u *adminUsecase) AdminUpdateDepartment(adminUserId uint, companyID uint, d
 
 	_, err = u.departmentRepository.GetDepartmentByID(companyID, departmentID)
 	if err != nil {
-		log.Printf("부서 조회 중 오류 발생: %v", err)
-		return common.NewError(http.StatusInternalServerError, "부서 조회 중 오류 발생", err)
+		log.Printf("해당 부서는 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "해당 부서는 존재하지 않습니다", err)
 	}
 
 	updates := map[string]interface{}{}
@@ -538,8 +544,12 @@ func (u *adminUsecase) AdminUpdateDepartment(adminUserId uint, companyID uint, d
 		updates["name"] = request.Name
 	}
 
-	if request.DepartmentLeaderID != 0 {
+	if request.DepartmentLeaderID > 0 {
 		updates["department_leader_id"] = request.DepartmentLeaderID
+	}
+
+	if request.DepartmentLeaderID <= 0 {
+		updates["department_leader_id"] = nil
 	}
 
 	err = u.departmentRepository.UpdateDepartment(companyID, departmentID, updates)

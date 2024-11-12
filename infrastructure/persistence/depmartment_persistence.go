@@ -51,7 +51,7 @@ func (p *departmentPersistence) GetDepartments(companyId uint) ([]entity.Departm
 
 func (p *departmentPersistence) GetDepartmentByID(companyId uint, departmentID uint) (*entity.Department, error) {
 	var department entity.Department
-	err := p.db.Where("id = ?", departmentID).Where("company_id = ?", companyId).First(&department).Error
+	err := p.db.Model(&model.Department{}).Where("id = ?", departmentID).Where("company_id = ?", companyId).First(&department).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("department을 찾을 수 없습니다: %d", departmentID)
@@ -73,13 +73,45 @@ func (p *departmentPersistence) GetDepartmentInfo(companyId uint, departmentID u
 func (p *departmentPersistence) UpdateDepartment(companyId uint, departmentID uint, updates map[string]interface{}) error {
 	tx := p.db.Begin()
 
-	if updates["department_leader_id"] != nil {
-		if err := tx.Model(&model.User{}).Where("id = ?", updates["department_leader_id"]).Update("role", 4).Error; err != nil {
+	// 기존 부서 정보 조회
+	department, err := p.GetDepartmentByID(companyId, departmentID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("department 조회 중 DB 오류: %w", err)
+	}
+
+	// 기존 부서장이 있는 경우 먼저 role 낮추기
+	if department.DepartmentLeaderID != nil {
+		if err := tx.Model(&model.User{}).Where("id = ?", department.DepartmentLeaderID).Update("role", 5).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("사용자 업데이트 중 DB 오류: %w", err)
+			return fmt.Errorf("기존 부서장 role 업데이트 중 DB 오류: %w", err)
 		}
 	}
-	if err := tx.Model(&entity.Department{}).Where("id = ?", departmentID).Where("company_id = ?", companyId).Updates(updates).Error; err != nil {
+
+	// 새로운 부서장 관련 처리
+	if leaderID, exists := updates["department_leader_id"]; exists {
+		switch v := leaderID.(type) {
+		case int:
+			if v > 0 {
+				// 새로운 부서장 지정
+				if err := tx.Model(&model.User{}).Where("id = ?", v).Update("role", 4).Error; err != nil {
+					tx.Rollback()
+					return fmt.Errorf("새로운 부서장 role 업데이트 중 DB 오류: %w", err)
+				}
+			} else {
+				// 부서장을 없애는 경우 (0 또는 음수)
+				updates["department_leader_id"] = nil
+			}
+		case nil:
+			// 부서장 필드가 비어있는 경우
+			updates["department_leader_id"] = nil
+		}
+	}
+
+	if err := tx.Model(&model.Department{}).
+		Where("id = ?", departmentID).
+		Where("company_id = ?", companyId).
+		Updates(updates).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("department 업데이트 중 DB 오류: %w", err)
 	}

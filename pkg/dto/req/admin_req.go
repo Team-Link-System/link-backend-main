@@ -57,5 +57,5 @@ type AdminCreateDepartmentRequest struct {
 
 type AdminUpdateDepartmentRequest struct {
 	Name               string `json:"name,omitempty"`
-	DepartmentLeaderID uint   `json:"department_leader_id,omitempty"`
+	DepartmentLeaderID int    `json:"department_leader_id,omitempty"`
 }
