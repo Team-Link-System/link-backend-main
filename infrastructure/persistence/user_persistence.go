@@ -725,6 +725,13 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 	return users, nil
 }
 
+// // TODO 회사 조직도 조회
+// func (r *userPersistence) GetOrganizationByCompany(companyId uint) ([]entity.User, error) {
+// 	//TODO 회사 안에 여러 부서가 있고, 부서안의 사용자 정보 리스트
+// 	//TODO 부서안에 속하지 않는 사람도 조회
+
+// }
+
 // ! 부서
 func (r *userPersistence) CreateUserDepartment(userId uint, departmentId uint) error {
 	tx := r.db.Begin()
@@ -958,6 +965,10 @@ func (r *userPersistence) AdminSearchUser(searchTerm string) ([]entity.User, err
 	return entityUsers, nil
 }
 
+func (r *userPersistence) UpdateUserDepartment(userId uint, departmentIds []uint) error {
+
+}
+
 // !--------------------------- ! redis 캐시 관련
 func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}, ttl time.Duration) error {
 	cacheKey := fmt.Sprintf("user:%d", userId)
@@ -1025,9 +1036,6 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 			user.UserProfile.Birthday = values[i].(string)
 		}
 	}
-
-	fmt.Println("redis 테스트", user)
-	fmt.Println("user", user)
 
 	return user, nil
 }

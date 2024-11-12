@@ -142,12 +142,17 @@ func startServer() {
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
+
+				user.GET("/company/organization/:companyid", userHandler.GetOrganizationByCompany)
 			}
 
 			company := protectedRoute.Group("company")
 			{
 				company.POST("/:companyId/invite", companyHandler.InviteUserToCompany)
 				company.GET("/search", userHandler.SearchUser)
+
+				//TODO 회사 조직도 조회
+
 			}
 			department := protectedRoute.Group("department")
 			{
@@ -190,7 +195,7 @@ func startServer() {
 				//TODO 부서 관련 핸들러
 				admin.POST("/department", adminHandler.AdminCreateDepartment)
 				admin.PUT("/department/:companyid/:departmentid", adminHandler.AdminUpdateDepartment)
-				// admin.DELETE("/department/:departmentid", adminHandler.AdminDeleteDepartment)
+				admin.DELETE("/department/:companyid/:departmentid", adminHandler.AdminDeleteDepartment)
 				admin.GET("/department/list/:companyid", adminHandler.GetDepartments)
 				// admin.GET("/department/:departmentid", adminHandler.GetDepartment)
 			}
