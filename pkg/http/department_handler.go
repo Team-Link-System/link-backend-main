@@ -20,7 +20,7 @@ func NewDepartmentHandler(departmentUsecase usecase.DepartmentUsecase) *Departme
 	return &DepartmentHandler{departmentUsecase: departmentUsecase}
 }
 
-// TODO 요청 유저가 회사 관리자여야하고, 해당 회사에 속해있어야함 Role 3
+// TODO 요청 유저가 회사 관리자여야하고, 해당 회사에 속해있어야함 Role 3 || 4
 func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
@@ -45,13 +45,13 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 		return
 	}
 
-	var managerID *uint
-	if request.ManagerID != 0 {
-		managerID = &request.ManagerID
+	var departmentLeaderID *uint
+	if request.DepartmentLeaderID != 0 {
+		departmentLeaderID = &request.DepartmentLeaderID
 	}
 	department := &entity.Department{
-		Name:      request.Name,
-		ManagerID: managerID,
+		Name:               request.Name,
+		DepartmentLeaderID: departmentLeaderID,
 	}
 
 	createdDepartment, err := h.departmentUsecase.CreateDepartment(department, requestUserId)
@@ -71,7 +71,14 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 
 // TODO 부서 목록 리스트 요청 유저가 해당 회사에 속해있어야함
 func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
-	departments, err := h.departmentUsecase.GetDepartments()
+	requestUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
+		return
+	}
+
+	departments, err := h.departmentUsecase.GetDepartments(requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("부서 목록 조회 오류: %v", appError.Err)
@@ -87,6 +94,13 @@ func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 
 // TODO 부서 상세 조회 - 요청 유저가 해당 회사에 속해있어야함
 func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
+	requestUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
+		return
+	}
+
 	departmentID := c.Param("id")
 
 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
@@ -96,7 +110,7 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 		return
 	}
 
-	department, err := h.departmentUsecase.GetDepartment(uint(targetDepartmentID))
+	department, err := h.departmentUsecase.GetDepartment(requestUserId.(uint), uint(targetDepartmentID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("부서 상세 조회 오류: %v", appError.Err)
@@ -121,17 +135,10 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 		return
 	}
 
-	userId, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
-		return
-	}
-
-	requestUserId, ok := userId.(uint)
-	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
 
@@ -142,7 +149,7 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 		return
 	}
 
-	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(uint(targetDepartmentID), requestUserId, request)
+	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(requestUserId.(uint), uint(targetDepartmentID), request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("부서 수정 오류: %v", appError.Err)
@@ -167,21 +174,14 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 		return
 	}
 
-	userId, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
-	requestUserId, ok := userId.(uint)
-	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
-		return
-	}
-
-	err = h.departmentUsecase.DeleteDepartment(uint(targetDepartmentID), requestUserId)
+	err = h.departmentUsecase.DeleteDepartment(requestUserId.(uint), uint(targetDepartmentID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("부서 삭제 오류: %v", appError.Err)

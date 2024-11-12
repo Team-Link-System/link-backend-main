@@ -10,7 +10,7 @@ type UserProfile struct {
 	IsSubscribed bool          `json:"is_subscribed" gorm:"default:false"`
 	RoleID       uint          `json:"role_id" gorm:"default:null"`
 	CompanyID    *uint         `json:"company_id" gorm:"default:null"`
-	Company      *Company      `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company      *Company      `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:SET NULL"`
 	Departments  []*Department `json:"departments,omitempty" gorm:"many2many:user_profile_departments;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"` // N:N 관계를 위한 중간 테이블 설정
 	Teams        []*Team       `json:"teams,omitempty" gorm:"many2many:user_profile_teams;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	PositionID   *uint         `json:"position_id,omitempty" gorm:"default:null"`

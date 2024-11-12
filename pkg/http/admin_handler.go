@@ -405,3 +405,67 @@ func (h *AdminHandler) AdminRemoveUserFromCompany(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 회사에서 퇴출에 성공하였습니다.", nil))
 }
+
+// TODO 해당회사의 부서 생성
+func (h *AdminHandler) AdminCreateDepartment(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+	}
+
+	var request req.AdminCreateDepartmentRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	err := h.adminUsecase.AdminCreateDepartment(adminUserId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("부서 생성 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("부서 생성 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 생성에 성공하였습니다.", nil))
+}
+
+// TODO 해당회사의 부서 업데이트
+func (h *AdminHandler) AdminUpdateDepartment(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+	}
+
+	companyID, err := strconv.Atoi(c.Param("companyid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	departmentID, err := strconv.Atoi(c.Param("departmentid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	var request req.AdminUpdateDepartmentRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	err = h.adminUsecase.AdminUpdateDepartment(adminUserId.(uint), uint(companyID), uint(departmentID), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("부서 업데이트 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("부서 업데이트 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 업데이트에 성공하였습니다.", nil))
+}

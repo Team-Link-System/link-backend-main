@@ -18,23 +18,40 @@ func NewDepartmentPersistence(db *gorm.DB) repository.DepartmentRepository {
 }
 
 func (p *departmentPersistence) CreateDepartment(department *entity.Department) error {
-	if err := p.db.Create(department).Error; err != nil {
+	var departmentModel model.Department
+	departmentModel.Name = department.Name
+	departmentModel.CompanyID = department.CompanyID
+
+	if err := p.db.Create(&departmentModel).Error; err != nil {
 		return fmt.Errorf("department 생성 중 DB 오류: %w", err)
 	}
 	return nil
 }
 
-func (p *departmentPersistence) GetDepartments() ([]entity.Department, error) {
-	var departments []entity.Department
-	if err := p.db.Find(&departments).Error; err != nil {
+func (p *departmentPersistence) GetDepartments(companyId uint) ([]entity.Department, error) {
+	var departments []model.Department
+	if err := p.db.Model(&model.Department{}).Where("company_id = ?", companyId).Find(&departments).Error; err != nil {
 		return nil, fmt.Errorf("department 목록 조회 중 DB 오류: %w", err)
 	}
-	return departments, nil
+
+	// Convert model to entity
+	var result []entity.Department
+	for _, dept := range departments {
+		result = append(result, entity.Department{
+			ID:                 dept.ID,
+			Name:               dept.Name,
+			CompanyID:          dept.CompanyID,
+			DepartmentLeaderID: dept.DepartmentLeaderID,
+			CreatedAt:          dept.CreatedAt,
+			UpdatedAt:          dept.UpdatedAt,
+		})
+	}
+	return result, nil
 }
 
-func (p *departmentPersistence) GetDepartmentByID(departmentID uint) (*entity.Department, error) {
+func (p *departmentPersistence) GetDepartmentByID(companyId uint, departmentID uint) (*entity.Department, error) {
 	var department entity.Department
-	err := p.db.Where("id = ?", departmentID).First(&department).Error
+	err := p.db.Where("id = ?", departmentID).Where("company_id = ?", companyId).First(&department).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("department을 찾을 수 없습니다: %d", departmentID)
@@ -45,23 +62,34 @@ func (p *departmentPersistence) GetDepartmentByID(departmentID uint) (*entity.De
 	return &department, nil
 }
 
-func (p *departmentPersistence) GetDepartmentInfo(departmentID uint) (*entity.Department, error) {
+func (p *departmentPersistence) GetDepartmentInfo(companyId uint, departmentID uint) (*entity.Department, error) {
 	var department entity.Department
-	if err := p.db.Preload("Company").Where("id = ?", departmentID).First(&department).Error; err != nil {
+	if err := p.db.Preload("Company").Where("id = ?", departmentID).Where("company_id = ?", companyId).First(&department).Error; err != nil {
 		return nil, err
 	}
 	return &department, nil
 }
 
-func (p *departmentPersistence) UpdateDepartment(departmentID uint, updates map[string]interface{}) error {
-	if err := p.db.Model(&entity.Department{}).Where("id = ?", departmentID).Updates(updates).Error; err != nil {
+func (p *departmentPersistence) UpdateDepartment(companyId uint, departmentID uint, updates map[string]interface{}) error {
+	tx := p.db.Begin()
+
+	if updates["department_leader_id"] != nil {
+		if err := tx.Model(&model.User{}).Where("id = ?", updates["department_leader_id"]).Update("role", 4).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("사용자 업데이트 중 DB 오류: %w", err)
+		}
+	}
+	if err := tx.Model(&entity.Department{}).Where("id = ?", departmentID).Where("company_id = ?", companyId).Updates(updates).Error; err != nil {
+		tx.Rollback()
 		return fmt.Errorf("department 업데이트 중 DB 오류: %w", err)
 	}
+
+	tx.Commit()
 	return nil
 }
 
-func (p *departmentPersistence) DeleteDepartment(departmentID uint) error {
-	if err := p.db.Where("id = ?", departmentID).Delete(&model.Department{}).Error; err != nil {
+func (p *departmentPersistence) DeleteDepartment(companyId uint, departmentID uint) error {
+	if err := p.db.Where("id = ?", departmentID).Where("company_id = ?", companyId).Delete(&model.Department{}).Error; err != nil {
 		return fmt.Errorf("department 삭제 중 DB 오류: %w", err)
 	}
 	return nil

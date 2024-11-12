@@ -7,6 +7,10 @@ import (
 
 	_companyEntity "link/internal/company/entity"
 	_companyRepo "link/internal/company/repository"
+	_departmentEntity "link/internal/department/entity"
+	_departmentRepo "link/internal/department/repository"
+
+	_teamRepo "link/internal/team/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
@@ -32,15 +36,27 @@ type AdminUsecase interface {
 	AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error
 
 	//Department 관련
+	AdminCreateDepartment(adminUserId uint, request *req.AdminCreateDepartmentRequest) error
+	AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error
 }
 
 type adminUsecase struct {
-	companyRepository _companyRepo.CompanyRepository
-	userRepository    _userRepo.UserRepository
+	companyRepository    _companyRepo.CompanyRepository
+	userRepository       _userRepo.UserRepository
+	departmentRepository _departmentRepo.DepartmentRepository
+	teamRepository       _teamRepo.TeamRepository
 }
 
-func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository, userRepository _userRepo.UserRepository) AdminUsecase {
-	return &adminUsecase{companyRepository: companyRepository, userRepository: userRepository}
+func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository,
+	userRepository _userRepo.UserRepository,
+	departmentRepository _departmentRepo.DepartmentRepository,
+	teamRepository _teamRepo.TeamRepository) AdminUsecase {
+	return &adminUsecase{
+		companyRepository:    companyRepository,
+		userRepository:       userRepository,
+		departmentRepository: departmentRepository,
+		teamRepository:       teamRepository,
+	}
 }
 
 //! 운영자 usecase
@@ -231,7 +247,13 @@ func (c *adminUsecase) AdminDeleteCompany(requestUserID uint, companyID uint) er
 		return common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다", err)
 	}
 
-	if companyID == 1 {
+	company, err := c.companyRepository.GetCompanyByID(companyID)
+	if err != nil {
+		log.Printf("존재하지 않는 회사는 삭제할 수 없습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "존재하지 않는 회사는 삭제할 수 없습니다", err)
+	}
+
+	if company.ID == 1 {
 		log.Printf("Link 회사는 삭제할 수 없습니다: 요청자 ID %d", requestUserID)
 		return common.NewError(http.StatusForbidden, "Link 회사는 삭제할 수 없습니다", err)
 	}
@@ -408,6 +430,12 @@ func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, 
 		return common.NewError(http.StatusBadRequest, "회사에 소속되어 있지 않은 사람은 권한 회사 관리자 권한을 받을 수 없습니다", err)
 	}
 
+	//TODO 회사 소속되어있는 사람은 권한 3,4,5만 줄 수 있음
+	if targetUser.UserProfile.CompanyID != nil && (role == uint(_userEntity.RoleUser) || role == uint(_userEntity.RoleSubAdmin)) {
+		log.Printf("회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
+		return common.NewError(http.StatusBadRequest, "회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다", err)
+	}
+
 	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{
 		"role": role,
 	}, map[string]interface{}{})
@@ -458,6 +486,83 @@ func (u *adminUsecase) AdminRemoveUserFromCompany(adminUserId uint, targetUserId
 
 	return nil
 }
+
+// TODO 관리자 부서 생성
+func (u *adminUsecase) AdminCreateDepartment(adminUserId uint, request *req.AdminCreateDepartmentRequest) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 부서를 생성하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	department := &_departmentEntity.Department{
+		Name:      request.Name,
+		CompanyID: request.CompanyID,
+	}
+
+	err = u.departmentRepository.CreateDepartment(department)
+	if err != nil {
+		log.Printf("부서 생성 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "부서 생성 중 오류 발생", err)
+	}
+
+	return nil
+}
+
+// TODO 관리자 부서 업데이트 - 부서 리더 포함 role 4로 지정
+func (u *adminUsecase) AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 부서를 업데이트하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	_, err = u.departmentRepository.GetDepartmentByID(companyID, departmentID)
+	if err != nil {
+		log.Printf("부서 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "부서 조회 중 오류 발생", err)
+	}
+
+	updates := map[string]interface{}{}
+
+	if request.Name != "" {
+		updates["name"] = request.Name
+	}
+
+	if request.DepartmentLeaderID != 0 {
+		updates["department_leader_id"] = request.DepartmentLeaderID
+	}
+
+	err = u.departmentRepository.UpdateDepartment(companyID, departmentID, updates)
+	if err != nil {
+		log.Printf("부서 업데이트 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "부서 업데이트 중 오류 발생", err)
+	}
+
+	return nil
+
+}
+
+// TODO 관리자 해당 사용자 부서 삭제
+
+// TODO 관리자 해당 사용자 부서 추가
+
+// TODO 관리자 팀 삭제
+
+// TODO 관리자 해당 사용자 팀 삭제
+
+// TODO 관리자 팀 업데이트
+
+// TODO 관리자 해당 사용자 팀 추가
 
 // // ----------------
 // // ! 회사 관리자가 사용하는 usecase는 아래
