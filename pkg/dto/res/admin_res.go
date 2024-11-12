@@ -49,6 +49,14 @@ type GetAllUsersResponse struct {
 	UpdatedAt       time.Time `json:"updated_at,omitempty"`
 }
 
+type AdminGetDepartmentResponse struct {
+	ID                 uint      `json:"id,omitempty"`
+	Name               string    `json:"name,omitempty"`
+	DepartmentLeaderId uint      `json:"department_leader_id,omitempty"`
+	CreatedAt          time.Time `json:"created_at,omitempty"`
+	UpdatedAt          time.Time `json:"updated_at,omitempty"`
+}
+
 type AdminGetUserByIdResponse struct {
 	ID             uint       `json:"id,omitempty"`
 	Email          string     `json:"email,omitempty"`

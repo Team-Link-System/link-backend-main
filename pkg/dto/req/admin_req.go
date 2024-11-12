@@ -9,6 +9,20 @@ type AdminCreateAdminRequest struct {
 	UserProfile *UserProfile `json:"user_profile,omitempty"`
 }
 
+type AdminUpdateUserRequest struct {
+	Email         string  `json:"email,omitempty"`
+	Name          string  `json:"name,omitempty"`
+	Nickname      string  `json:"nickname,omitempty"`
+	Phone         string  `json:"phone,omitempty"`
+	Role          uint    `json:"role,omitempty"`
+	Image         *string `json:"image,omitempty"`
+	Birthday      *string `json:"birthday,omitempty"`
+	IsSubscribed  *bool   `json:"is_subscribed,omitempty"`
+	CompanyID     int     `json:"company_id,omitempty"`
+	DepartmentIDs []int   `json:"department_ids,omitempty"`
+	PositionID    int     `json:"position_id,omitempty"`
+}
+
 type AdminCreateCompanyRequest struct {
 	CpName                    string `json:"cp_name" binding:"required"`
 	CpNumber                  string `json:"cp_number,omitempty"`

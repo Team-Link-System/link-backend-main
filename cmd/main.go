@@ -184,11 +184,15 @@ func startServer() {
 				admin.GET("/user/search", adminHandler.AdminSearchUser)
 				admin.POST("/user/company", adminHandler.AdminAddUserToCompany) //TODO 회사에 사용자 추가
 				admin.PUT("/user/role", adminHandler.AdminUpdateUserRole)
+				admin.PUT("/user/:userid", adminHandler.AdminUpdateUser)
 				admin.DELETE("/user/:userid", adminHandler.AdminRemoveUserFromCompany) //TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
 
 				//TODO 부서 관련 핸들러
 				admin.POST("/department", adminHandler.AdminCreateDepartment)
 				admin.PUT("/department/:companyid/:departmentid", adminHandler.AdminUpdateDepartment)
+				// admin.DELETE("/department/:departmentid", adminHandler.AdminDeleteDepartment)
+				admin.GET("/department/list/:companyid", adminHandler.GetDepartments)
+				// admin.GET("/department/:departmentid", adminHandler.GetDepartment)
 			}
 		}
 	})
