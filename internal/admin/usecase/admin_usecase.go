@@ -313,7 +313,7 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 	}
 
 	//TODO 타겟 유저의 속한 부서를 가져오고 해당 유저의 부서 업데이트
-	if len(request.DepartmentIDs) > 0 {
+	if len(request.DepartmentIDs) > 0 && len(targetUser.UserProfile.Departments) != len(request.DepartmentIDs) {
 		u.userRepository.UpdateUserDepartment(*targetUser.ID, request.DepartmentIDs)
 	}
 
