@@ -145,7 +145,8 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		CompanyName = CompanyInfo.CpName
 		Content = fmt.Sprintf("[COMPANY INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, CompanyName)
 	} else if string(req.InviteType) == "DEPARTMENT" {
-		DepartmentInfo, err := n.departmentRepo.GetDepartmentByID(req.DepartmentID)
+		companyId := users[0].UserProfile.CompanyID
+		DepartmentInfo, err := n.departmentRepo.GetDepartmentByID(*companyId, req.DepartmentID)
 		if err != nil {
 			return nil, common.NewError(http.StatusInternalServerError, "부서 정보 조회에 실패했습니다", err)
 		}

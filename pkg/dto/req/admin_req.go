@@ -49,3 +49,13 @@ type AdminUpdateUserRoleRequest struct {
 	UserID uint `json:"user_id" binding:"required"`
 	Role   uint `json:"role" binding:"required"`
 }
+
+type AdminCreateDepartmentRequest struct {
+	CompanyID uint   `json:"company_id" binding:"required"`
+	Name      string `json:"name" binding:"required"`
+}
+
+type AdminUpdateDepartmentRequest struct {
+	Name               string `json:"name,omitempty"`
+	DepartmentLeaderID uint   `json:"department_leader_id,omitempty"`
+}

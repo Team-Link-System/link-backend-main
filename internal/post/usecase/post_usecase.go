@@ -90,7 +90,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	}
 
 	for _, deptId := range departmentIds {
-		_, err = uc.departmentRepo.GetDepartmentByID(*deptId)
+		_, err = uc.departmentRepo.GetDepartmentByID(*companyId, *deptId)
 		if err != nil {
 			return nil, common.NewError(http.StatusBadRequest, "부서가 없습니다", err)
 		}
