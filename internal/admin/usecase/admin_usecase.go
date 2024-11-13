@@ -593,7 +593,6 @@ func (u *adminUsecase) AdminRemoveUserFromCompany(adminUserId uint, targetUserId
 		return common.NewError(http.StatusInternalServerError, "해당 사용자는 존재하지 않습니다", err)
 	}
 
-	//TODO 자기보다 낮은 사람만 퇴출 가능
 	if adminUser.Role > _userEntity.RoleSubAdmin {
 		log.Printf("운영자 권한이 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
 		return common.NewError(http.StatusBadRequest, "운영자 권한이 없습니다", err)
@@ -613,6 +612,13 @@ func (u *adminUsecase) AdminRemoveUserFromCompany(adminUserId uint, targetUserId
 	if err != nil {
 		log.Printf("사용자 회사 퇴출 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 회사 퇴출 중 오류 발생", err)
+	}
+
+	//TODO 부서도 퇴출 - 중간테이블에서 해당 유저에 해당하는 내용 지워야함 부서정보는 남아있어야함
+	err = u.departmentRepository.DeleteUserDepartment(targetUserId)
+	if err != nil {
+		log.Printf("사용자 부서 퇴출 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 부서 퇴출 중 오류 발생", err)
 	}
 
 	return nil

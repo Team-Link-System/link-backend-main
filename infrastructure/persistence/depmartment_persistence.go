@@ -126,3 +126,12 @@ func (p *departmentPersistence) DeleteDepartment(companyId uint, departmentID ui
 	}
 	return nil
 }
+
+func (p *departmentPersistence) DeleteUserDepartment(userId uint) error {
+	p.db.Exec(`
+		DELETE FROM user_profile_departments
+		WHERE user_profile_user_id = ?
+	`, userId)
+
+	return nil
+}
