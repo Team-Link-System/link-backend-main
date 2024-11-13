@@ -181,6 +181,11 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 			positionId = *user.UserProfile.PositionId
 		}
 
+		var image string
+		if user.UserProfile.Image != nil {
+			image = *user.UserProfile.Image
+		}
+
 		// 사용자가 소속된 부서가 있는 경우와 없는 경우 처리
 		if len(user.UserProfile.Departments) > 0 {
 			for _, dept := range user.UserProfile.Departments {
@@ -207,6 +212,7 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 						Role:         uint(user.Role),
 						Phone:        *user.Phone,
 						Nickname:     *user.Nickname,
+						Image:        image,
 						PositionId:   positionId,
 						PositionName: positionName,
 						EntryDate:    user.UserProfile.EntryDate,
@@ -220,6 +226,7 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 				Email:        *user.Email,
 				Name:         *user.Name,
 				Role:         uint(user.Role),
+				Image:        image,
 				Phone:        *user.Phone,
 				Nickname:     *user.Nickname,
 				PositionId:   positionId,
