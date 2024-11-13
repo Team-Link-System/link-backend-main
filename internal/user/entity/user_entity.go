@@ -37,7 +37,6 @@ type UserProfile struct {
 	CompanyID    *uint                     `json:"company_id,omitempty"`
 	Company      *map[string]interface{}   `json:"company,omitempty"`
 	Departments  []*map[string]interface{} `json:"departments,omitempty"`
-	Teams        []*map[string]interface{} `json:"teams,omitempty"`
 	PositionId   *uint                     `json:"position_id,omitempty"`
 	Position     *map[string]interface{}   `json:"position,omitempty"`
 	EntryDate    *time.Time                `json:"entry_date,omitempty"`

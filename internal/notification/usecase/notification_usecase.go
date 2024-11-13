@@ -333,21 +333,6 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 				}
 
 			}
-		} else if updatedNotification.InviteType == "TEAM" {
-			existingTeamIDs := make(map[uint]bool)
-			for _, team := range users[1].UserProfile.Teams {
-				existingTeamIDs[(*team)["id"].(uint)] = true
-			}
-
-			if !existingTeamIDs[updatedNotification.TeamId] {
-				teamMap := map[string]interface{}{"id": updatedNotification.TeamId}
-				users[1].UserProfile.Teams = append(users[1].UserProfile.Teams, &teamMap)
-				//TODO 여기서 사용자_팀 중간테이블에서 추가하는 로직
-				err = n.userRepo.CreateUserTeam(*users[1].ID, updatedNotification.TeamId)
-				if err != nil {
-					return nil, common.NewError(http.StatusInternalServerError, "팀 할당에 실패했습니다", err)
-				}
-			}
 		}
 
 		//TODO INVITE는 일반 사용자 처리하는 것 이므로 receiver를 업데이트 해야하고,

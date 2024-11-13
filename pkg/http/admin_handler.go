@@ -113,7 +113,6 @@ func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 			CompanyID:       util.GetValueOrDefault(user.UserProfile.CompanyID, 0),
 			CompanyName:     util.GetFirstOrEmpty(util.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
 			DepartmentNames: util.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
-			TeamNames:       util.ExtractValuesFromMapSlice[string](user.UserProfile.Teams, "name"),
 			PositionId:      util.GetValueOrDefault(user.UserProfile.PositionId, 0),
 			PositionName:    util.GetFirstOrEmpty(util.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
 			CreatedAt:       *user.CreatedAt,

@@ -180,3 +180,27 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 // }
 
 // TODO 회사 관리자 요청 - 이미 등록된 회사에
+
+// TODO 회사 조직도
+// TODO 회사 조직도 조회
+func (h *CompanyHandler) GetOrganizationByCompany(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	response, err := h.companyUsecase.GetOrganizationByCompany(userId.(uint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("회사 조직도 조회 오류: %v", appError.Err)
+		} else {
+			fmt.Printf("회사 조직도 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 조직도 조회 성공", response))
+}

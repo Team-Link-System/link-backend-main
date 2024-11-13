@@ -58,21 +58,18 @@ type AdminGetDepartmentResponse struct {
 }
 
 type AdminGetUserByIdResponse struct {
-	ID             uint       `json:"id,omitempty"`
-	Email          string     `json:"email,omitempty"`
-	Name           string     `json:"name,omitempty"`
-	Phone          string     `json:"phone,omitempty"`
-	Nickname       string     `json:"nickname,omitempty"`
-	IsSubscribed   *bool      `json:"is_subscribed,omitempty"`
-	CompanyID      uint       `json:"company_id,omitempty"`
-	CompanyName    string     `json:"company_name,omitempty"`
-	DepartmentId   uint       `json:"department_id,omitempty"`
-	DepartmentName string     `json:"department_name,omitempty"`
-	TeamId         uint       `json:"team_id,omitempty"`
-	TeamName       string     `json:"team_name,omitempty"`
-	EntryDate      *time.Time `json:"entry_date,omitempty"`
-	Image          *string    `json:"image,omitempty"`
-	CreatedAt      time.Time  `json:"created_at,omitempty"`
-	UpdatedAt      time.Time  `json:"updated_at,omitempty"`
-	Role           uint       `json:"role,omitempty"`
+	ID           uint                         `json:"id,omitempty"`
+	Email        string                       `json:"email,omitempty"`
+	Name         string                       `json:"name,omitempty"`
+	Phone        string                       `json:"phone,omitempty"`
+	Nickname     string                       `json:"nickname,omitempty"`
+	IsSubscribed *bool                        `json:"is_subscribed,omitempty"`
+	CompanyID    uint                         `json:"company_id,omitempty"`
+	CompanyName  string                       `json:"company_name,omitempty"`
+	Departments  []AdminGetDepartmentResponse `json:"departments,omitempty"`
+	EntryDate    *time.Time                   `json:"entry_date,omitempty"`
+	Image        *string                      `json:"image,omitempty"`
+	CreatedAt    time.Time                    `json:"created_at,omitempty"`
+	UpdatedAt    time.Time                    `json:"updated_at,omitempty"`
+	Role         uint                         `json:"role,omitempty"`
 }

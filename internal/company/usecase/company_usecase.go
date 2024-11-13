@@ -17,6 +17,7 @@ type CompanyUsecase interface {
 	SearchCompany(companyName string) ([]res.GetCompanyInfoResponse, error)
 
 	AddUserToCompany(requestUserId uint, userId uint, companyId uint) error
+	GetOrganizationByCompany(requestUserId uint) (*res.OrganizationResponse, error)
 }
 
 type companyUsecase struct {
@@ -135,3 +136,35 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 //TODO 회사에 사용자 삭제
 
 //TODO 회사 구독 취소 (회사 관리자만 - 자기 회사 구독 취소 가능)
+
+// TODO 회사 조직도 조회
+// TODO 자기가 속한 회사 조직도 - 수정중
+func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.OrganizationResponse, error) {
+	// user, err := u.userRepository.GetUserByID(requestUserId)
+	// if err != nil {
+	// 	fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+	// 	return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
+	// }
+
+	// // CompanyID가 nil인지 확인
+	// if user.UserProfile.CompanyID == nil {
+	// 	log.Printf("사용자가 소속된 회사가 없습니다: 사용자 ID %d", requestUserId)
+	// 	return nil, common.NewError(http.StatusBadRequest, "사용자가 소속된 회사가 없습니다", nil)
+	// }
+
+	// companyId := *user.UserProfile.CompanyID
+
+	// return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
+	// 	return res.GetUserByIdResponse{
+	// 		ID:        *user.ID,
+	// 		Name:      *user.Name,
+	// 		Email:     *user.Email,
+	// 		Phone:     *user.Phone,
+	// 		Nickname:  *user.Nickname,
+	// 		Role:      uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+	// 		Image:     _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+	// 		EntryDate: user.UserProfile.EntryDate,
+	// 	}
+	// }), nil
+	return nil, nil
+}

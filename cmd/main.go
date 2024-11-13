@@ -152,6 +152,7 @@ func startServer() {
 				company.GET("/search", userHandler.SearchUser)
 
 				//TODO 회사 조직도 조회
+				company.GET("/organization", companyHandler.GetOrganizationByCompany)
 
 			}
 			department := protectedRoute.Group("department")
