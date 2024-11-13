@@ -205,8 +205,11 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 						Email:        *user.Email,
 						Name:         *user.Name,
 						Role:         uint(user.Role),
+						Phone:        *user.Phone,
+						Nickname:     *user.Nickname,
 						PositionId:   positionId,
 						PositionName: positionName,
+						EntryDate:    user.UserProfile.EntryDate,
 					})
 				}
 			}
@@ -217,8 +220,11 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 				Email:        *user.Email,
 				Name:         *user.Name,
 				Role:         uint(user.Role),
+				Phone:        *user.Phone,
+				Nickname:     *user.Nickname,
 				PositionId:   positionId,
 				PositionName: positionName,
+				EntryDate:    user.UserProfile.EntryDate,
 			})
 		}
 	}
