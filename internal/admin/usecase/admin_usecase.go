@@ -562,7 +562,7 @@ func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, 
 	}
 
 	//TODO 회사 소속되어있는 사람은 권한 3,4,5만 줄 수 있음
-	if targetUser.UserProfile.CompanyID != nil && (role == uint(_userEntity.RoleUser) || role == uint(_userEntity.RoleSubAdmin)) {
+	if targetUser.UserProfile.CompanyID != nil && (role == uint(_userEntity.RoleAdmin) || role == uint(_userEntity.RoleSubAdmin)) {
 		log.Printf("회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
 		return common.NewError(http.StatusBadRequest, "회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다", err)
 	}
