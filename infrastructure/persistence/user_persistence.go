@@ -252,6 +252,12 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		parsedCreatedAt, _ := time.Parse("2006-01-02 15:04:05.999999 -0700 MST", userData["created_at"])
 		parsedUpdatedAt, _ := time.Parse("2006-01-02 15:04:05.999999 -0700 MST", userData["updated_at"])
 
+		// 회사 정보가 없을 수도 있으므로 nil 체크
+		var company *map[string]interface{}
+		if userData["company_name"] != "" {
+			company = &map[string]interface{}{"name": userData["company_name"]}
+		}
+
 		return &entity.User{
 			ID:       &id,
 			Email:    &email,
@@ -265,11 +271,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 				Birthday:     birthday,
 				IsSubscribed: isSubscribed,
 				CompanyID:    &cid,
-				Company: &map[string]interface{}{
-					"name": userData["company_name"],
-				},
-				Departments: departments,
-				PositionId:  &pid,
+				Company:      company,
+				Departments:  departments,
+				PositionId:   &pid,
 				Position: &map[string]interface{}{
 					"name": userData["position_name"],
 				},
@@ -314,6 +318,12 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		isOnline, _ = strconv.ParseBool(onlineStr)
 	}
 
+	// Company가 nil일 경우 기본 값 설정
+	var company *map[string]interface{}
+	if user.UserProfile.Company != nil {
+		company = &map[string]interface{}{"name": user.UserProfile.Company.CpName}
+	}
+
 	entityUser := &entity.User{
 		ID:       &user.ID,
 		Email:    &user.Email,
@@ -327,12 +337,10 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			Birthday:     user.UserProfile.Birthday,
 			IsSubscribed: user.UserProfile.IsSubscribed,
 			CompanyID:    user.UserProfile.CompanyID,
-			Company: &map[string]interface{}{
-				"name": user.UserProfile.Company.CpName,
-			},
-			Departments: departments,
-			PositionId:  user.UserProfile.PositionID,
-			EntryDate:   &user.UserProfile.EntryDate,
+			Company:      company,
+			Departments:  departments,
+			PositionId:   user.UserProfile.PositionID,
+			EntryDate:    &user.UserProfile.EntryDate,
 			Position: &map[string]interface{}{
 				"name": positionName,
 			},
