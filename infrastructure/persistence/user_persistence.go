@@ -220,58 +220,37 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 
 	if err == nil && len(userData) > 0 && r.IsUserCacheComplete(userData) {
 
-		departments := make([]*map[string]interface{}, len(userData["departments"]))
-
+		departments := make([]*map[string]interface{}, 0)
 		if depsStr, ok := userData["departments"]; ok {
-			json.Unmarshal([]byte(depsStr), &departments)
+			var tempDepts []map[string]interface{}
+			json.Unmarshal([]byte(depsStr), &tempDepts)
+			for i := range tempDepts {
+				deptCopy := tempDepts[i]
+				departments = append(departments, &deptCopy)
+			}
 		}
 
 		userID, _ := strconv.ParseUint(userData["id"], 10, 64)
 		role, _ := strconv.ParseUint(userData["role"], 10, 64)
 		companyID, _ := strconv.ParseUint(userData["company_id"], 10, 64)
+		positionID, _ := strconv.ParseUint(userData["position_id"], 10, 64)
 		isSubscribed, _ := strconv.ParseBool(userData["is_subscribed"])
 
 		//TODO 온라인 상태는 레디스에서 직접가져오기
+		// 온라인 상태 확인
 		isOnlineStr, _ := r.redisClient.HGet(context.Background(), cacheKey, "is_online").Result()
-
-		var isOnline bool
-		if isOnlineStr == "" {
-			isOnline = false
-		} else {
-			isOnline, _ = strconv.ParseBool(userData["is_online"])
-		}
+		isOnline := isOnlineStr != "" && isOnlineStr == "true"
 
 		//TODO 온라인 상태가 없다면 그냥 false로 줘야함
 
 		id := uint(userID)
-		email := userData["email"]
-		nickname := userData["nickname"]
-		name := userData["name"]
-		phone := userData["phone"]
-		cid := uint(companyID)
-		image := userData["image"]
-		birthday := userData["birthday"]
-		entryDate := userData["entry_date"]
-		var parsedEntryDate time.Time
-		if entryDate != "" {
-			parsedEntryDate, _ = time.Parse(time.RFC3339, entryDate)
-		}
-		createdAt := userData["created_at"]
-		updatedAt := userData["updated_at"]
-		var parsedCreatedAt time.Time
-		var parsedUpdatedAt time.Time
-		if createdAt != "" {
-			parsedCreatedAt, err = time.Parse("2006-01-02 15:04:05.999999 -0700 MST", createdAt)
-			if err != nil {
-				log.Printf("시간 파싱 오류 (created_at): %v, 값: %s", err, createdAt)
-			}
-		}
-		if updatedAt != "" {
-			parsedUpdatedAt, err = time.Parse("2006-01-02 15:04:05.999999 -0700 MST", updatedAt)
-			if err != nil {
-				log.Printf("시간 파싱 오류 (updated_at): %v, 값: %s", err, updatedAt)
-			}
-		}
+		email, nickname, name, phone := userData["email"], userData["nickname"], userData["name"], userData["phone"]
+		cid, pid := uint(companyID), uint(positionID)
+		image, birthday := userData["image"], userData["birthday"]
+		parsedEntryDate, _ := time.Parse(time.RFC3339, userData["entry_date"])
+
+		parsedCreatedAt, _ := time.Parse("2006-01-02 15:04:05.999999 -0700 MST", userData["created_at"])
+		parsedUpdatedAt, _ := time.Parse("2006-01-02 15:04:05.999999 -0700 MST", userData["updated_at"])
 
 		return &entity.User{
 			ID:       &id,
@@ -286,8 +265,15 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 				Birthday:     birthday,
 				IsSubscribed: isSubscribed,
 				CompanyID:    &cid,
-				Departments:  departments,
-				EntryDate:    &parsedEntryDate,
+				Company: &map[string]interface{}{
+					"name": userData["company_name"],
+				},
+				Departments: departments,
+				PositionId:  &pid,
+				Position: &map[string]interface{}{
+					"name": userData["position_name"],
+				},
+				EntryDate: &parsedEntryDate,
 			},
 			CreatedAt: &parsedCreatedAt,
 			UpdatedAt: &parsedUpdatedAt,
@@ -299,6 +285,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	var user model.User
 	err = r.db.
 		Preload("UserProfile.Departments").
+		Preload("UserProfile.Company").
 		Preload("UserProfile.Position").
 		Where("id = ?", id).First(&user).Error
 	if err != nil {
@@ -314,6 +301,12 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			"id":   dept.ID,
 			"name": dept.Name,
 		}
+	}
+
+	// Position이 nil이 아닌 경우에만 초기화
+	var positionName string
+	if user.UserProfile.Position != nil {
+		positionName = user.UserProfile.Position.Name
 	}
 
 	isOnline := false
@@ -334,10 +327,15 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			Birthday:     user.UserProfile.Birthday,
 			IsSubscribed: user.UserProfile.IsSubscribed,
 			CompanyID:    user.UserProfile.CompanyID,
-			Departments:  departments,
-			PositionId:   user.UserProfile.PositionID,
-			EntryDate:    &user.UserProfile.EntryDate,
-			// Position:     user.UserProfile.Position,
+			Company: &map[string]interface{}{
+				"name": user.UserProfile.Company.CpName,
+			},
+			Departments: departments,
+			PositionId:  user.UserProfile.PositionID,
+			EntryDate:   &user.UserProfile.EntryDate,
+			Position: &map[string]interface{}{
+				"name": positionName,
+			},
 		},
 		CreatedAt: &user.CreatedAt,
 		UpdatedAt: &user.UpdatedAt,
@@ -367,6 +365,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			cacheData["is_subscribed"] = entityUser.UserProfile.IsSubscribed
 			if entityUser.UserProfile.CompanyID != nil {
 				cacheData["company_id"] = *entityUser.UserProfile.CompanyID
+				cacheData["company_name"] = (*entityUser.UserProfile.Company)["name"]
 			}
 			if len(departments) > 0 {
 				if depsJSON, err := json.Marshal(departments); err == nil {
@@ -375,6 +374,10 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			}
 			if entityUser.UserProfile.EntryDate != nil {
 				cacheData["entry_date"] = *entityUser.UserProfile.EntryDate
+			}
+			if entityUser.UserProfile.PositionId != nil {
+				cacheData["position_id"] = *entityUser.UserProfile.PositionId
+				cacheData["position_name"] = positionName
 			}
 		}
 		if entityUser.CreatedAt != nil {
@@ -566,17 +569,14 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
 		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
 
-	sortBy := "users.id"
-	if queryOptions.SortBy != "" {
-		sortBy = queryOptions.SortBy
+	if queryOptions == nil {
+		queryOptions = &entity.UserQueryOptions{
+			SortBy: "users.id",
+			Order:  "asc",
+		}
 	}
 
-	order := "asc"
-	if queryOptions.Order == "desc" {
-		order = "desc"
-	}
-
-	dbQuery = dbQuery.Order(sortBy + " " + order)
+	dbQuery = dbQuery.Order(queryOptions.SortBy + " " + queryOptions.Order)
 
 	// 쿼리 실행
 	rows, err := dbQuery.Rows()

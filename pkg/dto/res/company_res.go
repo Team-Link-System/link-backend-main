@@ -11,9 +11,10 @@ type GetCompanyInfoResponse struct {
 }
 
 type OrganizationResponse struct {
-	CompanyId   uint                                 `json:"company_id"`
-	CompanyName string                               `json:"company_name"`
-	Departments []OrganizationDepartmentInfoResponse `json:"departments"`
+	CompanyId       uint                                 `json:"company_id"`
+	CompanyName     string                               `json:"company_name"`
+	Departments     []OrganizationDepartmentInfoResponse `json:"departments"`
+	UnassignedUsers []GetUserByIdResponse                `json:"unassigned_users"`
 }
 
 type OrganizationDepartmentInfoResponse struct {
