@@ -9,4 +9,6 @@ type DepartmentRepository interface {
 	GetDepartmentInfo(companyId uint, departmentID uint) (*entity.Department, error)
 	UpdateDepartment(companyId uint, departmentID uint, updates map[string]interface{}) error
 	DeleteDepartment(companyId uint, departmentID uint) error
+
+	DeleteUserDepartment(userId uint) error
 }
