@@ -590,7 +590,7 @@ func (u *adminUsecase) AdminRemoveUserFromCompany(adminUserId uint, targetUserId
 	targetUser, err := u.userRepository.GetUserByID(targetUserId)
 	if err != nil {
 		log.Printf("해당 사용자는 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "해당 사용자는 존재하지 않습니다", err)
+		return common.NewError(http.StatusBadRequest, "해당 사용자는 존재하지 않습니다", err)
 	}
 
 	if adminUser.Role > _userEntity.RoleSubAdmin {
@@ -601,6 +601,11 @@ func (u *adminUsecase) AdminRemoveUserFromCompany(adminUserId uint, targetUserId
 	if targetUser.UserProfile.CompanyID == nil {
 		log.Printf("회사에 소속되어 있지 않은 사람은 퇴출할 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
 		return common.NewError(http.StatusBadRequest, "회사에 소속되어 있지 않은 사람은 퇴출할 수 없습니다", err)
+	}
+
+	if targetUser.Role == _userEntity.RoleAdmin || targetUser.Role == _userEntity.RoleSubAdmin {
+		log.Printf("운영자는 퇴출할 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
+		return common.NewError(http.StatusBadRequest, "운영자는 퇴출할 수 없습니다", err)
 	}
 
 	//TODO 나중에는 퇴출하거나 회사에서 나온사람이면 이력을 남김 mongodb
