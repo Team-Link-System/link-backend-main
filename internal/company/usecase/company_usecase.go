@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -140,31 +141,102 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 // TODO 회사 조직도 조회
 // TODO 자기가 속한 회사 조직도 - 수정중
 func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.OrganizationResponse, error) {
-	// user, err := u.userRepository.GetUserByID(requestUserId)
-	// if err != nil {
-	// 	fmt.Printf("사용자 조회에 실패했습니다: %v", err)
-	// 	return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
-	// }
+	user, err := u.userRepository.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
+	}
 
-	// // CompanyID가 nil인지 확인
-	// if user.UserProfile.CompanyID == nil {
-	// 	log.Printf("사용자가 소속된 회사가 없습니다: 사용자 ID %d", requestUserId)
-	// 	return nil, common.NewError(http.StatusBadRequest, "사용자가 소속된 회사가 없습니다", nil)
-	// }
+	// CompanyID가 nil인지 확인
+	if user.UserProfile.CompanyID == nil {
+		log.Printf("사용자가 소속된 회사가 없습니다: 사용자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusBadRequest, "사용자가 소속된 회사가 없습니다", nil)
+	}
 
-	// companyId := *user.UserProfile.CompanyID
+	companyId := *user.UserProfile.CompanyID
+	companyName := (*user.UserProfile.Company)["name"].(string)
 
-	// return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
-	// 	return res.GetUserByIdResponse{
-	// 		ID:        *user.ID,
-	// 		Name:      *user.Name,
-	// 		Email:     *user.Email,
-	// 		Phone:     *user.Phone,
-	// 		Nickname:  *user.Nickname,
-	// 		Role:      uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
-	// 		Image:     _utils.GetValueOrDefault(user.UserProfile.Image, ""),
-	// 		EntryDate: user.UserProfile.EntryDate,
-	// 	}
-	// }), nil
-	return nil, nil
+	// 회사에 속한 모든 사용자 조회
+	users, err := u.userRepository.GetUsersByCompany(companyId, nil)
+	if err != nil {
+		fmt.Printf("회사 사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다", err)
+	}
+
+	// 부서별 사용자 분류
+	departmentMap := make(map[uint]*res.OrganizationDepartmentInfoResponse)
+	var unassignedUsers []res.GetUserByIdResponse
+
+	for _, user := range users {
+		// 각 사용자의 Position 정보 가져오기
+		positionName := ""
+		if user.UserProfile.Position != nil {
+			if posName, ok := (*user.UserProfile.Position)["name"].(string); ok {
+				positionName = posName
+			}
+		}
+
+		var positionId uint
+		if user.UserProfile.PositionId != nil {
+			positionId = *user.UserProfile.PositionId
+		}
+
+		// 사용자가 소속된 부서가 있는 경우와 없는 경우 처리
+		if len(user.UserProfile.Departments) > 0 {
+			for _, dept := range user.UserProfile.Departments {
+				if deptID, ok := (*dept)["id"].(uint); ok {
+					deptName := ""
+					if name, ok := (*dept)["name"].(string); ok {
+						deptName = name
+					}
+
+					// 부서가 이미 맵에 없다면 새로 생성
+					if _, exists := departmentMap[deptID]; !exists {
+						departmentMap[deptID] = &res.OrganizationDepartmentInfoResponse{
+							DepartmentId:   deptID,
+							DepartmentName: deptName,
+							Users:          []res.GetUserByIdResponse{},
+						}
+					}
+
+					// 해당 부서에 사용자 추가
+					departmentMap[deptID].Users = append(departmentMap[deptID].Users, res.GetUserByIdResponse{
+						ID:           *user.ID,
+						Name:         *user.Name,
+						Email:        *user.Email,
+						Role:         uint(user.Role),
+						PositionId:   positionId,
+						PositionName: positionName,
+					})
+				}
+			}
+		} else {
+			// 부서가 없는 사용자라면 unassignedUsers에 추가
+			unassignedUsers = append(unassignedUsers, res.GetUserByIdResponse{
+				ID:           *user.ID,
+				Name:         *user.Name,
+				Email:        *user.Email,
+				Role:         uint(user.Role),
+				PositionId:   positionId,
+				PositionName: positionName,
+			})
+		}
+	}
+
+	// 부서 정보를 배열로 구성
+	var departments []res.OrganizationDepartmentInfoResponse
+	for _, dept := range departmentMap {
+		departments = append(departments, *dept)
+	}
+
+	// 최종 응답 구조체 생성
+	organizationResponse := &res.OrganizationResponse{
+		CompanyId:       companyId,
+		CompanyName:     companyName,
+		Departments:     departments,
+		UnassignedUsers: unassignedUsers, // 부서 없는 사용자 리스트 추가
+	}
+
+	return organizationResponse, nil
+
 }
