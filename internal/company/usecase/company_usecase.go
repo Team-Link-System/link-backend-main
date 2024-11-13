@@ -165,7 +165,7 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 
 	// 부서별 사용자 분류
 	departmentMap := make(map[uint]*res.OrganizationDepartmentInfoResponse)
-	var unassignedUsers []res.GetUserByIdResponse
+	var unassignedUsers []res.GetOrganizationUserInfoResponse
 
 	for _, user := range users {
 		// 각 사용자의 Position 정보 가져오기
@@ -195,15 +195,15 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 						departmentMap[deptID] = &res.OrganizationDepartmentInfoResponse{
 							DepartmentId:   deptID,
 							DepartmentName: deptName,
-							Users:          []res.GetUserByIdResponse{},
+							Users:          []res.GetOrganizationUserInfoResponse{},
 						}
 					}
 
 					// 해당 부서에 사용자 추가
-					departmentMap[deptID].Users = append(departmentMap[deptID].Users, res.GetUserByIdResponse{
+					departmentMap[deptID].Users = append(departmentMap[deptID].Users, res.GetOrganizationUserInfoResponse{
 						ID:           *user.ID,
-						Name:         *user.Name,
 						Email:        *user.Email,
+						Name:         *user.Name,
 						Role:         uint(user.Role),
 						PositionId:   positionId,
 						PositionName: positionName,
@@ -212,10 +212,10 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 			}
 		} else {
 			// 부서가 없는 사용자라면 unassignedUsers에 추가
-			unassignedUsers = append(unassignedUsers, res.GetUserByIdResponse{
+			unassignedUsers = append(unassignedUsers, res.GetOrganizationUserInfoResponse{
 				ID:           *user.ID,
-				Name:         *user.Name,
 				Email:        *user.Email,
+				Name:         *user.Name,
 				Role:         uint(user.Role),
 				PositionId:   positionId,
 				PositionName: positionName,
