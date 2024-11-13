@@ -143,7 +143,7 @@ func startServer() {
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
 
-				user.GET("/company/organization/:companyid", userHandler.GetOrganizationByCompany)
+				// user.GET("/company/organization/:companyid", userHandler.GetOrganizationByCompany)
 			}
 
 			company := protectedRoute.Group("company")

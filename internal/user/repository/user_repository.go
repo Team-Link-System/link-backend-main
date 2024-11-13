@@ -20,6 +20,7 @@ type UserRepository interface {
 	SearchUser(companyId uint, searchTerm string) ([]entity.User, error)
 
 	GetUsersByCompany(companyId uint, query *entity.UserQueryOptions) ([]entity.User, error)
+	UpdateUserDepartments(userId uint, departmentIds []uint) error
 	// GetOrganizationByCompany(companyId uint) ([]entity.User, error)
 
 	//관리자 관련
