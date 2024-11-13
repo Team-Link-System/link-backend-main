@@ -155,6 +155,7 @@ func (h *AdminHandler) AdminUpdateUser(c *gin.Context) {
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("사용자 정보 업데이트 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
 			fmt.Printf("사용자 정보 업데이트 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
@@ -573,6 +574,7 @@ func (h *AdminHandler) AdminDeleteDepartment(c *gin.Context) {
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("부서 삭제 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
 			fmt.Printf("부서 삭제 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))

@@ -289,9 +289,11 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 	if request.IsSubscribed != nil {
 		userProfileUpdateData["is_subscribed"] = request.IsSubscribed
 	}
-	if request.CompanyID <= 0 {
+
+	// companyID 처리 로직 추가
+	if request.CompanyID == -1 {
 		userProfileUpdateData["company_id"] = nil
-	} else {
+	} else if request.CompanyID > 0 {
 		_, err := u.companyRepository.GetCompanyByID(uint(request.CompanyID))
 		if err != nil {
 			log.Printf("존재하지 않는 회사입니다: %v", err)
@@ -300,9 +302,10 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 		userProfileUpdateData["company_id"] = request.CompanyID
 	}
 
-	if request.PositionID <= 0 {
+	// positionID 처리 로직 추가
+	if request.PositionID == -1 {
 		userProfileUpdateData["position_id"] = nil
-	} else {
+	} else if request.PositionID > 0 {
 		userProfileUpdateData["position_id"] = request.PositionID
 	}
 
@@ -310,6 +313,19 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 	if err != nil {
 		log.Printf("사용자 업데이트 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 업데이트 중 오류 발생", err)
+	}
+
+	if targetUser.UserProfile != nil && targetUser.UserProfile.CompanyID != nil {
+		for _, deptId := range request.DepartmentIDs {
+			_, err := u.departmentRepository.GetDepartmentByID(uint(*targetUser.UserProfile.CompanyID), deptId)
+			if err != nil {
+				log.Printf("해당 회사에 존재하지 않는 부서입니다: %v", deptId)
+				return common.NewError(http.StatusBadRequest, "해당 회사에 존재하지 않는 부서입니다", err)
+			}
+		}
+	} else {
+		log.Printf("유효한 회사 정보가 없는 사용자입니다: 사용자 ID %d", targetUserId)
+		return common.NewError(http.StatusBadRequest, "유효한 회사 정보가 없는 사용자입니다", nil)
 	}
 
 	//TODO 타겟 유저의 속한 부서를 가져오고 해당 유저의 부서 업데이트
