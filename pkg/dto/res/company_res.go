@@ -14,11 +14,11 @@ type OrganizationResponse struct {
 	CompanyId       uint                                 `json:"company_id"`
 	CompanyName     string                               `json:"company_name"`
 	Departments     []OrganizationDepartmentInfoResponse `json:"departments"`
-	UnassignedUsers []GetUserByIdResponse                `json:"unassigned_users"`
+	UnassignedUsers []GetOrganizationUserInfoResponse    `json:"unassigned_users"`
 }
 
 type OrganizationDepartmentInfoResponse struct {
-	DepartmentId   uint                  `json:"department_id"`
-	DepartmentName string                `json:"department_name"`
-	Users          []GetUserByIdResponse `json:"users"`
+	DepartmentId   uint                              `json:"department_id"`
+	DepartmentName string                            `json:"department_name"`
+	Users          []GetOrganizationUserInfoResponse `json:"users"`
 }
