@@ -33,6 +33,7 @@ type UserUsecase interface {
 	//TODO 복합 관련
 	GetUsersByCompany(requestUserId uint, query *req.UserQuery) ([]res.GetUserByIdResponse, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
+	// GetOrganizationByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
 }
 
 type userUsecase struct {
@@ -437,3 +438,33 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 	}
 	return users, nil
 }
+
+// TODO 자기가 속한 회사 조직도
+// func (u *userUsecase) GetOrganizationByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error) {
+// 	user, err := u.userRepo.GetUserByID(requestUserId)
+// 	if err != nil {
+// 		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+// 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패했습니다", err)
+// 	}
+
+// 	companyId := *user.UserProfile.CompanyID
+
+// 	users, err := u.userRepo.GetOrganizationByCompany(companyId)
+// 	if err != nil {
+// 		fmt.Printf("회사 조직도 조회에 실패했습니다: %v", err)
+// 		return nil, common.NewError(http.StatusInternalServerError, "회사 조직도 조회에 실패했습니다", err)
+// 	}
+
+// 	return _utils.MapSlice(users, func(user entity.User) res.GetUserByIdResponse {
+// 		return res.GetUserByIdResponse{
+// 			ID:        *user.ID,
+// 			Name:      *user.Name,
+// 			Email:     *user.Email,
+// 			Phone:     *user.Phone,
+// 			Nickname:  *user.Nickname,
+// 			Role:      uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+// 			Image:     _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+// 			EntryDate: user.UserProfile.EntryDate,
+// 		}
+// 	}), nil
+// }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"strconv"
 	"time"
 
@@ -725,6 +726,13 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 	return users, nil
 }
 
+// // TODO 회사 조직도 조회
+// func (r *userPersistence) GetOrganizationByCompany(companyId uint) ([]entity.User, error) {
+// 	//TODO 회사 안에 여러 부서가 있고, 부서안의 사용자 정보 리스트
+// 	//TODO 부서안에 속하지 않는 사람도 조회
+
+// }
+
 // ! 부서
 func (r *userPersistence) CreateUserDepartment(userId uint, departmentId uint) error {
 	tx := r.db.Begin()
@@ -958,6 +966,61 @@ func (r *userPersistence) AdminSearchUser(searchTerm string) ([]entity.User, err
 	return entityUsers, nil
 }
 
+func (r *userPersistence) UpdateUserDepartments(userId uint, departmentIds []uint) error {
+	//TODO 사용자 부서 업데이트 중간테이블업데이트 해야함 갯수 안맞는데 새로 들어온건 새로 삽입
+	//TODO 삭제를 하고 다시 삽입을 해야하나? -> 고민
+	//TODO 사용자 프로필 업데이트 함수 중간테이블 업데이트 함수 만들어야함
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		log.Printf("트랜잭션 시작 중 오류: %v", tx.Error)
+		return tx.Error
+	}
+
+	if len(departmentIds) == 0 {
+		if err := tx.Exec(`
+			DELETE FROM user_profile_departments
+			WHERE user_profile_user_id = ?
+		`, userId).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("부서 삭제 중 오류: %w", err)
+		}
+		return tx.Commit().Error
+	}
+
+	// STEP1 사용자와 연관된 현재 부서 ID를 조회
+	var currentDepartments []uint
+	if err := tx.Table("user_profile_departments").
+		Where("user_profile_user_id = ?", userId).
+		Pluck("department_id", &currentDepartments).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("현재 부서 ID 조회 중 오류: %w", err)
+	}
+
+	// STEP2 현재 있는 ID와 새로 들어온 departmentsID를 비교하고 삭제
+	if err := tx.Exec(`
+		DELETE FROM user_profile_departments
+		WHERE user_profile_user_id = ? AND department_id NOT IN (?)
+	`, userId, departmentIds).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("부서 삭제 중 오류: %w", err)
+	}
+
+	// STEP3 중복된 부서 ID를 제외하고 새롭게 추가해야할 부서 ID만 삽입
+	for _, deptId := range departmentIds {
+		if !slices.Contains(currentDepartments, deptId) {
+			if err := tx.Exec(`
+				INSERT INTO user_profile_departments (user_profile_user_id, department_id)
+				VALUES (?, ?)
+			`, userId, deptId).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("부서 삽입 중 오류: %w", err)
+			}
+		}
+	}
+
+	return tx.Commit().Error
+}
+
 // !--------------------------- ! redis 캐시 관련
 func (r *userPersistence) UpdateCacheUser(userId uint, fields map[string]interface{}, ttl time.Duration) error {
 	cacheKey := fmt.Sprintf("user:%d", userId)
@@ -1025,9 +1088,6 @@ func (r *userPersistence) GetCacheUser(userId uint, fields []string) (*entity.Us
 			user.UserProfile.Birthday = values[i].(string)
 		}
 	}
-
-	fmt.Println("redis 테스트", user)
-	fmt.Println("user", user)
 
 	return user, nil
 }

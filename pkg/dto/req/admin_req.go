@@ -19,7 +19,7 @@ type AdminUpdateUserRequest struct {
 	Birthday      *string `json:"birthday,omitempty"`
 	IsSubscribed  *bool   `json:"is_subscribed,omitempty"`
 	CompanyID     int     `json:"company_id,omitempty"`
-	DepartmentIDs []int   `json:"department_ids,omitempty"`
+	DepartmentIDs []uint  `json:"department_ids,omitempty"`
 	PositionID    int     `json:"position_id,omitempty"`
 }
 

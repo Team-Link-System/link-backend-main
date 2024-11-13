@@ -41,6 +41,7 @@ type AdminUsecase interface {
 	//Department 관련
 	AdminCreateDepartment(adminUserId uint, request *req.AdminCreateDepartmentRequest) error
 	AdminGetAllDepartments(adminUserId uint, companyId uint) ([]res.AdminGetDepartmentResponse, error)
+	AdminDeleteDepartment(adminUserId uint, companyID uint, departmentID uint) error
 	AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error
 }
 
@@ -309,6 +310,12 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 	if err != nil {
 		log.Printf("사용자 업데이트 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 업데이트 중 오류 발생", err)
+	}
+
+	//TODO 타겟 유저의 속한 부서를 가져오고 해당 유저의 부서 업데이트
+	//! 갯수 맞지
+	if len(targetUser.UserProfile.Departments) != len(request.DepartmentIDs) {
+		u.userRepository.UpdateUserDepartments(*targetUser.ID, request.DepartmentIDs)
 	}
 
 	//TODO 사용자가 속해있는
@@ -642,7 +649,7 @@ func (u *adminUsecase) AdminGetAllDepartments(adminUserId uint, companyId uint) 
 	return response, nil
 }
 
-// TODO 관리자 부서 업데이트 - 부서 리더 포함 role 4로 지정
+// TODO 관리자 부서정보 업데이트 - 부서 리더 포함 role 4로 지정
 func (u *adminUsecase) AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error {
 	adminUser, err := u.userRepository.GetUserByID(adminUserId)
 	if err != nil {
@@ -685,7 +692,39 @@ func (u *adminUsecase) AdminUpdateDepartment(adminUserId uint, companyID uint, d
 
 }
 
-// TODO 관리자 해당 사용자 부서 삭제
+// TODO 관리자 부서 삭제
+func (u *adminUsecase) AdminDeleteDepartment(adminUserId uint, companyID uint, departmentID uint) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	_, err = u.companyRepository.GetCompanyByID(companyID)
+	if err != nil {
+		log.Printf("존재하지 않는 회사입니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "존재하지 않는 회사입니다", err)
+	}
+
+	_, err = u.departmentRepository.GetDepartmentByID(companyID, departmentID)
+	if err != nil {
+		log.Printf("해당 부서는 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "해당 부서는 존재하지 않습니다", err)
+	}
+
+	err = u.departmentRepository.DeleteDepartment(companyID, departmentID)
+	if err != nil {
+		log.Printf("부서 삭제 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "부서 삭제 중 오류 발생", err)
+	}
+
+	return nil
+}
 
 // TODO 관리자 해당 사용자 부서 추가
 

@@ -549,3 +549,37 @@ func (h *AdminHandler) AdminUpdateDepartment(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 업데이트에 성공하였습니다.", nil))
 }
+
+// TODO 해당회사의 부서 삭제
+func (h *AdminHandler) AdminDeleteDepartment(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	companyID, err := strconv.Atoi(c.Param("companyid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	departmentID, err := strconv.Atoi(c.Param("departmentid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
+
+	err = h.adminUsecase.AdminDeleteDepartment(adminUserId.(uint), uint(companyID), uint(departmentID))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("부서 삭제 오류: %v", appError.Err)
+		} else {
+			fmt.Printf("부서 삭제 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 삭제에 성공하였습니다.", nil))
+
+}
