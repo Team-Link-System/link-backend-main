@@ -217,6 +217,29 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 	for _, user := range users {
 		if user.UserProfile.CompanyID != nil && *user.UserProfile.CompanyID == companyID {
 
+			companyName := ""
+			if user.UserProfile.Company != nil {
+				if name, ok := (*user.UserProfile.Company)["name"].(string); ok {
+					companyName = name
+				} else {
+					log.Printf("회사 이름 정보가 올바르지 않습니다: 사용자 ID %d", user.ID)
+				}
+			}
+
+			departments := make([]res.AdminGetDepartmentResponse, 0)
+			for _, dept := range user.UserProfile.Departments {
+				if dept != nil {
+					departmentID, okID := (*dept)["id"].(uint) // 여기서 ID 타입이 float64였으면 적절히 변환
+					departmentName, okName := (*dept)["name"].(string)
+					if okID && okName {
+						departments = append(departments, res.AdminGetDepartmentResponse{
+							ID:   departmentID,
+							Name: departmentName,
+						})
+					}
+				}
+			}
+
 			response = append(response, res.AdminGetUserByIdResponse{
 				ID:           *user.ID,
 				Email:        *user.Email,
@@ -225,13 +248,15 @@ func (c *adminUsecase) AdminGetUsersByCompany(adminUserId uint, companyID uint, 
 				Nickname:     *user.Nickname,
 				Image:        user.UserProfile.Image,
 				CompanyID:    *user.UserProfile.CompanyID,
-				CompanyName:  (*user.UserProfile.Company)["name"].(string),
+				CompanyName:  companyName,
+				Departments:  departments,
 				IsSubscribed: &user.UserProfile.IsSubscribed,
 				EntryDate:    user.UserProfile.EntryDate,
 				CreatedAt:    *user.CreatedAt,
 				UpdatedAt:    *user.UpdatedAt,
 				Role:         uint(user.Role),
 			})
+
 		}
 	}
 

@@ -221,13 +221,9 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	if err == nil && len(userData) > 0 && r.IsUserCacheComplete(userData) {
 
 		departments := make([]*map[string]interface{}, len(userData["departments"]))
-		teams := make([]*map[string]interface{}, len(userData["teams"]))
 
 		if depsStr, ok := userData["departments"]; ok {
 			json.Unmarshal([]byte(depsStr), &departments)
-		}
-		if teamsStr, ok := userData["teams"]; ok {
-			json.Unmarshal([]byte(teamsStr), &teams)
 		}
 
 		userID, _ := strconv.ParseUint(userData["id"], 10, 64)
@@ -291,7 +287,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 				IsSubscribed: isSubscribed,
 				CompanyID:    &cid,
 				Departments:  departments,
-				Teams:        teams,
 				EntryDate:    &parsedEntryDate,
 			},
 			CreatedAt: &parsedCreatedAt,
@@ -304,7 +299,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	var user model.User
 	err = r.db.
 		Preload("UserProfile.Departments").
-		Preload("UserProfile.Teams").
 		Preload("UserProfile.Position").
 		Where("id = ?", id).First(&user).Error
 	if err != nil {
@@ -319,14 +313,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		departments[i] = &map[string]interface{}{
 			"id":   dept.ID,
 			"name": dept.Name,
-		}
-	}
-
-	teams := make([]*map[string]interface{}, len(user.UserProfile.Teams))
-	for i, team := range user.UserProfile.Teams {
-		teams[i] = &map[string]interface{}{
-			"id":   team.ID,
-			"name": team.Name,
 		}
 	}
 
@@ -349,7 +335,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			IsSubscribed: user.UserProfile.IsSubscribed,
 			CompanyID:    user.UserProfile.CompanyID,
 			Departments:  departments,
-			Teams:        teams,
 			PositionId:   user.UserProfile.PositionID,
 			EntryDate:    &user.UserProfile.EntryDate,
 			// Position:     user.UserProfile.Position,
@@ -360,7 +345,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 
 	//TODO 캐시 비동기 업데이트
 	go func() {
-		// departments와 teams를 JSON으로 변환
 		cacheData := map[string]interface{}{
 			"id":       *entityUser.ID,
 			"email":    *entityUser.Email,
@@ -387,11 +371,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			if len(departments) > 0 {
 				if depsJSON, err := json.Marshal(departments); err == nil {
 					cacheData["departments"] = string(depsJSON)
-				}
-			}
-			if len(teams) > 0 {
-				if teamsJSON, err := json.Marshal(teams); err == nil {
-					cacheData["teams"] = string(teamsJSON)
 				}
 			}
 			if entityUser.UserProfile.EntryDate != nil {
@@ -424,7 +403,6 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 	// 관련 데이터를 Preload하여 로드
 	if err := r.db.Preload("UserProfile.Company").
 		Preload("UserProfile.Departments").
-		Preload("UserProfile.Teams").
 		Preload("UserProfile.Position").
 		Where("id IN ?", ids).
 		Find(&users).Error; err != nil {
@@ -443,16 +421,6 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 				"name": dept.Name,
 			}
 			departmentMaps = append(departmentMaps, &deptMap)
-		}
-
-		// Teams 변환
-		var teamMaps []*map[string]interface{}
-		for _, team := range user.UserProfile.Teams {
-			teamMap := map[string]interface{}{
-				"id":   team.ID,
-				"name": team.Name,
-			}
-			teamMaps = append(teamMaps, &teamMap)
 		}
 
 		// Position 변환
@@ -476,7 +444,6 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 				UserId:       user.ID,
 				CompanyID:    user.UserProfile.CompanyID,
 				Departments:  departmentMaps,
-				Teams:        teamMaps,
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
 				IsSubscribed: user.UserProfile.IsSubscribed,
@@ -591,14 +558,11 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 			"user_profiles.birthday", "user_profiles.is_subscribed", "user_profiles.entry_date", "user_profiles.image",
 			"companies.id as company_id", "companies.cp_name as company_name",
 			"departments.id as department_id", "departments.name as department_name",
-			"teams.id as team_id", "teams.name as team_name",
 			"positions.id as position_id", "positions.name as position_name").
 		Joins("JOIN user_profiles ON user_profiles.user_id = users.id").
 		Joins("JOIN companies ON companies.id = user_profiles.company_id").
 		Joins("LEFT JOIN user_profile_departments ON user_profile_departments.user_profile_user_id = users.id").
 		Joins("LEFT JOIN departments ON departments.id = user_profile_departments.department_id").
-		Joins("LEFT JOIN user_profile_teams ON user_profile_teams.user_profile_user_id = users.id").
-		Joins("LEFT JOIN teams ON teams.id = user_profile_teams.team_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
 		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
 
@@ -628,8 +592,8 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		var userID uint
 		var user entity.User
 		var userProfile entity.UserProfile
-		var companyName, departmentName, teamName, positionName *string
-		var companyID, departmentID, teamID, positionID *uint
+		var companyName, departmentName, positionName *string
+		var companyID, departmentID, positionID *uint
 		var (
 			birthday     sql.NullString
 			entryDate    sql.NullTime
@@ -641,7 +605,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		if err := rows.Scan(
 			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
 			&birthday, &isSubscribed, &entryDate, &image,
-			&companyID, &companyName, &departmentID, &departmentName, &teamID, &teamName, &positionID, &positionName,
+			&companyID, &companyName, &departmentID, &departmentName, &positionID, &positionName,
 		); err != nil {
 			return nil, fmt.Errorf("조회 결과 스캔 중 오류: %w", err)
 		}
@@ -666,6 +630,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 
 			if companyName != nil {
 				companyMap := map[string]interface{}{
+					"id":   *companyID,
 					"name": *companyName,
 				}
 				userProfile.Company = &companyMap
@@ -674,6 +639,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 			// 직책 추가
 			if positionID != nil && positionName != nil {
 				position := map[string]interface{}{
+					"id":   *positionID,
 					"name": *positionName,
 				}
 				userProfile.Position = &position
@@ -694,28 +660,13 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 			}
 			if !departmentExists {
 				department := map[string]interface{}{
+					"id":   *departmentID,
 					"name": *departmentName,
 				}
 				user.UserProfile.Departments = append(user.UserProfile.Departments, &department)
 			}
 		}
 
-		// 팀이 이미 추가되지 않았다면 추가
-		if teamID != nil && teamName != nil {
-			teamExists := false
-			for _, team := range user.UserProfile.Teams {
-				if team != nil && (*team)["name"] == *teamName {
-					teamExists = true
-					break
-				}
-			}
-			if !teamExists {
-				team := map[string]interface{}{
-					"name": *teamName,
-				}
-				user.UserProfile.Teams = append(user.UserProfile.Teams, &team)
-			}
-		}
 	}
 
 	// 최종 사용자 목록 생성
@@ -778,38 +729,6 @@ func (r *userPersistence) GetUsersByDepartment(departmentId uint) ([]entity.User
 	return users, nil
 }
 
-// ! 팀
-func (r *userPersistence) CreateUserTeam(userId uint, teamId uint) error {
-	tx := r.db.Begin()
-	if tx.Error != nil {
-		return fmt.Errorf("트랜잭션 시작 중 오류: %w", tx.Error)
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	var userProfile model.UserProfile
-	if err := tx.Where("user_id = ?", userId).First(&userProfile).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("사용자 프로필 조회 중 오류: %w", err)
-	}
-
-	var team model.Team
-	if err := tx.First(&team, teamId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("팀 조회 중 오류: %w", err)
-	}
-
-	if err := tx.Model(&userProfile).Association("Teams").Append(&team); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("팀 할당 중 오류: %w", err)
-	}
-
-	return tx.Commit().Error
-}
-
 // !---------------------------------------------- 관리자 관련
 
 func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error) {
@@ -826,7 +745,6 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 	query := r.db.Preload("UserProfile").
 		Preload("UserProfile.Company").
 		Preload("UserProfile.Departments").
-		Preload("UserProfile.Teams").
 		Preload("UserProfile.Position")
 
 	if requestUser.Role == model.UserRole(entity.RoleAdmin) {
@@ -869,17 +787,6 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 			}
 		}
 
-		var teamMaps []*map[string]interface{}
-		if user.UserProfile.Teams != nil {
-			for _, team := range user.UserProfile.Teams {
-				teamMap := map[string]interface{}{
-					"id":   team.ID,
-					"name": team.Name,
-				}
-				teamMaps = append(teamMaps, &teamMap)
-			}
-		}
-
 		// Position mapping
 		var positionMap *map[string]interface{}
 		if user.UserProfile.Position != nil {
@@ -904,7 +811,6 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 				CompanyID:    user.UserProfile.CompanyID,
 				Company:      companyMap,
 				Departments:  departmentMaps,
-				Teams:        teamMaps,
 				PositionId:   user.UserProfile.PositionID,
 				Position:     positionMap,
 			},
@@ -1127,7 +1033,7 @@ func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[ui
 func (r *userPersistence) IsUserCacheComplete(userData map[string]string) bool {
 	requiredFields := []string{
 		"id", "name", "email", "nickname", "role",
-		"image", "company_id", "departments", "teams",
+		"image", "company_id", "departments",
 		"birthday", "is_subscribed",
 		"created_at", "updated_at", "entry_date",
 	}

@@ -306,26 +306,3 @@ func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 사용자 조회 성공", users))
 }
-
-// TODO 회사 조직도 조회
-// func (h *UserHandler) GetOrganizationByCompany(c *gin.Context) {
-// 	userId, exists := c.Get("userId")
-// 	if !exists {
-// 		fmt.Printf("인증되지 않은 요청입니다.")
-// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
-// 		return
-// 	}
-
-// 	response, err := h.userUsecase.GetOrganizationByCompany(userId.(uint))
-// 	if err != nil {
-// 		if appError, ok := err.(*common.AppError); ok {
-// 			fmt.Printf("회사 조직도 조회 오류: %v", appError.Err)
-// 		} else {
-// 			fmt.Printf("회사 조직도 조회 오류: %v", err)
-// 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
-// 		}
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 조직도 조회 성공", response))
-// }

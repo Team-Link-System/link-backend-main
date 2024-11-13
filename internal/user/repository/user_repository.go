@@ -30,8 +30,6 @@ type UserRepository interface {
 	CreateUserDepartment(userId uint, departmentId uint) error
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 
-	//TODO 팀
-	CreateUserTeam(userId uint, teamId uint) error
 	// GetUsersByTeam(teamId uint) ([]entity.User, error)
 
 	//TODO redis 캐시 관련
