@@ -70,6 +70,7 @@ services:
       DEFAULT_PROFILE_IMAGE_URL: ${DEFAULT_PROFILE_IMAGE_URL}
       NATS_URL: ${NATS_URL} # NATS 연결 주소
       NATS_JETSTREAM_URL: ${NATS_JETSTREAM_URL} # NATS JetStream 연결 주소
+      LINK_UI_URL: ${LINK_UI_URL} # 프론트엔드 도메인
     volumes:
       - .:/app
     ports:
