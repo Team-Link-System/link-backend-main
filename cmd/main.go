@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -59,8 +61,10 @@ func startServer() {
 	r.Static("/static/profiles", "./static/profiles") //프로필
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
+	//TODO 배포 환경에서 특정도메인 허용
+	allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://192.168.1.13:3000", "http://192.168.1.162:3000"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
