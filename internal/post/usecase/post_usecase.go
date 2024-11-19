@@ -116,12 +116,6 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		}
 	}
 
-	//TODO PUBLIC 일 때, company_id, department_id 둘다 없어야함
-	if queryParams.Category == "PUBLIC" && (queryParams.CompanyId != 0 || queryParams.DepartmentId != 0) {
-		fmt.Printf("PUBLIC 게시물은 company_id , department_id가 없어야합니다")
-		return nil, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id , department_id가 없어야합니다", nil)
-	}
-
 	queryOptions := map[string]interface{}{
 		"category":      queryParams.Category,
 		"page":          queryParams.Page,
@@ -130,6 +124,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		"order":         queryParams.Order,
 		"company_id":    queryParams.CompanyId,
 		"department_id": queryParams.DepartmentId,
+		"cursor":        queryParams.Cursor,
 	}
 
 	posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
@@ -139,14 +134,16 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 	}
 
 	postResponses := make([]*res.GetPostResponse, 0)
-	for _, post := range posts {
+	for i, post := range posts {
 
-		images := make([]string, 0)
-		for _, image := range post.Images {
-			images = append(images, *image)
+		// 이미지 변환
+		images := make([]string, len(post.Images))
+		for j, image := range post.Images {
+			images[j] = *image
 		}
 
-		postResponses = append(postResponses, &res.GetPostResponse{
+		// 게시물 응답 생성
+		postResponses[i] = &res.GetPostResponse{
 			PostId:        post.ID,
 			Title:         post.Title,
 			Content:       post.Content,
@@ -160,7 +157,13 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			AuthorImage:   post.Author[0].(map[string]interface{})["image"].(string),
 			CreatedAt:     post.CreatedAt.Format(time.DateTime),
 			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
-		})
+		}
+
+		if post.IsAnonymous {
+			postResponses[i].AuthorName = "익명"
+			postResponses[i].AuthorImage = ""
+		}
+
 	}
 
 	return postResponses, nil
