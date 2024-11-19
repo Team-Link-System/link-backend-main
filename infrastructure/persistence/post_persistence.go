@@ -2,10 +2,11 @@ package persistence
 
 import (
 	"fmt"
-	"link/internal/post/entity"
-	"link/internal/post/repository"
 
 	"gorm.io/gorm"
+
+	"link/internal/post/entity"
+	"link/internal/post/repository"
 )
 
 //TODO postgres
@@ -18,9 +19,9 @@ func NewPostPersistence(db *gorm.DB) repository.PostRepository {
 	return &postPersistence{db: db}
 }
 
-func (r *postPersistence) CreatePost(requestUserId uint, post *entity.Post) (*entity.Post, error) {
+func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 	if err := r.db.Create(post).Error; err != nil {
-		return nil, fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
+		return fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
 	}
-	return post, nil
+	return nil
 }

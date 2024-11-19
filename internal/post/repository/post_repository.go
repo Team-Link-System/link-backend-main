@@ -5,5 +5,5 @@ import (
 )
 
 type PostRepository interface {
-	CreatePost(requestUserId uint, post *entity.Post) (*entity.Post, error)
+	CreatePost(authorId uint, post *entity.Post) error
 }
