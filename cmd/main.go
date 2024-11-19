@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -62,16 +60,16 @@ func startServer() {
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
-	allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
-		AllowCredentials: true,
-	}))
+	// allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
+	// r.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     allowedOrigins,
+	// 	AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+	// 	AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+	// 	ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
+	// 	AllowCredentials: true,
+	// }))
 
-	// r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
+	r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
 
 	// 프록시 신뢰 설정 (프록시를 사용하지 않으면 nil 설정)
 	r.SetTrustedProxies(nil)

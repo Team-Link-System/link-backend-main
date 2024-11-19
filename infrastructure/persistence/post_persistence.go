@@ -20,6 +20,8 @@ func NewPostPersistence(db *gorm.DB) repository.PostRepository {
 }
 
 func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
+
+	//TODO post_images 게시물도
 	if err := r.db.Create(post).Error; err != nil {
 		return fmt.Errorf("게시물 생성 중 DB 오류: %w", err)
 	}

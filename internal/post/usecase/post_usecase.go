@@ -3,6 +3,7 @@ package usecase
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	_companyRepository "link/internal/company/repository"
@@ -44,13 +45,12 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
-	//TODO visibility는 PUBLIC, COMPANY, DEPARTMENT
-	//TODO 익명은 PUBLIC, COMPANY일 경우에만 가능
-	if post.Visibility == "DEPARTMENT" && post.IsAnonymous == true {
-		return common.NewError(http.StatusBadRequest, "게시물 생성 실패", errors.New("부서에만 공개일 경우 익명은 불가능합니다."))
+	//TODO 익명 게시물은 punlic이나 company만 가능
+	if post.IsAnonymous {
+		if strings.ToUpper(post.Visibility) != "PUBLIC" && strings.ToUpper(post.Visibility) != "COMPANY" {
+			return common.NewError(http.StatusBadRequest, "게시물 생성 실패", errors.New("익명 게시물은 PUBLIC 또는 COMPANY 공개만 가능합니다"))
+		}
 	}
-
-	//TODO PUBLIC이나 COMPANY일 경우에만 익명	설정 가능
 
 	//요청 가공 엔티티
 	postEntity := &entity.Post{
