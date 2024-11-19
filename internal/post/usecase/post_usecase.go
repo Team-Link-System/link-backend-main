@@ -51,15 +51,24 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 			return common.NewError(http.StatusBadRequest, "게시물 생성 실패", errors.New("익명 게시물은 PUBLIC 또는 COMPANY 공개만 가능합니다"))
 		}
 	}
+	departmentIds := make([]*uint, 0)
+	if post.Visibility == "DEPARTMENT" {
+		for _, department := range author.UserProfile.Departments {
+			departmentId := (*department)["id"].(uint)
+			departmentIds = append(departmentIds, &departmentId)
+		}
+	}
 
 	//요청 가공 엔티티
 	postEntity := &entity.Post{
-		AuthorID:    *author.ID,
-		Title:       post.Title,
-		IsAnonymous: post.IsAnonymous,
-		Content:     post.Content,
-		Visibility:  post.Visibility,
-		CreatedAt:   time.Now(),
+		AuthorID:      *author.ID,
+		Title:         post.Title,
+		IsAnonymous:   post.IsAnonymous,
+		Visibility:    post.Visibility,
+		Content:       post.Content,
+		Images:        post.Images,
+		DepartmentIds: departmentIds,
+		CreatedAt:     time.Now(),
 	}
 
 	err = uc.postRepo.CreatePost(requestUserId, postEntity)

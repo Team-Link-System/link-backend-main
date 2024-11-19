@@ -29,7 +29,15 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
+	postImageUrls, exists := c.Get("post_image_urls")
+	if !exists {
+		fmt.Printf("게시물 이미지 조회 실패")
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", nil))
+		return
+	}
+
 	var request req.CreatePostRequest
+	request.Images = postImageUrls.([]*string)
 	if err := c.ShouldBindJSON(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
