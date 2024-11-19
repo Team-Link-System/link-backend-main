@@ -7,8 +7,8 @@ import "time"
 // TODO 게시물이 속한 회사마다 볼 수 있는 것이 다름
 type Post struct {
 	ID          uint      `gorm:"primaryKey"`
-	AuthorID    uint      `gorm:"not null"`
-	Author      User      `gorm:"foreignKey:AuthorID"`
+	UserID      uint      `json:"user_id" gorm:"column:user_id"`
+	User        *User     `json:"user" gorm:"foreignKey:UserID"`
 	Title       string    `gorm:"size:255" default:""`
 	Content     string    `gorm:"type:text"`
 	CompanyID   *uint     `json:"company_id"`

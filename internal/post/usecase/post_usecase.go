@@ -19,7 +19,7 @@ import (
 
 type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
-	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) ([]*res.GetPostResponse, error)
+	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
 }
 
 type postUsecase struct {
@@ -80,7 +80,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	//요청 가공 엔티티
 	postEntity := &entity.Post{
-		AuthorID:      *author.ID,
+		UserID:        *author.ID,
 		Title:         post.Title,
 		IsAnonymous:   post.IsAnonymous,
 		Visibility:    post.Visibility,
@@ -100,7 +100,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	return nil
 }
 
-func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) ([]*res.GetPostResponse, error) {
+func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error) {
 	user, err := uc.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
@@ -116,12 +116,6 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		}
 	}
 
-	//TODO PUBLIC 일 때, company_id, department_id 둘다 없어야함
-	if queryParams.Category == "PUBLIC" && (queryParams.CompanyId != 0 || queryParams.DepartmentId != 0) {
-		fmt.Printf("PUBLIC 게시물은 company_id , department_id가 없어야합니다")
-		return nil, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id , department_id가 없어야합니다", nil)
-	}
-
 	queryOptions := map[string]interface{}{
 		"category":      queryParams.Category,
 		"page":          queryParams.Page,
@@ -130,6 +124,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		"order":         queryParams.Order,
 		"company_id":    queryParams.CompanyId,
 		"department_id": queryParams.DepartmentId,
+		"cursor":        queryParams.Cursor,
 	}
 
 	posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
@@ -138,31 +133,55 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
-	postResponses := make([]*res.GetPostResponse, 0)
-	for _, post := range posts {
+	var nextCursor string
+	if len(posts) > 0 {
+		if queryParams.Cursor == nil {
+			if queryParams.ViewType == "INFINITE" {
+				lastPost := posts[len(posts)-1]
+				nextCursor = lastPost.CreatedAt.Format(time.DateTime)
+			} else {
+				nextCursor = fmt.Sprintf("%d", posts[len(posts)-1].ID)
+			}
+		}
+	}
 
-		images := make([]string, 0)
-		for _, image := range post.Images {
-			images = append(images, *image)
+	postResponses := make([]*res.GetPostResponse, len(posts))
+	for i, post := range posts {
+		// 이미지 변환
+		images := make([]string, len(post.Images))
+		for j, image := range post.Images {
+			images[j] = *image
 		}
 
-		postResponses = append(postResponses, &res.GetPostResponse{
+		var companyId uint
+		if post.CompanyID != nil {
+			companyId = *post.CompanyID
+		}
+
+		postResponses[i] = &res.GetPostResponse{
 			PostId:        post.ID,
 			Title:         post.Title,
 			Content:       post.Content,
 			Images:        images,
 			IsAnonymous:   post.IsAnonymous,
 			Visibility:    post.Visibility,
-			CompanyId:     *post.CompanyID,
+			CompanyId:     companyId,
 			DepartmentIds: departmentIds,
-			AuthorId:      post.AuthorID,
-			AuthorName:    post.Author[0].(map[string]interface{})["name"].(string),
-			AuthorImage:   post.Author[0].(map[string]interface{})["image"].(string),
+			UserId:        post.UserID,
+			AuthorName:    post.Author["name"].(string),
+			AuthorImage:   post.Author["profile"].(map[string]interface{})["image"].(string),
 			CreatedAt:     post.CreatedAt.Format(time.DateTime),
 			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
-		})
+		}
+
+		if post.IsAnonymous {
+			postResponses[i].AuthorName = "익명"
+			postResponses[i].AuthorImage = ""
+		}
 	}
 
-	return postResponses, nil
-
+	return &res.GetPostsResponse{
+		Posts: postResponses,
+		Meta:  &res.PaginationMeta{NextCursor: nextCursor, HasMore: len(posts) == queryParams.Limit},
+	}, nil
 }
