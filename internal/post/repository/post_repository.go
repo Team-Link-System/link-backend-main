@@ -6,4 +6,5 @@ import (
 
 type PostRepository interface {
 	CreatePost(authorId uint, post *entity.Post) error
+	GetPosts(requestUserId uint, queryOptions map[string]interface{}) ([]*entity.Post, error)
 }
