@@ -128,7 +128,6 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Comment{},
 		&model.Like{},
 		&model.Company{},
-		&model.Team{},
 		&model.Position{},
 	); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)

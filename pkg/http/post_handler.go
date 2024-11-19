@@ -29,25 +29,37 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	postImageUrls, exists := c.Get("post_image_urls")
-	if !exists {
-		fmt.Printf("게시물 이미지 조회 실패")
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", nil))
-		return
-	}
-
 	var request req.CreatePostRequest
-	request.Images = postImageUrls.([]*string)
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err := c.ShouldBind(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
+	postImageUrls, exists := c.Get("post_image_urls")
+	if exists {
+		imageUrls, ok := postImageUrls.([]string)
+		if !ok {
+			fmt.Printf("이미지 처리 실패")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이미지 처리 실패", nil))
+			return
+		}
+		if len(imageUrls) > 0 {
+			ptrUrls := make([]*string, len(imageUrls))
+			for i := range imageUrls {
+				ptrUrls[i] = &imageUrls[i]
+			}
+			request.Images = ptrUrls
+		}
+	}
+
 	err := h.postUsecase.CreatePost(userId.(uint), &request)
 	if err != nil {
-		fmt.Printf("게시물 생성 오류: %v", err)
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
 		return
 	}
 

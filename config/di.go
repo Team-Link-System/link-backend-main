@@ -56,7 +56,11 @@ func BuildContainer(db *gorm.DB,
 	// config.go의 BuildContainer 함수에서 미들웨어 등록 부분을 수정
 	container.Provide(func() *middleware.ImageUploadMiddleware {
 		return middleware.NewImageUploadMiddleware("./static/profiles", "/static/profiles")
-	})
+	}, dig.Name("profileImageMiddleware"))
+
+	container.Provide(func() *middleware.ImageUploadMiddleware {
+		return middleware.NewImageUploadMiddleware("./static/posts", "/static/posts")
+	}, dig.Name("postImageMiddleware"))
 
 	// Repository 계층 등록
 	container.Provide(persistence.NewAuthPersistence)

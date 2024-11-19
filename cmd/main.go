@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/dig"
 
 	"link/config"
 	handlerHttp "link/pkg/http"
@@ -56,7 +57,7 @@ func startServer() {
 	//TODO 이미지 정적 파일 제공
 
 	// r.Static("/static/posts", "./static/uploads/posts") 게시물
-	r.Static("/static/profiles", "./static/profiles") //프로필
+	r.Static("/static/profiles", "./static/posts") //프로필
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
@@ -90,7 +91,11 @@ func startServer() {
 
 		adminHandler *handlerHttp.AdminHandler,
 
-		imageUploadMiddleware *middleware.ImageUploadMiddleware,
+		params struct {
+			dig.In
+			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
+			PostImageMiddleware    *middleware.ImageUploadMiddleware `name:"postImageMiddleware"`
+		},
 
 		tokenInterceptor *interceptor.TokenInterceptor,
 
@@ -140,7 +145,7 @@ func startServer() {
 			user := protectedRoute.Group("user")
 			{
 				user.GET("/:id", userHandler.GetUserInfo)
-				user.PUT("/:id", imageUploadMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
+				user.PUT("/:id", params.ProfileImageMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
@@ -177,7 +182,7 @@ func startServer() {
 
 			post := protectedRoute.Group("post")
 			{
-				post.POST("", postHandler.CreatePost)
+				post.POST("", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.CreatePost)
 			}
 
 			//TODO admin 요청 - 관리자 페이지
