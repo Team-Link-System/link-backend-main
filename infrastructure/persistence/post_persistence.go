@@ -84,3 +84,88 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 
 	return nil
 }
+
+func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]interface{}) ([]*entity.Post, error) {
+
+	fmt.Println("queryOptions")
+	fmt.Println(queryOptions)
+
+	tx := r.db.Begin()
+
+	//TODO 게시물 이미지는 1:N 관계이므로 조회 시 조인 쿼리 작성
+	//TODO 게시물과 부서는 M:N 관계이므로 조회 시 조인 쿼리 작성
+	query := r.db.Model(&model.Post{}).
+		Preload("PostImages", func(db *gorm.DB) *gorm.DB {
+			return db.Select("post_id, image_url")
+		}).
+		Preload("PostDepartments", func(db *gorm.DB) *gorm.DB {
+			return db.Select("post_id, department_id")
+		}).
+		Preload("Departments", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name")
+		}).
+		Preload("User", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name, email, profile_image")
+		}).
+		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"]))
+
+	if category, ok := queryOptions["category"].(string); ok {
+		if category == "COMPANY" {
+			if companyId, exists := queryOptions["company_id"].(uint); exists {
+				query = query.Where("company_id = ?", companyId)
+			}
+		} else if category == "DEPARTMENT" {
+			if departmentId, exists := queryOptions["department_id"].(uint); exists {
+				query = query.Joins("JOIN post_departments ON posts.id = post_departments.post_id").
+					Where("post_departments.department_id = ?", departmentId)
+			}
+		}
+	}
+
+	//TODO 커서 기반 페이징
+	if cursor, exists := queryOptions["cursor"].(string); exists {
+		query = query.Where("created_at < ?", cursor)
+	}
+
+	if limit, exists := queryOptions["limit"].(int); exists {
+		query = query.Limit(limit)
+	}
+
+	posts := []*model.Post{}
+	if err := query.Find(&posts).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
+	}
+
+	tx.Commit()
+
+	result := make([]*entity.Post, 0)
+	for _, post := range posts {
+
+		images := make([]*string, 0)
+		for _, image := range post.PostImages {
+			images = append(images, &image.ImageURL)
+		}
+
+		departments := make([]interface{}, 0)
+		for _, dept := range post.Departments {
+			departments = append(departments, dept)
+		}
+
+		result = append(result, &entity.Post{
+			ID:          post.ID,
+			AuthorID:    post.AuthorID,
+			Title:       post.Title,
+			Content:     post.Content,
+			Images:      images,
+			IsAnonymous: post.IsAnonymous,
+			Visibility:  post.Visibility,
+			CompanyID:   post.CompanyID,
+			CreatedAt:   post.CreatedAt,
+			Departments: &departments,
+		})
+
+	}
+
+	return result, nil
+}
