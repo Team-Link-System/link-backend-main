@@ -31,7 +31,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 
 	// 1. 게시물 생성
 	dbPost := &model.Post{
-		AuthorID:    post.AuthorID,
+		UserID:      post.UserID,
 		Title:       post.Title,
 		Content:     post.Content,
 		Visibility:  post.Visibility,
@@ -93,29 +93,16 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 		Preload("PostImages", func(db *gorm.DB) *gorm.DB {
 			return db.Select("post_id, image_url")
 		}).
-		Preload("PostDepartments", func(db *gorm.DB) *gorm.DB {
-			return db.Select("post_id, department_id")
-		}).
 		Preload("Departments", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name")
 		}).
+		Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
+			return db.Select("image, nickname")
+		}).
 		Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email, profile_image")
+			return db.Select("id, name, email")
 		}).
 		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"]))
-
-	if category, ok := queryOptions["category"].(string); ok {
-		if category == "COMPANY" {
-			if companyId, exists := queryOptions["company_id"].(uint); exists {
-				query = query.Where("company_id = ?", companyId)
-			}
-		} else if category == "DEPARTMENT" {
-			if departmentId, exists := queryOptions["department_id"].(uint); exists {
-				query = query.Joins("JOIN post_departments ON posts.id = post_departments.post_id").
-					Where("post_departments.department_id = ?", departmentId)
-			}
-		}
-	}
 
 	// 정렬 설정
 	if sort, ok := queryOptions["sort"].(string); ok {
@@ -128,7 +115,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 	if category, ok := queryOptions["category"].(string); ok {
 		switch category {
 		case "PUBLIC":
-			query = query.Where("company_id IS NULL AND department_id IS NULL")
+			query = query.Where("company_id IS NULL")
 		case "COMPANY":
 			if companyId, exists := queryOptions["company_id"].(uint); exists {
 				query = query.Where("company_id = ?", companyId)
@@ -180,9 +167,30 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			departments = append(departments, dept)
 		}
 
+		authorMap := map[string]interface{}{
+			"name":     "익명",
+			"nickname": "익명",
+			"profile": map[string]interface{}{
+				"image": "",
+			},
+		}
+
+		if post.User != nil {
+			authorMap["id"] = post.User.ID
+			authorMap["name"] = post.User.Name
+			authorMap["email"] = post.User.Email
+			authorMap["nickname"] = post.User.Nickname
+
+			if post.User.UserProfile != nil {
+				authorMap["profile"] = map[string]interface{}{
+					"image": post.User.UserProfile.Image,
+				}
+			}
+		}
+
 		result = append(result, &entity.Post{
 			ID:          post.ID,
-			AuthorID:    post.AuthorID,
+			UserID:      post.UserID,
 			Title:       post.Title,
 			Content:     post.Content,
 			Images:      images,
@@ -191,6 +199,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			CompanyID:   post.CompanyID,
 			CreatedAt:   post.CreatedAt,
 			Departments: &departments,
+			Author:      authorMap,
 		})
 
 	}

@@ -17,10 +17,10 @@ const (
 // User 모델: 사용자 핵심 정보
 type User struct {
 	ID             uint           `json:"id" gorm:"primaryKey"`
-	Name           string         `json:"name" binding:"required"`
-	Email          string         `json:"email" binding:"required,email" gorm:"unique"`
+	Name           string         `json:"name" binding:"required" gorm:"not null"`
+	Email          string         `json:"email" binding:"required,email" gorm:"unique;not null"`
 	Nickname       string         `json:"nickname" binding:"required,nickname" gorm:"unique"`
-	Password       string         `json:"password"`
+	Password       string         `json:"password" gorm:"not null"`
 	Phone          string         `json:"phone"`
 	Role           UserRole       `json:"role" binding:"required" gorm:"not null;default:5"`
 	UserProfile    *UserProfile   `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"` // 1:1 관계 설정

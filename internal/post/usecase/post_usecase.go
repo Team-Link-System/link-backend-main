@@ -19,7 +19,7 @@ import (
 
 type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
-	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) ([]*res.GetPostResponse, error)
+	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
 }
 
 type postUsecase struct {
@@ -80,7 +80,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	//요청 가공 엔티티
 	postEntity := &entity.Post{
-		AuthorID:      *author.ID,
+		UserID:        *author.ID,
 		Title:         post.Title,
 		IsAnonymous:   post.IsAnonymous,
 		Visibility:    post.Visibility,
@@ -100,7 +100,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	return nil
 }
 
-func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) ([]*res.GetPostResponse, error) {
+func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error) {
 	user, err := uc.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
@@ -133,16 +133,31 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
-	postResponses := make([]*res.GetPostResponse, 0)
-	for i, post := range posts {
+	var nextCursor string
+	if len(posts) > 0 {
+		if queryParams.Cursor == nil {
+			if queryParams.ViewType == "INFINITE" {
+				lastPost := posts[len(posts)-1]
+				nextCursor = lastPost.CreatedAt.Format(time.DateTime)
+			} else {
+				nextCursor = fmt.Sprintf("%d", posts[len(posts)-1].ID)
+			}
+		}
+	}
 
+	postResponses := make([]*res.GetPostResponse, len(posts))
+	for i, post := range posts {
 		// 이미지 변환
 		images := make([]string, len(post.Images))
 		for j, image := range post.Images {
 			images[j] = *image
 		}
 
-		// 게시물 응답 생성
+		var companyId uint
+		if post.CompanyID != nil {
+			companyId = *post.CompanyID
+		}
+
 		postResponses[i] = &res.GetPostResponse{
 			PostId:        post.ID,
 			Title:         post.Title,
@@ -150,11 +165,11 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			Images:        images,
 			IsAnonymous:   post.IsAnonymous,
 			Visibility:    post.Visibility,
-			CompanyId:     *post.CompanyID,
+			CompanyId:     companyId,
 			DepartmentIds: departmentIds,
-			AuthorId:      post.AuthorID,
-			AuthorName:    post.Author[0].(map[string]interface{})["name"].(string),
-			AuthorImage:   post.Author[0].(map[string]interface{})["image"].(string),
+			UserId:        post.UserID,
+			AuthorName:    post.Author["name"].(string),
+			AuthorImage:   post.Author["profile"].(map[string]interface{})["image"].(string),
 			CreatedAt:     post.CreatedAt.Format(time.DateTime),
 			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
 		}
@@ -163,9 +178,10 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			postResponses[i].AuthorName = "익명"
 			postResponses[i].AuthorImage = ""
 		}
-
 	}
 
-	return postResponses, nil
-
+	return &res.GetPostsResponse{
+		Posts: postResponses,
+		Meta:  &res.PaginationMeta{NextCursor: nextCursor, HasMore: len(posts) == queryParams.Limit},
+	}, nil
 }
