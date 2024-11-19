@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -80,10 +81,31 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	//TODO 게시물 조회 쿼리 파라미터
 	category := c.DefaultQuery("category", "public")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	order := c.DefaultQuery("order", "created_at")
-	sort := c.DefaultQuery("sort", "desc")
-	cursor := c.DefaultQuery("cursor", "")
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	order := c.DefaultQuery("order", "desc")
+	if order != "asc" && order != "desc" {
+		order = "desc"
+	}
+	sort := c.DefaultQuery("sort", "created_at")
+	if sort != "created_at" && sort != "like_count" && sort != "comments_count" {
+		sort = "created_at"
+	}
+	cursorParam := c.DefaultQuery("cursor", "")
+
+	var cursor *req.Cursor
+	if cursorParam != "" {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+	}
 
 	queryParams := req.GetPostQueryParams{
 		Category: category,

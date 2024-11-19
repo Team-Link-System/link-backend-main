@@ -110,12 +110,14 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 	departmentIds := make([]uint, 0)
 	if len(user.UserProfile.Departments) > 0 {
 		for _, department := range user.UserProfile.Departments {
-			departmentIds = append(departmentIds, (*department)["id"].(uint))
+			if id, ok := (*department)["id"].(uint); ok {
+				departmentIds = append(departmentIds, id)
+			}
 		}
 	}
 
 	//TODO PUBLIC 일 때, company_id, department_id 둘다 없어야함
-	if queryParams.Category == "PUBLIC" && queryParams.CompanyId != 0 && queryParams.DepartmentId != 0 {
+	if queryParams.Category == "PUBLIC" && (queryParams.CompanyId != 0 || queryParams.DepartmentId != 0) {
 		fmt.Printf("PUBLIC 게시물은 company_id , department_id가 없어야합니다")
 		return nil, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id , department_id가 없어야합니다", nil)
 	}
