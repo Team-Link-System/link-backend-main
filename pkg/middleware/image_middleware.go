@@ -91,7 +91,7 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		imageUrls := []string{}
+		imageUrls := make([]string, 0)
 
 		for _, file := range formFiles {
 			ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -119,8 +119,10 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 			imageUrls = append(imageUrls, fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName))
 		}
 
+		fmt.Println("imageUrls:", imageUrls)
+
 		//TODO next로 넘길때 배열 형태로 넘겨주기
-		c.Set("image_urls", imageUrls)
+		c.Set("post_image_urls", imageUrls)
 		c.Next()
 	}
 }

@@ -101,14 +101,6 @@ func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, er
 		})
 	}
 
-	var teamsMaps []*map[string]interface{}
-	for _, team := range company.Teams {
-		teamsMaps = append(teamsMaps, &map[string]interface{}{
-			"id":   team.ID,
-			"name": team.Name,
-		})
-	}
-
 	companyEntity := entity.Company{
 		ID:                        company.ID,
 		CpName:                    company.CpName,
@@ -120,7 +112,6 @@ func (r *companyPersistence) GetCompanyByID(companyID uint) (*entity.Company, er
 		IsVerified:                company.IsVerified,
 		Grade:                     int(company.Grade),
 		Departments:               departmentsMaps,
-		Teams:                     teamsMaps,
 		CreatedAt:                 company.CreatedAt,
 		UpdatedAt:                 company.UpdatedAt,
 	}

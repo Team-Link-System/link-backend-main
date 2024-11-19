@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/dig"
 
 	"link/config"
 	handlerHttp "link/pkg/http"
@@ -58,20 +57,20 @@ func startServer() {
 	//TODO 이미지 정적 파일 제공
 
 	// r.Static("/static/posts", "./static/uploads/posts") 게시물
-	r.Static("/static/profiles", "./static/profiles") //프로필
+	r.Static("/static/profiles", "./static/posts") //프로필
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
-	allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
-		AllowCredentials: true,
-	}))
+	// allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
+	// r.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     allowedOrigins,
+	// 	AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+	// 	AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+	// 	ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
+	// 	AllowCredentials: true,
+	// }))
 
-	// r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
+	r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
 
 	// 프록시 신뢰 설정 (프록시를 사용하지 않으면 nil 설정)
 	r.SetTrustedProxies(nil)
@@ -92,7 +91,11 @@ func startServer() {
 
 		adminHandler *handlerHttp.AdminHandler,
 
-		imageUploadMiddleware *middleware.ImageUploadMiddleware,
+		params struct {
+			dig.In
+			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
+			PostImageMiddleware    *middleware.ImageUploadMiddleware `name:"postImageMiddleware"`
+		},
 
 		tokenInterceptor *interceptor.TokenInterceptor,
 
@@ -142,7 +145,7 @@ func startServer() {
 			user := protectedRoute.Group("user")
 			{
 				user.GET("/:id", userHandler.GetUserInfo)
-				user.PUT("/:id", imageUploadMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
+				user.PUT("/:id", params.ProfileImageMiddleware.ProfileImageUploadMiddleware(), userHandler.UpdateUserInfo)
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
@@ -179,7 +182,7 @@ func startServer() {
 
 			post := protectedRoute.Group("post")
 			{
-				post.POST("", postHandler.CreatePost)
+				post.POST("", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.CreatePost)
 			}
 
 			//TODO admin 요청 - 관리자 페이지

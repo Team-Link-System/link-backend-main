@@ -1,10 +1,9 @@
 package req
 
 type CreatePostRequest struct {
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`
-	AuthorID    uint      `json:"author_id"`
-	Images      []*string `json:"images,omitempty"` //옵션
-	IsAnonymous bool      `json:"is_anonymous"`
-	Visibility  string    `json:"visibility"`
+	Title       string    `form:"title" json:"title"`
+	Content     string    `form:"content" json:"content"`
+	Images      []*string `form:"images,omitempty" json:"images,omitempty"` //옵션
+	IsAnonymous bool      `form:"is_anonymous" json:"is_anonymous"`
+	Visibility  string    `form:"visibility" json:"visibility"`
 }
