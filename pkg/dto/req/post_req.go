@@ -1,7 +1,5 @@
 package req
 
-import "time"
-
 type CreatePostRequest struct {
 	Title       string    `form:"title" json:"title"`
 	Content     string    `form:"content" json:"content"`
@@ -23,8 +21,8 @@ type GetPostQueryParams struct {
 }
 
 type Cursor struct {
-	LikeCount     int       `json:"like_count,omitempty"`     // like_count 기반 커서 일 때,
-	CreatedAt     time.Time `json:"created_at,omitempty"`     // created_at 기반 커서 일 때,
-	CommentsCount int       `json:"comments_count,omitempty"` // comments_count 기반 커서 일 때,
-	ID            uint      `json:"id,omitempty"`             // id 기반 커서 일 때,
+	LikeCount     string `json:"like_count,omitempty"`     // like_count 기반 커서 일 때,
+	CreatedAt     string `json:"created_at,omitempty"`     // created_at 기반 커서 일 때,
+	CommentsCount string `json:"comments_count,omitempty"` // comments_count 기반 커서 일 때,
+	ID            string `json:"id,omitempty"`             // id 기반 커서 일 때,
 }

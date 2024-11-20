@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -79,12 +80,12 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	// 게시물 조회 파라미터 처리
-	category := c.DefaultQuery("category", "PUBLIC")
+	category := strings.ToUpper(c.DefaultQuery("category", "PUBLIC"))
 	if category != "PUBLIC" && category != "COMPANY" && category != "DEPARTMENT" {
 		category = "PUBLIC"
 	}
 
-	viewType := c.DefaultQuery("view_type", "INFINITE")
+	viewType := strings.ToUpper(c.DefaultQuery("view_type", "INFINITE"))
 	if viewType != "INFINITE" && viewType != "PAGINATION" {
 		viewType = "INFINITE"
 	}
@@ -116,11 +117,35 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	if viewType == "INFINITE" && cursorParam == "" {
 		cursor = nil //첫요청
 	} else if viewType == "INFINITE" {
-		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+		var tempCursor req.Cursor
+		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
 			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
 			return
 		}
+		//TODO kst로 받은걸 utc로 변환
+		//            "next_cursor": "2024-11-20 11:36:59",
+
+		if sort == "created_at" && tempCursor.CreatedAt == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "like_count" && tempCursor.LikeCount == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "comments_count" && tempCursor.CommentsCount == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "id" && tempCursor.ID == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		}
+
+		cursor = &tempCursor
+
 	} else if viewType == "PAGINATION" && cursorParam != "" {
 		fmt.Printf("페이지네이션 타입인데 커서가 있습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "페이지네이션 타입인데 커서가 있습니다.", nil))

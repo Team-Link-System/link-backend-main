@@ -13,8 +13,8 @@ type Post struct {
 	Content     string    `gorm:"type:text"`
 	CompanyID   *uint     `json:"company_id"`
 	Company     *Company  `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	IsAnonymous bool      `gorm:"not null; default:false"` // 익명 체크 익명 체크하면, author는 비어 있음
-	Visibility  string    `gorm:"type:enum('PUBLIC', 'PRIVATE', 'DEPARTMENT');not null;default:'PUBLIC'"`
+	IsAnonymous bool      `gorm:"not null; default:false"`           // 익명 체크 익명 체크하면, author는 비어 있음
+	Visibility  string    `gorm:"size:20;not null;default:'PUBLIC'"` // 문자열 필드로 열거형 대체
 	CreatedAt   time.Time `gorm:"not null, autoCreateTime"`
 	UpdatedAt   time.Time
 	Comments    []*Comment    `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`

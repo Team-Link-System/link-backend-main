@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+
+	_util "link/pkg/util"
 )
 
 type PostUsecase interface {
@@ -107,11 +110,11 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
-	departmentIds := make([]uint, 0)
+	departmentId := uint(0)
 	if len(user.UserProfile.Departments) > 0 {
 		for _, department := range user.UserProfile.Departments {
 			if id, ok := (*department)["id"].(uint); ok {
-				departmentIds = append(departmentIds, id)
+				departmentId = id
 			}
 		}
 	}
@@ -124,24 +127,42 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		"order":         queryParams.Order,
 		"company_id":    queryParams.CompanyId,
 		"department_id": queryParams.DepartmentId,
-		"cursor":        queryParams.Cursor,
+		"cursor":        map[string]interface{}{},
+		"view_type":     queryParams.ViewType,
 	}
 
-	posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		} else if queryParams.Cursor.LikeCount != "" {
+			queryOptions["cursor"].(map[string]interface{})["like_count"] = queryParams.Cursor.LikeCount
+		} else if queryParams.Cursor.ID != "" {
+			queryOptions["cursor"].(map[string]interface{})["id"] = queryParams.Cursor.ID
+		} else if queryParams.Cursor.CommentsCount != "" {
+			queryOptions["cursor"].(map[string]interface{})["comments_count"] = queryParams.Cursor.CommentsCount
+		}
+	}
+
+	meta, posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
 	if err != nil {
 		fmt.Printf("게시물 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
+	// NextCursor 계산
 	var nextCursor string
-	if len(posts) > 0 {
-		if queryParams.Cursor == nil {
-			if queryParams.ViewType == "INFINITE" {
-				lastPost := posts[len(posts)-1]
-				nextCursor = lastPost.CreatedAt.Format(time.DateTime)
-			} else {
-				nextCursor = fmt.Sprintf("%d", posts[len(posts)-1].ID)
-			}
+	if len(posts) > 0 && queryParams.ViewType == "INFINITE" {
+		lastPost := posts[len(posts)-1]
+
+		if queryParams.Sort == "created_at" {
+			nextCursor = _util.ParseKst(lastPost.CreatedAt).Format(time.DateTime)
+			// } else if queryParams.Sort == "like_count" {
+			// 	nextCursor = strconv.Itoa(int(lastPost.LikeCount))
+			// } else if queryParams.Sort == "comments_count" {
+			// 	nextCursor = strconv.Itoa(int(lastPost.CommentsCount))
+			//TODO 추후 좋아요 댓글순 추가
+		} else if queryParams.Sort == "id" {
+			nextCursor = strconv.Itoa(int(lastPost.ID))
 		}
 	}
 
@@ -150,7 +171,23 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		// 이미지 변환
 		images := make([]string, len(post.Images))
 		for j, image := range post.Images {
-			images[j] = *image
+			if image != nil {
+				images[j] = *image
+			}
+		}
+
+		// Author 데이터 변환
+		authorName := "익명"
+		var authorImage string
+		if !post.IsAnonymous {
+			if name, ok := post.Author["name"].(string); ok {
+				authorName = name
+			}
+			if image, ok := post.Author["image"]; ok && image != nil {
+				if imageStr, ok := image.(*string); ok {
+					authorImage = *imageStr
+				}
+			}
 		}
 
 		var companyId uint
@@ -159,29 +196,37 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		}
 
 		postResponses[i] = &res.GetPostResponse{
-			PostId:        post.ID,
-			Title:         post.Title,
-			Content:       post.Content,
-			Images:        images,
-			IsAnonymous:   post.IsAnonymous,
-			Visibility:    post.Visibility,
-			CompanyId:     companyId,
-			DepartmentIds: departmentIds,
-			UserId:        post.UserID,
-			AuthorName:    post.Author["name"].(string),
-			AuthorImage:   post.Author["profile"].(map[string]interface{})["image"].(string),
-			CreatedAt:     post.CreatedAt.Format(time.DateTime),
-			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
+			PostId:       post.ID,
+			Title:        post.Title,
+			Content:      post.Content,
+			Images:       images,
+			IsAnonymous:  post.IsAnonymous,
+			Visibility:   post.Visibility,
+			CompanyId:    companyId,
+			DepartmentId: departmentId,
+			UserId:       post.UserID,
+			AuthorName:   authorName,
+			AuthorImage:  authorImage,
+			CreatedAt:    _util.ParseKst(post.CreatedAt).Format(time.DateTime),
+			UpdatedAt:    _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 		}
 
-		if post.IsAnonymous {
-			postResponses[i].AuthorName = "익명"
-			postResponses[i].AuthorImage = ""
-		}
+	}
+
+	postMeta := &res.PaginationMeta{
+		NextCursor: nextCursor,
+		HasMore:    &meta.HasMore,
+		TotalCount: meta.TotalCount,
+		PageSize:   meta.PageSize,
+		NextPage:   meta.NextPage,
+	}
+
+	if queryParams.ViewType == "PAGINATION" {
+		postMeta.PrevPage = meta.PrevPage
 	}
 
 	return &res.GetPostsResponse{
 		Posts: postResponses,
-		Meta:  &res.PaginationMeta{NextCursor: nextCursor, HasMore: len(posts) == queryParams.Limit},
+		Meta:  postMeta,
 	}, nil
 }
