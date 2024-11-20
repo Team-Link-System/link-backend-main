@@ -58,6 +58,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
+	fmt.Printf("author: %v", *author.UserProfile.CompanyID)
 	//TODO 익명 게시물은 punlic이나 company만 가능
 	if post.IsAnonymous {
 		if strings.ToUpper(post.Visibility) != "PUBLIC" && strings.ToUpper(post.Visibility) != "COMPANY" {
@@ -75,11 +76,19 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		companyId = *author.UserProfile.CompanyID
 	}
 
+	fmt.Printf("companyId-usecase: %v", companyId)
+
 	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+		if author.UserProfile.CompanyID == nil {
+			fmt.Printf("사용자의 회사 정보가 없습니다")
+			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+		}
 		if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
 			fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
 			return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
 		}
+
+		companyId = *author.UserProfile.CompanyID
 	}
 
 	//요청 가공 엔티티
@@ -245,25 +254,38 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 		companyId = *post.CompanyID
 	}
 
-	var departmentId uint
-	if len(post.DepartmentIds) > 0 {
-		departmentId = *post.DepartmentIds[0]
+	authorName := "익명"
+	var authorImage string
+	if !post.IsAnonymous {
+		if name, ok := post.Author["name"].(string); ok {
+			authorName = name
+		}
+		if image, ok := post.Author["image"]; ok && image != nil {
+			if imageStr, ok := image.(*string); ok && imageStr != nil {
+				authorImage = *imageStr
+			}
+		}
+	}
+
+	departmentIds := make([]uint, len(post.DepartmentIds))
+	for i, departmentId := range post.DepartmentIds {
+		departmentIds[i] = *departmentId
 	}
 
 	postResponse := &res.GetPostResponse{
-		PostId:       post.ID,
-		Title:        post.Title,
-		Content:      post.Content,
-		Images:       images,
-		IsAnonymous:  post.IsAnonymous,
-		Visibility:   post.Visibility,
-		CompanyId:    companyId,
-		DepartmentId: departmentId,
-		UserId:       post.UserID,
-		// AuthorName:   authorName,
-		// AuthorImage:  authorImage,
-		CreatedAt: _util.ParseKst(post.CreatedAt).Format(time.DateTime),
-		UpdatedAt: _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
+		PostId:      post.ID,
+		Title:       post.Title,
+		Content:     post.Content,
+		Images:      images,
+		IsAnonymous: post.IsAnonymous,
+		Visibility:  post.Visibility,
+		CompanyId:   companyId,
+		// DepartmentIds: departmentIds, //TOdO 해당 게시글에 관련된 부서id 값들이 필요하면 추가(공개범위임 사실상)
+		UserId:      post.UserID,
+		AuthorName:  authorName,
+		AuthorImage: authorImage,
+		CreatedAt:   _util.ParseKst(post.CreatedAt).Format(time.DateTime),
+		UpdatedAt:   _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 	}
 
 	return postResponse, nil

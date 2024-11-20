@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -34,13 +33,21 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	}
 
 	var request req.CreatePostRequest
+	if request.Title == "" {
+		fmt.Printf("제목이 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
+		return
+	} else if request.Content == "" {
+		fmt.Printf("내용이 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
+		return
+	}
+
 	if err := c.ShouldBind(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
-
-	fmt.Printf("request.DepartmentIds: %v", reflect.TypeOf(request.DepartmentIds))
 
 	postImageUrls, exists := c.Get("post_image_urls")
 	if exists {
@@ -215,7 +222,7 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 		return
 	}
 
-	postId, err := strconv.ParseUint(c.Param("post_id"), 10, 32)
+	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
 		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
