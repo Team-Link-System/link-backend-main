@@ -118,7 +118,6 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		cursor = nil //첫요청
 	} else if viewType == "INFINITE" {
 		var tempCursor req.Cursor
-		fmt.Printf("cursorParam: %v", cursorParam)
 		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
 			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
@@ -126,6 +125,25 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		}
 		//TODO kst로 받은걸 utc로 변환
 		//            "next_cursor": "2024-11-20 11:36:59",
+
+		if sort == "created_at" && tempCursor.CreatedAt == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "like_count" && tempCursor.LikeCount == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "comments_count" && tempCursor.CommentsCount == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "id" && tempCursor.ID == "" {
+			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		}
+
 		cursor = &tempCursor
 
 	} else if viewType == "PAGINATION" && cursorParam != "" {

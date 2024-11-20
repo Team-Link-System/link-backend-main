@@ -3,6 +3,7 @@ package persistence
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -165,17 +166,41 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 					if err != nil {
 						return nil, nil, fmt.Errorf("created_at 시간 파싱 실패: %v", err)
 					}
-					query = query.Where("created_at < ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
+					if order, ok := queryOptions["order"].(string); ok {
+						if strings.ToUpper(order) == "ASC" {
+							query = query.Where("created_at < ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
+						} else {
+							query = query.Where("created_at > ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
+						}
+					}
 				}
 			}
 			if id := cursor["id"]; id != nil {
-				query = query.Where("id < ?", id)
+				if order, ok := queryOptions["order"].(string); ok {
+					if strings.ToUpper(order) == "ASC" {
+						query = query.Where("id > ?", id)
+					} else {
+						query = query.Where("id < ?", id)
+					}
+				}
 			}
 			if likeCount := cursor["like_count"]; likeCount != nil {
-				query = query.Where("like_count < ?", likeCount)
+				if order, ok := queryOptions["order"].(string); ok {
+					if strings.ToUpper(order) == "ASC" {
+						query = query.Where("like_count > ?", likeCount)
+					} else {
+						query = query.Where("like_count < ?", likeCount)
+					}
+				}
 			}
 			if commentCount := cursor["comments_count"]; commentCount != nil {
-				query = query.Where("comments_count < ?", commentCount)
+				if order, ok := queryOptions["order"].(string); ok {
+					if strings.ToUpper(order) == "ASC" {
+						query = query.Where("comments_count > ?", commentCount)
+					} else {
+						query = query.Where("comments_count < ?", commentCount)
+					}
+				}
 			}
 		}
 		// Limit 설정 (무한 스크롤 방식에서도 한번에 가져올 데이터 양 설정 필요)
@@ -205,11 +230,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 		}
 
 		authorMap := map[string]interface{}{
-			"name":     "익명",
-			"nickname": "",
-			"profile": map[string]interface{}{
-				"image": nil,
-			},
+			"name": "익명",
 		}
 
 		if post.User != nil {
@@ -221,9 +242,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			}
 
 			if post.User.UserProfile != nil {
-				authorMap["profile"] = map[string]interface{}{
-					"image": post.User.UserProfile.Image,
-				}
+				authorMap["image"] = post.User.UserProfile.Image
 			}
 		}
 
@@ -244,8 +263,9 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 
 	meta := &entity.PostMeta{
 		TotalCount: int(totalCount),
+		PrevPage:   queryOptions["page"].(int) - 1,
+		NextPage:   queryOptions["page"].(int) + 1,
 		PageSize:   queryOptions["limit"].(int),
-		PageNumber: queryOptions["page"].(int),
 		HasMore:    totalCount > int64(queryOptions["page"].(int)*queryOptions["limit"].(int)),
 	}
 
