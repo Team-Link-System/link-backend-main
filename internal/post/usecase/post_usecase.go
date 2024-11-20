@@ -15,6 +15,8 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+
+	_util "link/pkg/util"
 )
 
 type PostUsecase interface {
@@ -124,25 +126,33 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		"order":         queryParams.Order,
 		"company_id":    queryParams.CompanyId,
 		"department_id": queryParams.DepartmentId,
-		"cursor":        queryParams.Cursor,
+		"cursor":        map[string]interface{}{},
+		"view_type":     queryParams.ViewType,
 	}
 
-	posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		} else if queryParams.Cursor.LikeCount != 0 {
+			queryOptions["cursor"].(map[string]interface{})["like_count"] = queryParams.Cursor.LikeCount
+		} else if queryParams.Cursor.ID != 0 {
+			queryOptions["cursor"].(map[string]interface{})["id"] = queryParams.Cursor.ID
+		} else if queryParams.Cursor.CommentsCount != 0 {
+			queryOptions["cursor"].(map[string]interface{})["comments_count"] = queryParams.Cursor.CommentsCount
+		}
+	}
+
+	meta, posts, err := uc.postRepo.GetPosts(requestUserId, queryOptions)
 	if err != nil {
 		fmt.Printf("게시물 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
+	// NextCursor 계산
 	var nextCursor string
-	if len(posts) > 0 {
-		if queryParams.Cursor == nil {
-			if queryParams.ViewType == "INFINITE" {
-				lastPost := posts[len(posts)-1]
-				nextCursor = lastPost.CreatedAt.Format(time.DateTime)
-			} else {
-				nextCursor = fmt.Sprintf("%d", posts[len(posts)-1].ID)
-			}
-		}
+	if len(posts) > 0 && queryParams.ViewType == "INFINITE" {
+		lastPost := posts[len(posts)-1]
+		nextCursor = _util.ParseKst(lastPost.CreatedAt).Format(time.DateTime)
 	}
 
 	postResponses := make([]*res.GetPostResponse, len(posts))
@@ -150,7 +160,23 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		// 이미지 변환
 		images := make([]string, len(post.Images))
 		for j, image := range post.Images {
-			images[j] = *image
+			if image != nil {
+				images[j] = *image
+			}
+		}
+
+		// Author 데이터 변환
+		authorName := "익명"
+		var authorImage string
+		if !post.IsAnonymous {
+			if name, ok := post.Author["name"].(string); ok {
+				authorName = name
+			}
+			if profile, ok := post.Author["profile"].(map[string]interface{}); ok {
+				if img, ok := profile["image"].(string); ok {
+					authorImage = img
+				}
+			}
 		}
 
 		var companyId uint
@@ -168,20 +194,24 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			CompanyId:     companyId,
 			DepartmentIds: departmentIds,
 			UserId:        post.UserID,
-			AuthorName:    post.Author["name"].(string),
-			AuthorImage:   post.Author["profile"].(map[string]interface{})["image"].(string),
-			CreatedAt:     post.CreatedAt.Format(time.DateTime),
-			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
+			AuthorName:    authorName,
+			AuthorImage:   authorImage,
+			CreatedAt:     _util.ParseKst(post.CreatedAt).Format(time.DateTime),
+			UpdatedAt:     _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 		}
 
-		if post.IsAnonymous {
-			postResponses[i].AuthorName = "익명"
-			postResponses[i].AuthorImage = ""
-		}
+	}
+
+	postMeta := &res.PaginationMeta{
+		NextCursor: nextCursor,
+		HasMore:    &meta.HasMore,
+		TotalCount: meta.TotalCount,
+		PageSize:   meta.PageSize,
+		PageNumber: meta.PageNumber,
 	}
 
 	return &res.GetPostsResponse{
 		Posts: postResponses,
-		Meta:  &res.PaginationMeta{NextCursor: nextCursor, HasMore: len(posts) == queryParams.Limit},
+		Meta:  postMeta,
 	}, nil
 }
