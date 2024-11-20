@@ -23,6 +23,7 @@ import (
 type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
 	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
+	GetPost(requestUserId uint, postId uint) (*res.GetPostResponse, error)
 }
 
 type postUsecase struct {
@@ -39,7 +40,13 @@ func NewPostUsecase(
 	companyRepo _companyRepository.CompanyRepository,
 	departmentRepo _departmentRepository.DepartmentRepository,
 	teamRepo _teamRepository.TeamRepository) PostUsecase {
-	return &postUsecase{postRepo: postRepo, userRepo: userRepo, companyRepo: companyRepo, departmentRepo: departmentRepo, teamRepo: teamRepo}
+	return &postUsecase{
+		postRepo:       postRepo,
+		userRepo:       userRepo,
+		companyRepo:    companyRepo,
+		departmentRepo: departmentRepo,
+		teamRepo:       teamRepo,
+	}
 }
 
 // TODO 게시물 생성,
@@ -68,16 +75,10 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		companyId = *author.UserProfile.CompanyID
 	}
 
-	departmentIds := make([]*uint, 0)
 	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
-		if author.UserProfile.CompanyID == nil || len(author.UserProfile.Departments) == 0 || author.UserProfile == nil {
-			fmt.Printf("사용자의 회사 정보 또는 부서 정보가 없습니다")
-			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보 또는 부서 정보가 없습니다", nil)
-		}
-		companyId = *author.UserProfile.CompanyID
-		for _, department := range author.UserProfile.Departments {
-			departmentId := (*department)["id"].(uint)
-			departmentIds = append(departmentIds, &departmentId)
+		if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
+			fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
+			return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
 		}
 	}
 
@@ -89,7 +90,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		Visibility:    post.Visibility,
 		Content:       post.Content,
 		Images:        post.Images,
-		DepartmentIds: departmentIds,
+		DepartmentIds: post.DepartmentIds,
 		CompanyID:     &companyId,
 		CreatedAt:     time.Now(),
 	}
@@ -103,20 +104,12 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 	return nil
 }
 
+// TODO 게시물 리스트 조회
 func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error) {
-	user, err := uc.userRepo.GetUserByID(requestUserId)
+	_, err := uc.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
-	}
-
-	departmentId := uint(0)
-	if len(user.UserProfile.Departments) > 0 {
-		for _, department := range user.UserProfile.Departments {
-			if id, ok := (*department)["id"].(uint); ok {
-				departmentId = id
-			}
-		}
 	}
 
 	queryOptions := map[string]interface{}{
@@ -184,7 +177,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 				authorName = name
 			}
 			if image, ok := post.Author["image"]; ok && image != nil {
-				if imageStr, ok := image.(*string); ok {
+				if imageStr, ok := image.(*string); ok && imageStr != nil { // nil 체크 추가
 					authorImage = *imageStr
 				}
 			}
@@ -203,7 +196,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			IsAnonymous:  post.IsAnonymous,
 			Visibility:   post.Visibility,
 			CompanyId:    companyId,
-			DepartmentId: departmentId,
+			DepartmentId: queryParams.DepartmentId,
 			UserId:       post.UserID,
 			AuthorName:   authorName,
 			AuthorImage:  authorImage,
@@ -229,4 +222,49 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		Posts: postResponses,
 		Meta:  postMeta,
 	}, nil
+}
+
+// TODO 게시물 상세보기
+func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostResponse, error) {
+	post, err := uc.postRepo.GetPost(requestUserId, postId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
+
+	// 이미지 변환
+	images := make([]string, len(post.Images))
+	for j, image := range post.Images {
+		if image != nil {
+			images[j] = *image
+		}
+	}
+
+	var companyId uint
+	if post.CompanyID != nil {
+		companyId = *post.CompanyID
+	}
+
+	var departmentId uint
+	if len(post.DepartmentIds) > 0 {
+		departmentId = *post.DepartmentIds[0]
+	}
+
+	postResponse := &res.GetPostResponse{
+		PostId:       post.ID,
+		Title:        post.Title,
+		Content:      post.Content,
+		Images:       images,
+		IsAnonymous:  post.IsAnonymous,
+		Visibility:   post.Visibility,
+		CompanyId:    companyId,
+		DepartmentId: departmentId,
+		UserId:       post.UserID,
+		// AuthorName:   authorName,
+		// AuthorImage:  authorImage,
+		CreatedAt: _util.ParseKst(post.CreatedAt).Format(time.DateTime),
+		UpdatedAt: _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
+	}
+
+	return postResponse, nil
 }

@@ -119,8 +119,6 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 			imageUrls = append(imageUrls, fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName))
 		}
 
-		fmt.Println("imageUrls:", imageUrls)
-
 		//TODO next로 넘길때 배열 형태로 넘겨주기
 		c.Set("post_image_urls", imageUrls)
 		c.Next()

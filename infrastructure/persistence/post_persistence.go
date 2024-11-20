@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -63,8 +62,10 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		}
 	}
 
+	fmt.Printf("post.DepartmentIds: %v", post.DepartmentIds)
+
 	// 3. 부서 중간 테이블 저장 (post_department 테이블)
-	if post.Visibility == "DEPARTMENT" {
+	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
 		if len(post.DepartmentIds) == 0 {
 			tx.Rollback()
 			return fmt.Errorf("부서 게시물에 필요한 department IDs가 없습니다")
@@ -73,7 +74,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		// 수동으로 중간 테이블에 데이터 삽입
 		for _, departmentID := range post.DepartmentIds {
 			query := "INSERT INTO post_departments (post_id, department_id) VALUES (?, ?)"
-			if err := tx.Exec(query, post.ID, departmentID).Error; err != nil {
+			if err := tx.Exec(query, post.ID, *departmentID).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("부서 게시물 중간테이블 삽입 실패: %w", err)
 			}
@@ -152,9 +153,6 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			}
 		}
 	case "INFINITE":
-		// 커서 기반 페이지네이션 처리
-		fmt.Printf("cursor:%v", queryOptions["cursor"])
-		fmt.Printf("cursor type:%v", reflect.TypeOf(queryOptions["cursor"]))
 
 		if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 			if createdAt := cursor["created_at"]; createdAt != nil {
@@ -224,6 +222,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			images = append(images, &image.ImageURL)
 		}
 
+		//TODO 작성자의 department가 아닌 해당 게시물의 department
 		departments := make([]interface{}, 0)
 		for _, dept := range post.Departments {
 			departments = append(departments, dept)
@@ -270,4 +269,9 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 	}
 
 	return meta, result, nil
+}
+
+func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post, error) {
+
+	return nil, nil
 }
