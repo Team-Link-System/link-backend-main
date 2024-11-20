@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -26,12 +25,6 @@ func NewPostPersistence(db *gorm.DB) repository.PostRepository {
 func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 	tx := r.db.Begin()
 
-	// companyId가 0이면 nil로 처리
-	var companyId *uint
-	if post.CompanyID != nil && *post.CompanyID != 0 {
-		companyId = post.CompanyID
-	}
-
 	// 1. 게시물 생성
 	dbPost := &model.Post{
 		UserID:      post.UserID,
@@ -39,7 +32,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		Content:     post.Content,
 		Visibility:  post.Visibility,
 		IsAnonymous: post.IsAnonymous,
-		CompanyID:   companyId,
+		CompanyID:   post.CompanyID,
 	}
 	if err := tx.Create(dbPost).Error; err != nil {
 		tx.Rollback()
@@ -63,8 +56,10 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		}
 	}
 
+	fmt.Printf("post.DepartmentIds: %v", post.DepartmentIds)
+
 	// 3. 부서 중간 테이블 저장 (post_department 테이블)
-	if post.Visibility == "DEPARTMENT" {
+	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
 		if len(post.DepartmentIds) == 0 {
 			tx.Rollback()
 			return fmt.Errorf("부서 게시물에 필요한 department IDs가 없습니다")
@@ -73,7 +68,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		// 수동으로 중간 테이블에 데이터 삽입
 		for _, departmentID := range post.DepartmentIds {
 			query := "INSERT INTO post_departments (post_id, department_id) VALUES (?, ?)"
-			if err := tx.Exec(query, post.ID, departmentID).Error; err != nil {
+			if err := tx.Exec(query, post.ID, *departmentID).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("부서 게시물 중간테이블 삽입 실패: %w", err)
 			}
@@ -152,9 +147,6 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			}
 		}
 	case "INFINITE":
-		// 커서 기반 페이지네이션 처리
-		fmt.Printf("cursor:%v", queryOptions["cursor"])
-		fmt.Printf("cursor type:%v", reflect.TypeOf(queryOptions["cursor"]))
 
 		if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 			if createdAt := cursor["created_at"]; createdAt != nil {
@@ -224,6 +216,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			images = append(images, &image.ImageURL)
 		}
 
+		//TODO 작성자의 department가 아닌 해당 게시물의 department
 		departments := make([]interface{}, 0)
 		for _, dept := range post.Departments {
 			departments = append(departments, dept)
@@ -270,4 +263,54 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 	}
 
 	return meta, result, nil
+}
+
+func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post, error) {
+
+	post := &model.Post{}
+	if err := r.db.Preload("PostImages", func(db *gorm.DB) *gorm.DB {
+		return db.Select("post_id, image_url")
+	}).Preload("Departments", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, name")
+	}).Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
+		return db.Select("user_id,image")
+	}).Preload("User", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, name, email, nickname")
+	}).First(post, postId).Error; err != nil {
+		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
+	}
+
+	images := make([]*string, 0)
+	for _, image := range post.PostImages {
+		images = append(images, &image.ImageURL)
+	}
+
+	departments := make([]interface{}, 0)
+	for _, dept := range post.Departments {
+		departments = append(departments, dept)
+	}
+
+	authorMap := map[string]interface{}{
+		"name": "익명",
+	}
+
+	if post.User != nil {
+		authorMap["id"] = post.User.ID
+		authorMap["name"] = post.User.Name
+		authorMap["email"] = post.User.Email
+	}
+
+	return &entity.Post{
+		ID:          post.ID,
+		UserID:      post.UserID,
+		Title:       post.Title,
+		Content:     post.Content,
+		Images:      images,
+		IsAnonymous: post.IsAnonymous,
+		Visibility:  post.Visibility,
+		CompanyID:   post.CompanyID,
+		CreatedAt:   post.CreatedAt,
+		Departments: &departments,
+		Author:      authorMap,
+	}, nil
 }

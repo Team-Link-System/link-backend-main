@@ -33,6 +33,16 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	}
 
 	var request req.CreatePostRequest
+	if request.Title == "" {
+		fmt.Printf("제목이 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
+		return
+	} else if request.Content == "" {
+		fmt.Printf("내용이 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
+		return
+	}
+
 	if err := c.ShouldBind(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
@@ -113,9 +123,9 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	cursorParam := c.Query("cursor")
 	var cursor *req.Cursor
 
-	// 커서 처리
 	if viewType == "INFINITE" && cursorParam == "" {
 		cursor = nil //첫요청
+		page = 1
 	} else if viewType == "INFINITE" {
 		var tempCursor req.Cursor
 		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
@@ -201,4 +211,35 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회 완료", posts))
+}
+
+// TODO 게시물 상세보기 - 전체 사용자
+func (h *PostHandler) GetPost(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	postId, err := strconv.Atoi(c.Param("postid"))
+	if err != nil {
+		fmt.Printf("게시물 아이디 처리 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
+		return
+	}
+
+	post, err := h.postUsecase.GetPost(userId.(uint), uint(postId))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("게시물 조회 실패: %v", err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("게시물 조회 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회 완료", post))
 }
