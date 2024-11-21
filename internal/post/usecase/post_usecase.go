@@ -24,6 +24,7 @@ type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
 	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
 	GetPost(requestUserId uint, postId uint) (*res.GetPostResponse, error)
+	DeletePost(requestUserId uint, postId uint) error
 }
 
 type postUsecase struct {
@@ -289,4 +290,32 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 	}
 
 	return postResponse, nil
+}
+
+// TODO 게시물 삭제
+func (uc *postUsecase) DeletePost(requestUserId uint, postId uint) error {
+	user, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	post, err := uc.postRepo.GetPost(requestUserId, postId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
+
+	if post.UserID != *user.ID {
+		fmt.Printf("게시물 삭제 권한이 없습니다")
+		return common.NewError(http.StatusBadRequest, "게시물 삭제 권한이 없습니다", nil)
+	}
+
+	err = uc.postRepo.DeletePost(requestUserId, postId)
+	if err != nil {
+		fmt.Printf("게시물 삭제 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 삭제 실패", err)
+	}
+
+	return nil
 }

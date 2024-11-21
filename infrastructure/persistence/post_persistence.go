@@ -314,3 +314,11 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		Author:      authorMap,
 	}, nil
 }
+
+func (r *postPersistence) DeletePost(requestUserId uint, postId uint) error {
+	if err := r.db.Delete(&model.Post{}, postId).Error; err != nil {
+		return fmt.Errorf("게시물 삭제 실패: %w", err)
+	}
+
+	return nil
+}
