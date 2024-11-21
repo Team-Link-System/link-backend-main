@@ -91,7 +91,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	//요청 가공 엔티티
 	postEntity := &entity.Post{
-		UserID:        *author.ID,
+		UserID:        requestUserId,
 		Title:         post.Title,
 		IsAnonymous:   post.IsAnonymous,
 		Visibility:    post.Visibility,
