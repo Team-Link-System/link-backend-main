@@ -1,5 +1,12 @@
 package req
 
+type Cursor struct {
+	LikeCount     string `json:"like_count,omitempty"`     // like_count 기반 커서 일 때,
+	CreatedAt     string `json:"created_at,omitempty"`     // created_at 기반 커서 일 때,
+	CommentsCount string `json:"comments_count,omitempty"` // comments_count 기반 커서 일 때,
+	ID            string `json:"id,omitempty"`             // id 기반 커서 일 때,
+}
+
 type CreatePostRequest struct {
 	Title         string    `form:"title" json:"title"`
 	Content       string    `form:"content" json:"content"`
@@ -21,9 +28,11 @@ type GetPostQueryParams struct {
 	Cursor       *Cursor `query:"cursor,omitempty"`                    // 커서, 기본값: ""
 }
 
-type Cursor struct {
-	LikeCount     string `json:"like_count,omitempty"`     // like_count 기반 커서 일 때,
-	CreatedAt     string `json:"created_at,omitempty"`     // created_at 기반 커서 일 때,
-	CommentsCount string `json:"comments_count,omitempty"` // comments_count 기반 커서 일 때,
-	ID            string `json:"id,omitempty"`             // id 기반 커서 일 때,
+type UpdatePostRequest struct {
+	Title         string    `form:"title" json:"title"`
+	Content       string    `form:"content" json:"content"`
+	Images        []*string `form:"images,omitempty" json:"images,omitempty"` //옵션
+	IsAnonymous   bool      `form:"is_anonymous" json:"is_anonymous"`
+	Visibility    string    `form:"visibility" json:"visibility"`
+	DepartmentIds []*uint   `form:"department_ids,omitempty" json:"department_ids,omitempty"`
 }

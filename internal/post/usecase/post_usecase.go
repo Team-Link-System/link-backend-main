@@ -24,6 +24,7 @@ type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
 	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
 	GetPost(requestUserId uint, postId uint) (*res.GetPostResponse, error)
+	UpdatePost(requestUserId uint, postId uint, post *req.UpdatePostRequest) error
 	DeletePost(requestUserId uint, postId uint) error
 }
 
@@ -288,6 +289,55 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 	}
 
 	return postResponse, nil
+}
+
+// TODO 게시물 수정
+func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.UpdatePostRequest) error {
+	user, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	existingPost, err := uc.postRepo.GetPost(requestUserId, postId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
+
+	if existingPost.UserID != *user.ID {
+		fmt.Printf("게시물 수정 권한이 없습니다")
+		return common.NewError(http.StatusBadRequest, "게시물 수정 권한이 없습니다", nil)
+	}
+
+	//TODO
+
+	var companyId *uint
+	if post.Visibility != existingPost.Visibility {
+		if strings.ToUpper(post.Visibility) == "PUBLIC" {
+			companyId = nil
+		} else if strings.ToUpper(post.Visibility) == "COMPANY" {
+			if user.UserProfile.CompanyID == nil {
+				fmt.Printf("사용자의 회사 정보가 없습니다")
+				return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+			}
+			companyId = user.UserProfile.CompanyID
+		} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+			if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
+				fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
+				return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
+			}
+			companyId = user.UserProfile.CompanyID
+		}
+	}
+
+	err = uc.postRepo.UpdatePost(requestUserId, postId, post)
+	if err != nil {
+		fmt.Printf("게시물 수정 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 수정 실패", err)
+	}
+
+	return nil
 }
 
 // TODO 게시물 삭제

@@ -186,6 +186,7 @@ func startServer() {
 				post.GET("/list", postHandler.GetPosts)
 				post.GET("/:postid", postHandler.GetPost)
 				post.DELETE("/:postid", postHandler.DeletePost)
+				post.PUT("/:postid", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.UpdatePost)
 			}
 
 			//TODO admin 요청 - 관리자 페이지
