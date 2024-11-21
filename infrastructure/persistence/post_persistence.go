@@ -256,6 +256,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 
 	meta := &entity.PostMeta{
 		TotalCount: int(totalCount),
+		TotalPages: int(totalCount) / queryOptions["limit"].(int),
 		PrevPage:   queryOptions["page"].(int) - 1,
 		NextPage:   queryOptions["page"].(int) + 1,
 		PageSize:   queryOptions["limit"].(int),

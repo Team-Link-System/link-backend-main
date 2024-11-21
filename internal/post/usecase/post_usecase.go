@@ -226,6 +226,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 
 	if queryParams.ViewType == "PAGINATION" {
 		postMeta.PrevPage = meta.PrevPage
+		postMeta.TotalPages = meta.TotalPages
 	}
 
 	return &res.GetPostsResponse{
