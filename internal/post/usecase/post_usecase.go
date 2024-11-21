@@ -59,7 +59,6 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
-	fmt.Printf("author: %v", *author.UserProfile.CompanyID)
 	//TODO 익명 게시물은 punlic이나 company만 가능
 	if post.IsAnonymous {
 		if strings.ToUpper(post.Visibility) != "PUBLIC" && strings.ToUpper(post.Visibility) != "COMPANY" {
