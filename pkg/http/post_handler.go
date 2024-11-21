@@ -163,26 +163,29 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	var companyId, departmentId uint
+	companyIdValue, _ := strconv.ParseUint(c.DefaultQuery("company_id", "0"), 10, 32)
+	companyId = uint(companyIdValue)
+	departmentIdValue, _ := strconv.ParseUint(c.DefaultQuery("department_id", "0"), 10, 32)
+	departmentId = uint(departmentIdValue)
 	if category == "COMPANY" {
-		companyIdValue, _ := strconv.ParseUint(c.DefaultQuery("company_id", "0"), 10, 32)
-		companyId = uint(companyIdValue)
 		if companyId == 0 {
 			fmt.Printf("회사 게시물 조회 시 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 게시물 조회 시 company_id가 필요합니다.", nil))
 			return
 		}
 	} else if category == "DEPARTMENT" {
-		departmentIdValue, _ := strconv.ParseUint(c.DefaultQuery("department_id", "0"), 10, 32)
-		departmentId = uint(departmentIdValue)
-		if departmentId == 0 {
-			fmt.Printf("부서 게시물 조회 시 department_id가 필요합니다.")
-			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id가 필요합니다.", nil))
+
+		if departmentId == 0 || companyId == 0 {
+			fmt.Printf("부서 게시물 조회 시 department_id와 company_id가 필요합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id와 company_id가 필요합니다.", nil))
 			return
 		}
-	} else if category == "PUBLIC" && (companyId != 0 || departmentId != 0) {
-		fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
-		return
+	} else if category == "PUBLIC" {
+		if companyId != 0 || departmentId != 0 {
+			fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
+			return
+		}
 	}
 
 	queryParams := req.GetPostQueryParams{

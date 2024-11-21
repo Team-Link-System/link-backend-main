@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -256,7 +257,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 
 	meta := &entity.PostMeta{
 		TotalCount: int(totalCount),
-		TotalPages: int(totalCount) / queryOptions["limit"].(int),
+		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
 		PrevPage:   queryOptions["page"].(int) - 1,
 		NextPage:   queryOptions["page"].(int) + 1,
 		PageSize:   queryOptions["limit"].(int),
