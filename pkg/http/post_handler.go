@@ -270,16 +270,6 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	if request.Title == nil {
-		fmt.Printf("제목이 없습니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
-		return
-	} else if request.Content == nil {
-		fmt.Printf("내용이 없습니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
-		return
-	}
-
 	postImageUrls, exists := c.Get("post_image_urls")
 	if exists {
 		imageUrls, ok := postImageUrls.([]string)
