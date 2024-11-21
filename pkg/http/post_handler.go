@@ -33,6 +33,12 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	}
 
 	var request req.CreatePostRequest
+	if err := c.ShouldBind(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
 	if request.Title == "" {
 		fmt.Printf("제목이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
@@ -40,12 +46,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	} else if request.Content == "" {
 		fmt.Printf("내용이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
-		return
-	}
-
-	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 

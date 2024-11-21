@@ -68,18 +68,17 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		}
 	}
 
-	var companyId uint
-	if strings.ToUpper(post.Visibility) == "COMPANY" {
+	var companyId *uint
+
+	if strings.ToUpper(post.Visibility) == "PUBLIC" {
+		companyId = nil
+	} else if strings.ToUpper(post.Visibility) == "COMPANY" {
 		if author.UserProfile.CompanyID == nil {
 			fmt.Printf("사용자의 회사 정보가 없습니다")
 			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 		}
-		companyId = *author.UserProfile.CompanyID
-	}
-
-	fmt.Printf("companyId-usecase: %v", companyId)
-
-	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+		companyId = author.UserProfile.CompanyID
+	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
 		if author.UserProfile.CompanyID == nil {
 			fmt.Printf("사용자의 회사 정보가 없습니다")
 			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
@@ -88,8 +87,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 			fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
 			return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
 		}
-
-		companyId = *author.UserProfile.CompanyID
+		companyId = author.UserProfile.CompanyID
 	}
 
 	//요청 가공 엔티티
@@ -101,7 +99,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 		Content:       post.Content,
 		Images:        post.Images,
 		DepartmentIds: post.DepartmentIds,
-		CompanyID:     &companyId,
+		CompanyID:     companyId,
 		CreatedAt:     time.Now(),
 	}
 
