@@ -163,26 +163,29 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	var companyId, departmentId uint
+	companyIdValue, _ := strconv.ParseUint(c.DefaultQuery("company_id", "0"), 10, 32)
+	companyId = uint(companyIdValue)
+	departmentIdValue, _ := strconv.ParseUint(c.DefaultQuery("department_id", "0"), 10, 32)
+	departmentId = uint(departmentIdValue)
 	if category == "COMPANY" {
-		companyIdValue, _ := strconv.ParseUint(c.DefaultQuery("company_id", "0"), 10, 32)
-		companyId = uint(companyIdValue)
 		if companyId == 0 {
 			fmt.Printf("회사 게시물 조회 시 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 게시물 조회 시 company_id가 필요합니다.", nil))
 			return
 		}
 	} else if category == "DEPARTMENT" {
-		departmentIdValue, _ := strconv.ParseUint(c.DefaultQuery("department_id", "0"), 10, 32)
-		departmentId = uint(departmentIdValue)
-		if departmentId == 0 {
-			fmt.Printf("부서 게시물 조회 시 department_id가 필요합니다.")
-			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id가 필요합니다.", nil))
+
+		if departmentId == 0 || companyId == 0 {
+			fmt.Printf("부서 게시물 조회 시 department_id와 company_id가 필요합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id와 company_id가 필요합니다.", nil))
 			return
 		}
-	} else if category == "PUBLIC" && (companyId != 0 || departmentId != 0) {
-		fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
-		return
+	} else if category == "PUBLIC" {
+		if companyId != 0 || departmentId != 0 {
+			fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
+			return
+		}
 	}
 
 	queryParams := req.GetPostQueryParams{
@@ -242,4 +245,34 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회 완료", post))
+}
+
+// TODO 게시물 삭제
+func (h *PostHandler) DeletePost(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	postId, err := strconv.Atoi(c.Param("postid"))
+	if err != nil {
+		fmt.Printf("게시물 아이디 처리 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
+		return
+	}
+
+	err = h.postUsecase.DeletePost(userId.(uint), uint(postId))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("게시물 삭제 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 삭제 완료", nil))
 }

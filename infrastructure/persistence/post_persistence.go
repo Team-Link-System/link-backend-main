@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -256,6 +257,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 
 	meta := &entity.PostMeta{
 		TotalCount: int(totalCount),
+		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
 		PrevPage:   queryOptions["page"].(int) - 1,
 		NextPage:   queryOptions["page"].(int) + 1,
 		PageSize:   queryOptions["limit"].(int),
@@ -313,4 +315,12 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
+}
+
+func (r *postPersistence) DeletePost(requestUserId uint, postId uint) error {
+	if err := r.db.Delete(&model.Post{}, postId).Error; err != nil {
+		return fmt.Errorf("게시물 삭제 실패: %w", err)
+	}
+
+	return nil
 }
