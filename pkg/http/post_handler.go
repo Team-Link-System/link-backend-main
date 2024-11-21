@@ -270,11 +270,11 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	if request.Title == "" {
+	if request.Title == nil {
 		fmt.Printf("제목이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
 		return
-	} else if request.Content == "" {
+	} else if request.Content == nil {
 		fmt.Printf("내용이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
 		return
@@ -289,11 +289,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 			return
 		}
 		if len(imageUrls) > 0 {
-			ptrUrls := make([]*string, len(imageUrls))
-			for i := range imageUrls {
-				ptrUrls[i] = &imageUrls[i]
-			}
-			request.Images = ptrUrls
+			request.Images = imageUrls
 		}
 	}
 

@@ -69,7 +69,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		// 수동으로 중간 테이블에 데이터 삽입
 		for _, departmentID := range post.DepartmentIds {
 			query := "INSERT INTO post_departments (post_id, department_id) VALUES (?, ?)"
-			if err := tx.Exec(query, post.ID, *departmentID).Error; err != nil {
+			if err := tx.Exec(query, post.ID, departmentID).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("부서 게시물 중간테이블 삽입 실패: %w", err)
 			}
@@ -315,6 +315,87 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
+}
+
+func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *entity.Post) error {
+	tx := r.db.Begin() // Start transaction
+
+	// Check if transaction started successfully
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r) // Re-panic to ensure the panic is not suppressed
+		}
+	}()
+
+	// Update visibility logic
+	if post.Visibility != "" {
+		switch strings.ToUpper(post.Visibility) {
+		case "PUBLIC":
+			// Remove associated departments and set `company_id` to NULL
+			if err := tx.Exec("DELETE FROM post_departments WHERE post_id = ?", postId).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+			if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("company_id", nil).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		case "COMPANY":
+			// Update `company_id`
+			if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("company_id", post.CompanyID).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		case "DEPARTMENT":
+			// Remove old departments and insert new ones
+			if err := tx.Exec("DELETE FROM post_departments WHERE post_id = ?", postId).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+			for _, departmentId := range post.DepartmentIds {
+				if err := tx.Exec("INSERT INTO post_departments (post_id, department_id) VALUES (?, ?)", postId, departmentId).Error; err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+		}
+
+		// Update `visibility`
+		if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("visibility", post.Visibility).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	updateFields := map[string]interface{}{}
+	if post.Title != "" {
+		updateFields["title"] = post.Title
+	}
+	if post.Content != "" {
+		updateFields["content"] = post.Content
+	}
+	if len(post.Images) > 0 {
+		updateFields["images"] = post.Images
+	}
+	updateFields["is_anonymous"] = post.IsAnonymous
+	if len(updateFields) > 0 {
+		if err := tx.Model(&model.Post{}).Where("id = ?", postId).Updates(updateFields).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *postPersistence) DeletePost(requestUserId uint, postId uint) error {

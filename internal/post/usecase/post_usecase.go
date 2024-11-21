@@ -310,19 +310,17 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 		return common.NewError(http.StatusBadRequest, "게시물 수정 권한이 없습니다", nil)
 	}
 
-	//TODO
-
 	var companyId *uint
-	if post.Visibility != existingPost.Visibility {
-		if strings.ToUpper(post.Visibility) == "PUBLIC" {
+	if *post.Visibility != existingPost.Visibility {
+		if strings.ToUpper(*post.Visibility) == "PUBLIC" {
 			companyId = nil
-		} else if strings.ToUpper(post.Visibility) == "COMPANY" {
+		} else if strings.ToUpper(*post.Visibility) == "COMPANY" {
 			if user.UserProfile.CompanyID == nil {
 				fmt.Printf("사용자의 회사 정보가 없습니다")
 				return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 			}
 			companyId = user.UserProfile.CompanyID
-		} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+		} else if strings.ToUpper(*post.Visibility) == "DEPARTMENT" {
 			if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
 				fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
 				return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
@@ -331,7 +329,35 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 		}
 	}
 
-	err = uc.postRepo.UpdatePost(requestUserId, postId, post)
+	//TODO anonymous는 public company만 가능
+	if *post.IsAnonymous {
+		if strings.ToUpper(existingPost.Visibility) != "PUBLIC" && strings.ToUpper(existingPost.Visibility) != "COMPANY" {
+			fmt.Printf("익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다")
+			return common.NewError(http.StatusBadRequest, "익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다", nil)
+		}
+	}
+
+	images := make([]*string, len(post.Images))
+	for i, image := range post.Images {
+		images[i] = &image
+	}
+
+	departmentIds := make([]*uint, len(post.DepartmentIds))
+	for i, departmentId := range post.DepartmentIds {
+		departmentIds[i] = &departmentId
+	}
+
+	postEntity := &entity.Post{
+		IsAnonymous:   *post.IsAnonymous,
+		Visibility:    *post.Visibility,
+		Title:         *post.Title,
+		Content:       *post.Content,
+		Images:        images,
+		CompanyID:     companyId,
+		DepartmentIds: departmentIds,
+	}
+
+	err = uc.postRepo.UpdatePost(requestUserId, postId, postEntity)
 	if err != nil {
 		fmt.Printf("게시물 수정 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "게시물 수정 실패", err)
