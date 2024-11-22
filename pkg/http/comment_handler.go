@@ -21,7 +21,6 @@ func NewCommentHandler(
 }
 
 func (h *CommentHandler) CreateComment(c *gin.Context) {
-
 	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 사용자입니다.")
@@ -47,7 +46,7 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	if err := h.commentUsecase.CreateComment(userId, request); err != nil {
+	if err := h.commentUsecase.CreateComment(userId.(uint), request); err != nil {
 		fmt.Printf("댓글 생성 실패: %v", err)
 		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "댓글 생성 실패", err))
 		return
