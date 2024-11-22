@@ -330,31 +330,55 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 	}
 
 	//TODO anonymous는 public company만 가능
-	if *post.IsAnonymous {
-		if strings.ToUpper(existingPost.Visibility) != "PUBLIC" && strings.ToUpper(existingPost.Visibility) != "COMPANY" {
-			fmt.Printf("익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다")
-			return common.NewError(http.StatusBadRequest, "익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다", nil)
+	// 익명 여부 처리
+	isAnonymous := existingPost.IsAnonymous // 기본값은 기존 값
+	if post.IsAnonymous != nil {
+		if *post.IsAnonymous {
+			if strings.ToUpper(existingPost.Visibility) != "PUBLIC" && strings.ToUpper(existingPost.Visibility) != "COMPANY" {
+				fmt.Printf("익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다")
+				return common.NewError(http.StatusBadRequest, "익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다", nil)
+			}
+		}
+		isAnonymous = *post.IsAnonymous
+	}
+
+	// 이미지 처리
+	images := existingPost.Images // 기본값은 기존 값
+	if len(post.Images) > 0 {
+		images = make([]*string, len(post.Images))
+		for i, image := range post.Images {
+			images[i] = &image
 		}
 	}
 
-	images := make([]*string, len(post.Images))
-	for i, image := range post.Images {
-		images[i] = &image
+	// 부서 IDs 처리
+	departmentIds := existingPost.DepartmentIds // 기본값은 기존 값
+	if len(post.DepartmentIds) > 0 {
+		departmentIds = make([]*uint, len(post.DepartmentIds))
+		for i, departmentId := range post.DepartmentIds {
+			departmentIds[i] = &departmentId
+		}
 	}
 
-	departmentIds := make([]*uint, len(post.DepartmentIds))
-	for i, departmentId := range post.DepartmentIds {
-		departmentIds[i] = &departmentId
-	}
-
+	// Post Entity 생성
 	postEntity := &entity.Post{
-		IsAnonymous:   *post.IsAnonymous,
-		Visibility:    *post.Visibility,
-		Title:         *post.Title,
-		Content:       *post.Content,
+		IsAnonymous:   isAnonymous,
+		Visibility:    existingPost.Visibility,
+		Title:         existingPost.Title,
+		Content:       existingPost.Content,
 		Images:        images,
 		CompanyID:     companyId,
 		DepartmentIds: departmentIds,
+	}
+
+	if post.Visibility != nil {
+		postEntity.Visibility = *post.Visibility
+	}
+	if post.Title != nil {
+		postEntity.Title = *post.Title
+	}
+	if post.Content != nil {
+		postEntity.Content = *post.Content
 	}
 
 	err = uc.postRepo.UpdatePost(requestUserId, postId, postEntity)

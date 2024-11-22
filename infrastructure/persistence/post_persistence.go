@@ -57,8 +57,6 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		}
 	}
 
-	fmt.Printf("post.DepartmentIds: %v", post.DepartmentIds)
-
 	// 3. 부서 중간 테이블 저장 (post_department 테이블)
 	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
 		if len(post.DepartmentIds) == 0 {
@@ -372,6 +370,24 @@ func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *enti
 		}
 	}
 
+	if len(post.Images) > 0 {
+		//TODO 이미지 post_images 테이블에서 post_id 일치하는 데이터 삭제후 다시 저장
+		if err := tx.Exec("DELETE FROM post_images WHERE post_id = ?", postId).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		for _, imageURL := range post.Images {
+			postImage := model.PostImage{
+				PostID:   postId,
+				ImageURL: *imageURL,
+			}
+			if err := tx.Create(&postImage).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
 	updateFields := map[string]interface{}{}
 	if post.Title != "" {
 		updateFields["title"] = post.Title
@@ -379,9 +395,9 @@ func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *enti
 	if post.Content != "" {
 		updateFields["content"] = post.Content
 	}
-	if len(post.Images) > 0 {
-		updateFields["images"] = post.Images
-	}
+	// if len(post.Images) > 0 {
+	// 	updateFields["images"] = post.Images
+	// }
 	updateFields["is_anonymous"] = post.IsAnonymous
 	if len(updateFields) > 0 {
 		if err := tx.Model(&model.Post{}).Where("id = ?", postId).Updates(updateFields).Error; err != nil {
