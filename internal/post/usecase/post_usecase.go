@@ -311,7 +311,7 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 	}
 
 	var companyId *uint
-	if *post.Visibility != existingPost.Visibility {
+	if post.Visibility != nil && *post.Visibility != existingPost.Visibility {
 		if strings.ToUpper(*post.Visibility) == "PUBLIC" {
 			companyId = nil
 		} else if strings.ToUpper(*post.Visibility) == "COMPANY" {
