@@ -11,7 +11,6 @@ import (
 	_departmentRepository "link/internal/department/repository"
 	"link/internal/post/entity"
 	_postRepository "link/internal/post/repository"
-	_teamRepository "link/internal/team/repository"
 	_userRepository "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -33,21 +32,18 @@ type postUsecase struct {
 	userRepo       _userRepository.UserRepository
 	companyRepo    _companyRepository.CompanyRepository
 	departmentRepo _departmentRepository.DepartmentRepository
-	teamRepo       _teamRepository.TeamRepository
 }
 
 func NewPostUsecase(
 	postRepo _postRepository.PostRepository,
 	userRepo _userRepository.UserRepository,
 	companyRepo _companyRepository.CompanyRepository,
-	departmentRepo _departmentRepository.DepartmentRepository,
-	teamRepo _teamRepository.TeamRepository) PostUsecase {
+	departmentRepo _departmentRepository.DepartmentRepository) PostUsecase {
 	return &postUsecase{
 		postRepo:       postRepo,
 		userRepo:       userRepo,
 		companyRepo:    companyRepo,
 		departmentRepo: departmentRepo,
-		teamRepo:       teamRepo,
 	}
 }
 
