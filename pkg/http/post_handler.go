@@ -247,6 +247,57 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회 완료", post))
 }
 
+// TODO 게시물 수정
+func (h *PostHandler) UpdatePost(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	postId, err := strconv.Atoi(c.Param("postid"))
+	if err != nil {
+		fmt.Printf("게시물 아이디 처리 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
+		return
+	}
+
+	var request req.UpdatePostRequest
+	if err := c.ShouldBind(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	postImageUrls, exists := c.Get("post_image_urls")
+	if exists {
+		imageUrls, ok := postImageUrls.([]string)
+		if !ok {
+			fmt.Printf("이미지 처리 실패")
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이미지 처리 실패", nil))
+			return
+		}
+		if len(imageUrls) > 0 {
+			request.Images = imageUrls
+		}
+	}
+
+	err = h.postUsecase.UpdatePost(userId.(uint), uint(postId), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("게시물 수정 실패: %v", err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("게시물 수정 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 수정 완료", nil))
+}
+
 // TODO 게시물 삭제
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	userId, exists := c.Get("userId")

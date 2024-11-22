@@ -24,6 +24,7 @@ type PostUsecase interface {
 	CreatePost(requestUserId uint, post *req.CreatePostRequest) error
 	GetPosts(requestUserId uint, queryParams req.GetPostQueryParams) (*res.GetPostsResponse, error)
 	GetPost(requestUserId uint, postId uint) (*res.GetPostResponse, error)
+	UpdatePost(requestUserId uint, postId uint, post *req.UpdatePostRequest) error
 	DeletePost(requestUserId uint, postId uint) error
 }
 
@@ -288,6 +289,105 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 	}
 
 	return postResponse, nil
+}
+
+// TODO 게시물 수정
+func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.UpdatePostRequest) error {
+	user, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	existingPost, err := uc.postRepo.GetPost(requestUserId, postId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
+
+	if existingPost.UserID != *user.ID {
+		fmt.Printf("게시물 수정 권한이 없습니다")
+		return common.NewError(http.StatusBadRequest, "게시물 수정 권한이 없습니다", nil)
+	}
+
+	var companyId *uint
+	if post.Visibility != nil && *post.Visibility != existingPost.Visibility {
+		if strings.ToUpper(*post.Visibility) == "PUBLIC" {
+			companyId = nil
+		} else if strings.ToUpper(*post.Visibility) == "COMPANY" {
+			if user.UserProfile.CompanyID == nil {
+				fmt.Printf("사용자의 회사 정보가 없습니다")
+				return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+			}
+			companyId = user.UserProfile.CompanyID
+		} else if strings.ToUpper(*post.Visibility) == "DEPARTMENT" {
+			if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
+				fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
+				return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
+			}
+			companyId = user.UserProfile.CompanyID
+		}
+	}
+
+	//TODO anonymous는 public company만 가능
+	// 익명 여부 처리
+	isAnonymous := existingPost.IsAnonymous // 기본값은 기존 값
+	if post.IsAnonymous != nil {
+		if *post.IsAnonymous {
+			if strings.ToUpper(existingPost.Visibility) != "PUBLIC" && strings.ToUpper(existingPost.Visibility) != "COMPANY" {
+				fmt.Printf("익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다")
+				return common.NewError(http.StatusBadRequest, "익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다", nil)
+			}
+		}
+		isAnonymous = *post.IsAnonymous
+	}
+
+	// 이미지 처리
+	images := existingPost.Images // 기본값은 기존 값
+	if len(post.Images) > 0 {
+		images = make([]*string, len(post.Images))
+		for i, image := range post.Images {
+			images[i] = &image
+		}
+	}
+
+	// 부서 IDs 처리
+	departmentIds := existingPost.DepartmentIds // 기본값은 기존 값
+	if len(post.DepartmentIds) > 0 {
+		departmentIds = make([]*uint, len(post.DepartmentIds))
+		for i, departmentId := range post.DepartmentIds {
+			departmentIds[i] = &departmentId
+		}
+	}
+
+	// Post Entity 생성
+	postEntity := &entity.Post{
+		IsAnonymous:   isAnonymous,
+		Visibility:    existingPost.Visibility,
+		Title:         existingPost.Title,
+		Content:       existingPost.Content,
+		Images:        images,
+		CompanyID:     companyId,
+		DepartmentIds: departmentIds,
+	}
+
+	if post.Visibility != nil {
+		postEntity.Visibility = *post.Visibility
+	}
+	if post.Title != nil {
+		postEntity.Title = *post.Title
+	}
+	if post.Content != nil {
+		postEntity.Content = *post.Content
+	}
+
+	err = uc.postRepo.UpdatePost(requestUserId, postId, postEntity)
+	if err != nil {
+		fmt.Printf("게시물 수정 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 수정 실패", err)
+	}
+
+	return nil
 }
 
 // TODO 게시물 삭제
