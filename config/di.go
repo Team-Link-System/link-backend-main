@@ -15,6 +15,7 @@ import (
 	adminUsecase "link/internal/admin/usecase"
 	authUsecase "link/internal/auth/usecase"
 	chatUsecase "link/internal/chat/usecase"
+	commentUsecase "link/internal/comment/usecase"
 	companyUsecase "link/internal/company/usecase"
 	departmentUsecase "link/internal/department/usecase"
 	notificationUsecase "link/internal/notification/usecase"
@@ -70,7 +71,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(persistence.NewNotificationPersistence)
 	container.Provide(persistence.NewPostPersistence)
 	container.Provide(persistence.NewCompanyPersistence)
-
+	container.Provide(persistence.NewCommentPersistence)
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)
 	container.Provide(userUsecase.NewUserUsecase)
@@ -80,6 +81,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(postUsecase.NewPostUsecase)
 	container.Provide(companyUsecase.NewCompanyUsecase)
 	container.Provide(adminUsecase.NewAdminUsecase)
+	container.Provide(commentUsecase.NewCommentUsecase)
 
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
@@ -89,7 +91,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(http.NewChatHandler)
 	container.Provide(http.NewNotificationHandler)
 	container.Provide(http.NewPostHandler)
-
+	container.Provide(http.NewCommentHandler)
 	container.Provide(http.NewAdminHandler)
 
 	container.Provide(ws.NewWebSocketHub)
