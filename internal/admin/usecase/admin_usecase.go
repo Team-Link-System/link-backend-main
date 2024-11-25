@@ -10,14 +10,12 @@ import (
 	_departmentEntity "link/internal/department/entity"
 	_departmentRepo "link/internal/department/repository"
 
-	_teamRepo "link/internal/team/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	"link/pkg/util"
-	utils "link/pkg/util"
 )
 
 type AdminUsecase interface {
@@ -49,18 +47,15 @@ type adminUsecase struct {
 	companyRepository    _companyRepo.CompanyRepository
 	userRepository       _userRepo.UserRepository
 	departmentRepository _departmentRepo.DepartmentRepository
-	teamRepository       _teamRepo.TeamRepository
 }
 
 func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository,
 	userRepository _userRepo.UserRepository,
-	departmentRepository _departmentRepo.DepartmentRepository,
-	teamRepository _teamRepo.TeamRepository) AdminUsecase {
+	departmentRepository _departmentRepo.DepartmentRepository) AdminUsecase {
 	return &adminUsecase{
 		companyRepository:    companyRepository,
 		userRepository:       userRepository,
 		departmentRepository: departmentRepository,
-		teamRepository:       teamRepository,
 	}
 }
 
@@ -80,7 +75,7 @@ func (u *adminUsecase) AdminRegisterAdmin(requestUserId uint, request *req.Admin
 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
-	hashedPassword, err := utils.HashPassword(request.Password)
+	hashedPassword, err := util.HashPassword(request.Password)
 	if err != nil {
 		log.Printf("비밀번호 해싱 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "비밀번호 해쉬화에 실패했습니다", err)
@@ -508,8 +503,8 @@ func (u *adminUsecase) AdminSearchUser(adminUserId uint, searchTerm string) ([]r
 
 		// Company가 nil이 아닌 경우에만 설정
 		if user.UserProfile.Company != nil {
-			userResponse.CompanyName = utils.GetFirstOrEmpty(
-				utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"),
+			userResponse.CompanyName = util.GetFirstOrEmpty(
+				util.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"),
 				"",
 			)
 		}

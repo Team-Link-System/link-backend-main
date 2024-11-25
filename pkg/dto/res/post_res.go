@@ -13,7 +13,7 @@ type GetPostResponse struct {
 	CompanyId    uint     `json:"company_id,omitempty"`
 	DepartmentId uint     `json:"department_id,omitempty"`
 	CreatedAt    string   `json:"created_at"`
-	UpdatedAt    string   `json:"updated_at"`
+	UpdatedAt    string   `json:"updated_at,omitempty"`
 }
 
 type GetPostsResponse struct {
