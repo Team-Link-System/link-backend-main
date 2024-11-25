@@ -83,6 +83,21 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 			fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
 			return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
 		}
+
+		//TODO departmentIds 중 하나라도 사용자의 부서와 맞지 않으면, 오류 반환
+		if author.UserProfile.Departments != nil {
+			userDeptIds := make(map[uint]struct{})
+			for _, dept := range author.UserProfile.Departments {
+				userDeptIds[(*dept)["id"].(uint)] = struct{}{}
+			}
+
+			for _, deptId := range post.DepartmentIds {
+				if _, ok := userDeptIds[*deptId]; !ok {
+					fmt.Printf("사용자의 부서와 일치하지 않습니다")
+					return common.NewError(http.StatusBadRequest, "사용자의 부서와 일치하지 않습니다", nil)
+				}
+			}
+		}
 		companyId = author.UserProfile.CompanyID
 	}
 

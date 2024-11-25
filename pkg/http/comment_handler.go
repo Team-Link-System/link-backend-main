@@ -47,8 +47,11 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 	}
 
 	if err := h.commentUsecase.CreateComment(userId.(uint), request); err != nil {
-		fmt.Printf("댓글 생성 실패: %v", err)
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "댓글 생성 실패", err))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "댓글 생성 실패", err))
+		}
 		return
 	}
 

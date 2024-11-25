@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"link/internal/comment/entity"
 	_commentRepo "link/internal/comment/repository"
 	_departmentRepo "link/internal/department/repository"
 	_postRepo "link/internal/post/repository"
@@ -50,12 +51,10 @@ func (u *commentUsecase) CreateComment(userId uint, req req.CommentRequest) erro
 		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
-	if strings.ToUpper(post.Visibility) == "COMPANY" && post.CompanyID != user.UserProfile.CompanyID {
+	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {
+		fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
 		return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
 	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
-
-		fmt.Printf("post.CompanyID: %v, user.UserProfile.CompanyID: %v", *post.CompanyID, *user.UserProfile.CompanyID)
-
 		if *post.CompanyID != *user.UserProfile.CompanyID {
 			fmt.Printf("해당 회사의 부서 게시물에 대한 접근 권한이 없습니다.")
 			return common.NewError(http.StatusForbidden, "해당 회사의 부서 게시물에 대한 접근 권한이 없습니다.", nil)
@@ -66,8 +65,6 @@ func (u *commentUsecase) CreateComment(userId uint, req req.CommentRequest) erro
 			fmt.Printf("해당 부서 게시물에 대한 접근 권한이 없습니다.")
 			return common.NewError(http.StatusForbidden, "해당 부서 게시물에 대한 접근 권한이 없습니다.", nil)
 		}
-
-		fmt.Printf("user.UserProfile.Departments: %v", user.UserProfile.Departments)
 
 		//TODO post의 departments id 리스트에 해당 사용자의 부서 ids 리스트 중 속해있는지 확인
 		userDeptIds := make(map[uint]struct{})
@@ -85,9 +82,28 @@ func (u *commentUsecase) CreateComment(userId uint, req req.CommentRequest) erro
 		}
 
 		if !hasAccess {
+			fmt.Printf("부서 게시물에 대한 접근 권한이 없습니다.")
 			return common.NewError(http.StatusForbidden, "부서 게시물에 대한 접근 권한이 없습니다.", nil)
 		}
 
+		if req.IsAnonymous != nil && *req.IsAnonymous {
+			fmt.Printf("익명 댓글은 부서 게시물에 작성할 수 없습니다.")
+			return common.NewError(http.StatusBadRequest, "익명 댓글은 부서 게시물에 작성할 수 없습니다.", nil)
+		}
+	}
+
+	comment := &entity.Comment{
+		PostID:      req.PostID,
+		ParentID:    nil,
+		UserID:      *user.ID,
+		Content:     req.Content,
+		IsAnonymous: req.IsAnonymous,
+	}
+
+	err = u.commentRepo.CreateComment(comment)
+	if err != nil {
+		fmt.Printf("댓글 생성 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 생성 실패", err)
 	}
 
 	return nil

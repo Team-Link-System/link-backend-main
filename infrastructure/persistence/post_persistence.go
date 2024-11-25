@@ -444,7 +444,10 @@ func (r *postPersistence) GetPostByID(postId uint) (*entity.Post, error) {
 
 	departments := make([]interface{}, 0)
 	for _, dept := range post.Departments {
-		departments = append(departments, dept)
+		departments = append(departments, map[string]interface{}{
+			"id":   dept.ID,
+			"name": dept.Name,
+		})
 	}
 
 	authorMap := map[string]interface{}{
