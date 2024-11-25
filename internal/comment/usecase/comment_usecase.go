@@ -126,10 +126,16 @@ func (u *commentUsecase) CreateReply(userId uint, req req.ReplyRequest) error {
 	}
 
 	//TODO 댓글 있는지 확인
-	_, err = u.commentRepo.GetCommentByID(req.ParentID)
+	comment, err := u.commentRepo.GetCommentByID(req.ParentID)
 	if err != nil {
 		fmt.Printf("댓글 조회 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "댓글 조회 실패", err)
+	}
+
+	//TODO 해당댓글이 해당 게시물의 댓글인지 확인
+	if comment.PostID != post.ID {
+		fmt.Printf("해당 게시물의 댓글이 아닙니다.")
+		return common.NewError(http.StatusBadRequest, "해당 게시물의 댓글이 아닙니다.", nil)
 	}
 
 	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {

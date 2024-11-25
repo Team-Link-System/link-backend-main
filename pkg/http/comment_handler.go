@@ -92,8 +92,10 @@ func (h *CommentHandler) CreateReply(c *gin.Context) {
 
 	if err := h.commentUsecase.CreateReply(userId.(uint), request); err != nil {
 		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("대댓글 생성 실패: %v", appError)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
+			fmt.Printf("대댓글 생성 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "대댓글 생성 실패", err))
 		}
 		return
