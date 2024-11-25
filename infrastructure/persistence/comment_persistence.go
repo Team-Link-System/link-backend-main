@@ -30,9 +30,14 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 	return nil
 }
 
-//TODO 대댓글 달기
-
-//TODO 댓글 리스트
+// TODO 댓글 리스트
+func (r *commentPersistence) GetCommentsByPostID(postId uint, cursor string, pageSize int) ([]*entity.Comment, error) {
+	var comments []*entity.Comment
+	if err := r.db.Where("post_id = ?", postId).Find(&comments).Error; err != nil {
+		return nil, fmt.Errorf("댓글 조회에 실패하였습니다: %w", err)
+	}
+	return comments, nil
+}
 
 //TODO 대댓글 리스트
 

@@ -9,8 +9,11 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
+	_util "link/pkg/util"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type CommentUsecase interface {
@@ -196,9 +199,36 @@ func (u *commentUsecase) CreateReply(userId uint, req req.ReplyRequest) error {
 	return nil
 }
 
-//TODO 해당 게시물 댓글 리스트 조회
+// TODO 해당 게시물 댓글 리스트 조회 - 커서기반 무한스크롤 정렬은 좋아요 갯수순, 날짜순 둘 중 하나가 가능해야함
+func (u *commentUsecase) GetComments(postId uint, cursor string, pageSize int) (*res.GetCommentsResponse, error) {
+	post, err := u.postRepo.GetPostByID(postId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
 
-//TODO 해당 댓글에 대한 대댓글 리스트 조회
+	comments, err := u.commentRepo.GetCommentsByPostID(postId, cursor, pageSize)
+	if err != nil {
+		fmt.Printf("댓글 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "댓글 조회 실패", err)
+	}
+
+	commentRes := make([]*res.CommentResponse, len(comments))
+	for i, comment := range comments {
+		commentRes[i] = &res.CommentResponse{
+			CommentId:   comment.ID,
+			UserId:      comment.UserID,
+			Content:     comment.Content,
+			IsAnonymous: comment.IsAnonymous,
+			CreatedAt:   _util.ParseKst(comment.CreatedAt).Format(time.DateTime),
+			UpdatedAt:   _util.ParseKst(comment.UpdatedAt).Format(time.DateTime),
+		}
+	}
+
+	return nil, nil
+}
+
+// TODO 해당 댓글에 대한 대댓글 리스트 조회 - 얘는 오프셋 x 무조건 날짜 기반
 
 //TODO 해당 댓글 삭제(이건 댓글 id 받아서 그냥 삭제) - 댓글, 대댓글
 
