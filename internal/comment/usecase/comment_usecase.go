@@ -52,8 +52,34 @@ func (u *commentUsecase) CreateComment(userId uint, req req.CommentRequest) erro
 
 	if strings.ToUpper(post.Visibility) == "COMPANY" && post.CompanyID != user.UserProfile.CompanyID {
 		return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
-	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" && post.CompanyID != user.UserProfile.CompanyID {
+	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+
+		if post.CompanyID != user.UserProfile.CompanyID {
+			return common.NewError(http.StatusForbidden, "부서 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
 		//TODO 해당 게시물이 속한 부서에 사용자가 속해있는지 확인
+		if user.UserProfile.Departments == nil {
+			return common.NewError(http.StatusForbidden, "부서 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
+
+		//TODO post의 departments id 리스트에 해당 사용자의 부서 ids 리스트 중 속해있는지 확인
+		userDeptIds := make(map[uint]struct{})
+		for _, dept := range user.UserProfile.Departments {
+			userDeptIds[(*dept)["id"].(uint)] = struct{}{}
+		}
+
+		hasAccess := false
+		for _, dept := range *post.Departments {
+			deptMap := dept.(map[string]interface{})
+			if _, ok := userDeptIds[deptMap["id"].(uint)]; ok {
+				hasAccess = true
+				break
+			}
+		}
+
+		if !hasAccess {
+			return common.NewError(http.StatusForbidden, "부서 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
 
 	}
 
