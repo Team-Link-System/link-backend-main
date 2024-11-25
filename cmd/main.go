@@ -88,6 +88,7 @@ func startServer() {
 		chatHandler *handlerHttp.ChatHandler,
 		notificationHandler *handlerHttp.NotificationHandler,
 		postHandler *handlerHttp.PostHandler,
+		commentHandler *handlerHttp.CommentHandler,
 
 		adminHandler *handlerHttp.AdminHandler,
 
@@ -187,6 +188,12 @@ func startServer() {
 				post.GET("/:postid", postHandler.GetPost)
 				post.DELETE("/:postid", postHandler.DeletePost)
 				post.PUT("/:postid", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.UpdatePost)
+			}
+
+			//TODO 댓글 관련 핸들러
+			comment := protectedRoute.Group("comment")
+			{
+				comment.POST("", commentHandler.CreateComment)
 			}
 
 			//TODO admin 요청 - 관리자 페이지

@@ -310,6 +310,7 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		Visibility:  post.Visibility,
 		CompanyID:   post.CompanyID,
 		CreatedAt:   post.CreatedAt,
+		UpdatedAt:   post.UpdatedAt,
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
@@ -460,6 +461,7 @@ func (r *postPersistence) GetPostByID(postId uint) (*entity.Post, error) {
 		Visibility:  post.Visibility,
 		CompanyID:   post.CompanyID,
 		CreatedAt:   post.CreatedAt,
+		UpdatedAt:   post.UpdatedAt,
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
