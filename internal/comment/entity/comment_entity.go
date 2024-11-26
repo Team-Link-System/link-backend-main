@@ -17,8 +17,8 @@ type Comment struct {
 	PostID       uint      `json:"post_id,omitempty"`
 	ParentID     *uint     `json:"parent_id,omitempty"`
 	UserID       uint      `json:"user_id,omitempty"`
-	ProfileImage string    `json:"profile_image,omitempty"`
 	UserName     string    `json:"user_name,omitempty"`
+	ProfileImage string    `json:"profile_image,omitempty"`
 	Content      string    `json:"content,omitempty"`
 	IsAnonymous  *bool     `json:"is_anonymous,omitempty"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`

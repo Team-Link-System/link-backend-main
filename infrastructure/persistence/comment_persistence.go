@@ -26,7 +26,13 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 		return fmt.Errorf("댓글 정보가 없습니다")
 	}
 
-	err := r.db.Create(comment).Error
+	err := r.db.Create(&model.Comment{
+		PostID:      comment.PostID,
+		ParentID:    comment.ParentID,
+		UserID:      comment.UserID,
+		Content:     comment.Content,
+		IsAnonymous: *comment.IsAnonymous,
+	}).Error
 	if err != nil {
 		return fmt.Errorf("댓글 생성에 실패하였습니다: %w", err)
 	}
