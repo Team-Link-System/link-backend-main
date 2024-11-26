@@ -289,4 +289,10 @@ func (r *commentPersistence) DeleteComment(id uint) error {
 	return nil
 }
 
-//TODO 댓글 수정(댓글 , 대댓글 둘 중 하나)
+// TODO 댓글 수정(댓글 , 대댓글 둘 중 하나)
+func (r *commentPersistence) UpdateComment(id uint, updateComment map[string]interface{}) error {
+	if err := r.db.Model(&model.Comment{}).Where("id = ?", id).Updates(updateComment).Error; err != nil {
+		return fmt.Errorf("댓글 수정에 실패하였습니다: %w", err)
+	}
+	return nil
+}

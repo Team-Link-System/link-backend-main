@@ -166,6 +166,11 @@ func (u *commentUsecase) CreateReply(userId uint, req req.ReplyRequest) error {
 		return common.NewError(http.StatusBadRequest, "해당 게시물의 댓글이 아닙니다.", nil)
 	}
 
+	if comment.ParentID != nil {
+		fmt.Printf("대댓글에 댓글을 생성할 수 없습니다.")
+		return common.NewError(http.StatusBadRequest, "대댓글에 댓글을 생성할 수 없습니다.", nil)
+	}
+
 	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {
 		fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
 		return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
@@ -497,10 +502,51 @@ func (u *commentUsecase) DeleteComment(userId uint, commentId uint) error {
 
 // TODO 댓글 수정 (댓글 id 받아서 수정) parentId는 상관없이 내용만 수정
 func (u *commentUsecase) UpdateComment(userId uint, commentId uint, request req.CommentUpdateRequest) error {
-	_, err := u.userRepo.GetUserByID(userId)
+	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	comment, err := u.commentRepo.GetCommentByID(commentId)
+	if err != nil {
+		fmt.Printf("댓글 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 조회 실패", err)
+	}
+
+	//TODO 해당 댓글의 주인이 맞는지 확인
+	if comment.UserID != *user.ID {
+		fmt.Printf("해당 댓글의 주인이 아닙니다.")
+		return common.NewError(http.StatusForbidden, "해당 댓글의 주인이 아닙니다.", nil)
+	}
+
+	//TODO isAnonymous는 public , company 게시물에만가능
+	post, err := u.postRepo.GetPostByCommentID(commentId)
+	if err != nil {
+		fmt.Printf("게시물 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+	}
+
+	if strings.ToUpper(post.Visibility) != "PUBLIC" && strings.ToUpper(post.Visibility) != "COMPANY" {
+		if *request.IsAnonymous {
+			fmt.Printf("익명전환은 public , company 게시물에만 가능합니다.")
+			return common.NewError(http.StatusForbidden, "익명전환은 public , company 게시물에만 가능합니다.", nil)
+		}
+	}
+
+	updateComment := map[string]interface{}{}
+
+	if request.Content != "" {
+		updateComment["content"] = request.Content
+	}
+	if request.IsAnonymous != nil {
+		updateComment["is_anonymous"] = *request.IsAnonymous
+	}
+
+	err = u.commentRepo.UpdateComment(commentId, updateComment)
+	if err != nil {
+		fmt.Printf("댓글 수정 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 수정 실패", err)
 	}
 
 	return nil

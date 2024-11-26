@@ -11,4 +11,5 @@ type PostRepository interface {
 	DeletePost(requestUserId uint, postId uint) error
 	UpdatePost(requestUserId uint, postId uint, post *entity.Post) error
 	GetPostByID(postId uint) (*entity.Post, error)
+	GetPostByCommentID(commentId uint) (*entity.Post, error)
 }
