@@ -166,6 +166,11 @@ func (u *commentUsecase) CreateReply(userId uint, req req.ReplyRequest) error {
 		return common.NewError(http.StatusBadRequest, "해당 게시물의 댓글이 아닙니다.", nil)
 	}
 
+	if comment.ParentID != nil {
+		fmt.Printf("대댓글에 댓글을 생성할 수 없습니다.")
+		return common.NewError(http.StatusBadRequest, "대댓글에 댓글을 생성할 수 없습니다.", nil)
+	}
+
 	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {
 		fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
 		return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
