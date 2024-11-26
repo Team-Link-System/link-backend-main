@@ -196,7 +196,7 @@ func startServer() {
 				comment.POST("", commentHandler.CreateComment)
 				comment.POST("/reply", commentHandler.CreateReply)
 				comment.GET("/list/:post_id", commentHandler.GetComments)
-				comment.GET("/replies/:parent_id", commentHandler.GetReplies)
+				comment.GET("/replies/:post_id/:comment_id", commentHandler.GetReplies)
 			}
 
 			//TODO admin 요청 - 관리자 페이지

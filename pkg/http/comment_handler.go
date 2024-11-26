@@ -256,6 +256,7 @@ func (h *CommentHandler) GetReplies(c *gin.Context) {
 	}
 
 	queryParams := req.GetReplyQueryParams{
+		PostID:   uint(postId),
 		ParentID: uint(commentId),
 		Page:     page,
 		Limit:    limit,
