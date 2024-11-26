@@ -503,5 +503,20 @@ func (u *commentUsecase) UpdateComment(userId uint, commentId uint, request req.
 		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
 	}
 
+	updateComment := map[string]interface{}{}
+
+	if request.Content != "" {
+		updateComment["content"] = request.Content
+	}
+	if request.IsAnonymous != nil {
+		updateComment["is_anonymous"] = *request.IsAnonymous
+	}
+
+	err = u.commentRepo.UpdateComment(commentId, updateComment)
+	if err != nil {
+		fmt.Printf("댓글 수정 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 수정 실패", err)
+	}
+
 	return nil
 }

@@ -10,4 +10,5 @@ type CommentRepository interface {
 	GetRepliesByParentID(parentId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error)
 
 	DeleteComment(id uint) error
+	UpdateComment(id uint, updateComment map[string]interface{}) error
 }
