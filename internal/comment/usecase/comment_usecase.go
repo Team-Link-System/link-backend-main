@@ -58,10 +58,30 @@ func (u *commentUsecase) CreateComment(userId uint, req req.CommentRequest) erro
 		return common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
 	}
 
-	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {
-		fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
-		return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
+	if strings.ToUpper(post.Visibility) == "COMPANY" {
+		if post.CompanyID == nil {
+			fmt.Printf("해당 게시글은 회사 게시물이 아닙니다.")
+			return common.NewError(http.StatusBadRequest, "해당 게시글은 회사 게시물이 아닙니다.", nil)
+		}
+		if user.UserProfile == nil || user.UserProfile.CompanyID == nil {
+			fmt.Printf("사용자의 회사 정보가 없습니다.")
+			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다.", nil)
+		}
+		if *post.CompanyID != *user.UserProfile.CompanyID {
+			fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
+			return common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
+
 	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+		if post.CompanyID == nil {
+			fmt.Printf("해당 게시글은 회사 게시물이 아닙니다.")
+			return common.NewError(http.StatusBadRequest, "해당 게시글은 회사 게시물이 아닙니다.", nil)
+		}
+		if user.UserProfile == nil || user.UserProfile.CompanyID == nil {
+			fmt.Printf("사용자의 회사 정보가 없습니다.")
+			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다.", nil)
+		}
+
 		if *post.CompanyID != *user.UserProfile.CompanyID {
 			fmt.Printf("해당 회사의 부서 게시물에 대한 접근 권한이 없습니다.")
 			return common.NewError(http.StatusForbidden, "해당 회사의 부서 게시물에 대한 접근 권한이 없습니다.", nil)
