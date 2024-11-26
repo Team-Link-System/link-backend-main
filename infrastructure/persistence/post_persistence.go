@@ -467,3 +467,53 @@ func (r *postPersistence) GetPostByID(postId uint) (*entity.Post, error) {
 		Author:      authorMap,
 	}, nil
 }
+
+func (r *postPersistence) GetPostByCommentID(commentId uint) (*entity.Post, error) {
+	post := &model.Post{}
+	if err := r.db.Raw(
+		"SELECT p.* FROM posts p JOIN comments c ON p.id = c.post_id WHERE c.id = ?",
+		commentId,
+	).Preload("PostImages", func(db *gorm.DB) *gorm.DB {
+		return db.Select("post_id, image_url")
+	}).Preload("Departments", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, name")
+	}).Scan(post).Error; err != nil {
+		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
+	}
+	images := make([]*string, 0)
+	for _, image := range post.PostImages {
+		images = append(images, &image.ImageURL)
+	}
+
+	departments := make([]interface{}, 0)
+	for _, dept := range post.Departments {
+		departments = append(departments, map[string]interface{}{
+			"id":   dept.ID,
+			"name": dept.Name,
+		})
+	}
+
+	authorMap := map[string]interface{}{
+		"name": "익명",
+	}
+
+	if post.User != nil {
+		authorMap["id"] = post.User.ID
+		authorMap["name"] = post.User.Name
+		authorMap["email"] = post.User.Email
+	}
+
+	return &entity.Post{
+		ID:          post.ID,
+		Title:       post.Title,
+		Content:     post.Content,
+		Images:      images,
+		IsAnonymous: post.IsAnonymous,
+		Visibility:  post.Visibility,
+		CompanyID:   post.CompanyID,
+		CreatedAt:   post.CreatedAt,
+		UpdatedAt:   post.UpdatedAt,
+		Departments: &departments,
+		Author:      authorMap,
+	}, nil
+}
