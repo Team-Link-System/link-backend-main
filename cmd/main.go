@@ -194,6 +194,8 @@ func startServer() {
 			comment := protectedRoute.Group("comment")
 			{
 				comment.POST("", commentHandler.CreateComment)
+				comment.POST("/reply", commentHandler.CreateReply)
+				comment.GET("/list/:post_id", commentHandler.GetComments)
 			}
 
 			//TODO admin 요청 - 관리자 페이지

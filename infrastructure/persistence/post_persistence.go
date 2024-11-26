@@ -165,8 +165,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 						}
 					}
 				}
-			}
-			if id := cursor["id"]; id != nil {
+			} else if id, ok := cursor["id"].(uint); ok {
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
 						query = query.Where("id > ?", id)
@@ -174,8 +173,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 						query = query.Where("id < ?", id)
 					}
 				}
-			}
-			if likeCount := cursor["like_count"]; likeCount != nil {
+			} else if likeCount, ok := cursor["like_count"].(uint); ok {
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
 						query = query.Where("like_count > ?", likeCount)
@@ -183,8 +181,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 						query = query.Where("like_count < ?", likeCount)
 					}
 				}
-			}
-			if commentCount := cursor["comments_count"]; commentCount != nil {
+			} else if commentCount, ok := cursor["comments_count"].(uint); ok {
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
 						query = query.Where("comments_count > ?", commentCount)
@@ -276,6 +273,8 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		return db.Select("user_id,image")
 	}).Preload("User", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, name, email, nickname")
+	}).Preload("Comments", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, user_id, content, is_anonymous, created_at, updated_at")
 	}).First(post, postId).Error; err != nil {
 		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
 	}
