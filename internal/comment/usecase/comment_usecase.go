@@ -21,7 +21,8 @@ type CommentUsecase interface {
 	CreateComment(userId uint, req req.CommentRequest) error
 	CreateReply(userId uint, req req.ReplyRequest) error
 	GetComments(userId uint, queryParams req.GetCommentQueryParams) (*res.GetCommentsResponse, error)
-	GetReplies(userId uint, queryParams req.GetReplyQueryParams) (*res.GetCommentsResponse, error)
+	GetReplies(userId uint, queryParams req.GetReplyQueryParams) (*res.GetRepliesResponse, error)
+	DeleteComment(userId uint, commentId uint) error
 }
 
 type commentUsecase struct {
@@ -338,7 +339,7 @@ func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQuer
 }
 
 // TODO 해당 댓글에 대한 대댓글 리스트 조회 - 얘는 오프셋 x 무조건 날짜 기반
-func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryParams) (*res.GetCommentsResponse, error) {
+func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryParams) (*res.GetRepliesResponse, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
@@ -424,7 +425,7 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 		}
 	}
 
-	replyRes := make([]*res.CommentResponse, len(replies))
+	replyRes := make([]*res.ReplyResponse, len(replies))
 	for i, reply := range replies {
 
 		userName := "익명"
@@ -434,19 +435,25 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 			profileImage = reply.ProfileImage
 		}
 
-		replyRes[i] = &res.CommentResponse{
+		parentId := uint(0)
+		if reply.ParentID != nil {
+			parentId = *reply.ParentID
+		}
+
+		replyRes[i] = &res.ReplyResponse{
 			CommentId:    reply.ID,
 			UserId:       reply.UserID,
 			UserName:     userName,
 			ProfileImage: profileImage,
+			ParentID:     parentId,
 			Content:      reply.Content,
 			IsAnonymous:  *reply.IsAnonymous,
 			CreatedAt:    _util.ParseKst(reply.CreatedAt).Format(time.DateTime),
 		}
 	}
 
-	return &res.GetCommentsResponse{
-		Comments: replyRes,
+	return &res.GetRepliesResponse{
+		Replies: replyRes,
 		Meta: &res.CommentMeta{
 			NextCursor: nextCursor,
 			HasMore:    meta.HasMore,
@@ -458,6 +465,33 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 	}, nil
 }
 
-//TODO 해당 댓글 삭제(이건 댓글 id 받아서 그냥 삭제) - 댓글, 대댓글
+// TODO 해당 댓글 삭제(이건 댓글 id 받아서 그냥 삭제) - 댓글, 대댓글
+func (u *commentUsecase) DeleteComment(userId uint, commentId uint) error {
+	user, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	comment, err := u.commentRepo.GetCommentByID(commentId)
+	if err != nil {
+		fmt.Printf("댓글 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 조회 실패", err)
+	}
+
+	//TODO 해당 댓글의 주인이 맞는지 확인
+	if comment.UserID != *user.ID {
+		fmt.Printf("해당 댓글의 주인이 아닙니다.")
+		return common.NewError(http.StatusForbidden, "해당 댓글의 주인이 아닙니다.", nil)
+	}
+
+	err = u.commentRepo.DeleteComment(commentId)
+	if err != nil {
+		fmt.Printf("댓글 삭제 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "댓글 삭제 실패", err)
+	}
+
+	return nil
+}
 
 //TODO 댓글 수정 (댓글 id 받아서 수정) parentId는 상관없이 내용만 수정

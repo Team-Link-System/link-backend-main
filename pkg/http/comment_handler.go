@@ -279,3 +279,32 @@ func (h *CommentHandler) GetReplies(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "대댓글 조회 성공", replies))
 }
+
+func (h *CommentHandler) DeleteComment(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	commentId, err := strconv.Atoi(c.Param("comment_id"))
+	if err != nil || commentId < 1 {
+		fmt.Printf("댓글 ID가 유효하지 않습니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "댓글 ID가 유효하지 않습니다.", err))
+		return
+	}
+
+	if err := h.commentUsecase.DeleteComment(userId.(uint), uint(commentId)); err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("댓글 삭제 실패: %v", appError)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("댓글 삭제 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "댓글 삭제 실패", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "댓글 삭제 성공", nil))
+}

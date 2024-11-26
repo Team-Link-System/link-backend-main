@@ -8,4 +8,6 @@ type CommentRepository interface {
 
 	GetCommentsByPostID(postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error)
 	GetRepliesByParentID(parentId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error)
+
+	DeleteComment(id uint) error
 }

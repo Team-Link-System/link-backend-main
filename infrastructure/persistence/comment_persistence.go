@@ -43,7 +43,7 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 // TODO 댓글 리스트
 func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
 
-	query := r.db.Model(&model.Comment{}).Where("post_id = ?", postId).
+	query := r.db.Model(&model.Comment{}).Where("post_id = ? AND parent_id IS NULL", postId).
 		Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name, email, nickname")
 		}).
@@ -249,6 +249,7 @@ func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions ma
 
 		result = append(result, &entity.Comment{
 			ID:           comment.ID,
+			ParentID:     comment.ParentID,
 			UserID:       comment.UserID,
 			PostID:       comment.PostID,
 			Content:      comment.Content,
@@ -280,6 +281,12 @@ func (r *commentPersistence) GetCommentByID(id uint) (*entity.Comment, error) {
 	return &comment, nil
 }
 
-//TODO 댓글 삭제(댓글 , 대댓글 둘 중 하나)
+// TODO 댓글 삭제(댓글 , 대댓글 둘 중 하나)
+func (r *commentPersistence) DeleteComment(id uint) error {
+	if err := r.db.Delete(&model.Comment{}, id).Error; err != nil {
+		return fmt.Errorf("댓글 삭제에 실패하였습니다: %w", err)
+	}
+	return nil
+}
 
 //TODO 댓글 수정(댓글 , 대댓글 둘 중 하나)
