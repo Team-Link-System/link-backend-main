@@ -37,3 +37,8 @@ type GetReplyQueryParams struct {
 	Order    string         `query:"order" default:"desc"`
 	Cursor   *CommentCursor `query:"cursor,omitempty"`
 }
+
+type CommentUpdateRequest struct {
+	Content     string `json:"content,omitempty"`
+	IsAnonymous *bool  `json:"is_anonymous,omitempty"`
+}

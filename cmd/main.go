@@ -198,7 +198,7 @@ func startServer() {
 				comment.GET("/list/:post_id", commentHandler.GetComments)
 				comment.GET("/replies/:post_id/:comment_id", commentHandler.GetReplies)
 				comment.DELETE("/:comment_id", commentHandler.DeleteComment) //! 댓글 삭제
-				// comment.PUT("/:comment_id", commentHandler.UpdateComment)    //! 댓글 수정
+				comment.PUT("/:comment_id", commentHandler.UpdateComment)    //! 댓글 수정
 			}
 
 			//TODO admin 요청 - 관리자 페이지

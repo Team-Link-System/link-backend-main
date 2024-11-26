@@ -23,6 +23,7 @@ type CommentUsecase interface {
 	GetComments(userId uint, queryParams req.GetCommentQueryParams) (*res.GetCommentsResponse, error)
 	GetReplies(userId uint, queryParams req.GetReplyQueryParams) (*res.GetRepliesResponse, error)
 	DeleteComment(userId uint, commentId uint) error
+	UpdateComment(userId uint, commentId uint, req req.CommentUpdateRequest) error
 }
 
 type commentUsecase struct {
@@ -494,4 +495,13 @@ func (u *commentUsecase) DeleteComment(userId uint, commentId uint) error {
 	return nil
 }
 
-//TODO 댓글 수정 (댓글 id 받아서 수정) parentId는 상관없이 내용만 수정
+// TODO 댓글 수정 (댓글 id 받아서 수정) parentId는 상관없이 내용만 수정
+func (u *commentUsecase) UpdateComment(userId uint, commentId uint, request req.CommentUpdateRequest) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	return nil
+}
