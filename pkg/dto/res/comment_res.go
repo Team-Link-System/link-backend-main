@@ -4,18 +4,17 @@ type CommentResponse struct {
 	CommentId    uint   `json:"comment_id"`
 	UserId       uint   `json:"user_id"`
 	UserName     string `json:"user_name"`
-	ProfileImage string `json:"profile_image"`
+	ProfileImage string `json:"profile_image,omitempty"`
 	Content      string `json:"content"`
 	IsAnonymous  bool   `json:"is_anonymous"`
 	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
 }
 
 type ReplyResponse struct {
 	CommentId    uint   `json:"comment_id"`
 	UserId       uint   `json:"user_id"`
 	UserName     string `json:"user_name"`
-	ProfileImage string `json:"profile_image"`
+	ProfileImage string `json:"profile_image,omitempty"`
 	ParentID     uint   `json:"parent_id"`
 	Content      string `json:"content"`
 	IsAnonymous  bool   `json:"is_anonymous"`

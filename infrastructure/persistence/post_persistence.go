@@ -273,8 +273,6 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		return db.Select("user_id,image")
 	}).Preload("User", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, name, email, nickname")
-	}).Preload("Comments", func(db *gorm.DB) *gorm.DB {
-		return db.Select("id, user_id, content, is_anonymous, created_at, updated_at")
 	}).First(post, postId).Error; err != nil {
 		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
 	}
@@ -432,7 +430,8 @@ func (r *postPersistence) GetPostByID(postId uint) (*entity.Post, error) {
 		return db.Select("user_id,image")
 	}).Preload("User", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, name, email, nickname")
-	}).First(post, postId).Error; err != nil {
+	}).
+		First(post, postId).Error; err != nil {
 		return nil, fmt.Errorf("게시물 조회 실패: %w", err)
 	}
 

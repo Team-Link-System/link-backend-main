@@ -27,3 +27,18 @@ type GetCommentQueryParams struct {
 	Order  string         `query:"order" default:"desc"`
 	Cursor *CommentCursor `query:"cursor,omitempty"`
 }
+
+type GetReplyQueryParams struct {
+	PostID   uint           `query:"post_id"`
+	ParentID uint           `query:"parent_id" binding:"required"`
+	Page     int            `query:"page" default:"1"`
+	Limit    int            `query:"limit" default:"10"`
+	Sort     string         `query:"sort" default:"created_at"`
+	Order    string         `query:"order" default:"desc"`
+	Cursor   *CommentCursor `query:"cursor,omitempty"`
+}
+
+type CommentUpdateRequest struct {
+	Content     string `json:"content,omitempty"`
+	IsAnonymous *bool  `json:"is_anonymous,omitempty"`
+}
