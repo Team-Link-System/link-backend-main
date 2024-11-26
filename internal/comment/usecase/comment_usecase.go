@@ -12,6 +12,7 @@ import (
 	"link/pkg/dto/res"
 	_util "link/pkg/util"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,6 +20,7 @@ import (
 type CommentUsecase interface {
 	CreateComment(userId uint, req req.CommentRequest) error
 	CreateReply(userId uint, req req.ReplyRequest) error
+	GetComments(userId uint, queryParams req.GetCommentQueryParams) (*res.GetCommentsResponse, error)
 }
 
 type commentUsecase struct {
@@ -200,32 +202,119 @@ func (u *commentUsecase) CreateReply(userId uint, req req.ReplyRequest) error {
 }
 
 // TODO 해당 게시물 댓글 리스트 조회 - 커서기반 무한스크롤 정렬은 좋아요 갯수순, 날짜순 둘 중 하나가 가능해야함
-func (u *commentUsecase) GetComments(postId uint, cursor string, pageSize int) (*res.GetCommentsResponse, error) {
-	post, err := u.postRepo.GetPostByID(postId)
+func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQueryParams) (*res.GetCommentsResponse, error) {
+
+	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
-		fmt.Printf("게시물 조회 실패: %v", err)
-		return nil, common.NewError(http.StatusBadRequest, "게시물 조회 실패", err)
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
 	}
 
-	comments, err := u.commentRepo.GetCommentsByPostID(postId, cursor, pageSize)
+	post, err := u.postRepo.GetPostByID(queryParams.PostID)
+	if err != nil {
+		fmt.Printf("없는 게시물입니다: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "없는 게시물입니다.", err)
+	}
+
+	//TODO 해당 게시글에 접근 권한이 있는지 확인해야함
+	if strings.ToUpper(post.Visibility) == "COMPANY" && *post.CompanyID != *user.UserProfile.CompanyID {
+		fmt.Printf("회사 게시물에 대한 접근 권한이 없습니다.")
+		return nil, common.NewError(http.StatusForbidden, "회사 게시물에 대한 접근 권한이 없습니다.", nil)
+	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+		//TODO 해당 게시물이 속한 부서에 사용자가 속해있는지 확인
+		if user.UserProfile.Departments == nil {
+			fmt.Printf("해당 부서 게시물에 대한 접근 권한이 없습니다.")
+			return nil, common.NewError(http.StatusForbidden, "해당 부서 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
+
+		userDeptIds := make(map[uint]struct{})
+		for _, dept := range user.UserProfile.Departments {
+			userDeptIds[(*dept)["id"].(uint)] = struct{}{}
+		}
+
+		hasAccess := false
+		for _, dept := range *post.Departments {
+			deptMap := dept.(map[string]interface{})
+			if _, ok := userDeptIds[deptMap["id"].(uint)]; ok {
+				hasAccess = true
+				break
+			}
+		}
+
+		if !hasAccess {
+			fmt.Printf("부서 게시물에 대한 접근 권한이 없습니다.")
+			return nil, common.NewError(http.StatusForbidden, "부서 게시물에 대한 접근 권한이 없습니다.", nil)
+		}
+	}
+
+	queryOptions := map[string]interface{}{
+		"page":    queryParams.Page,
+		"limit":   queryParams.Limit,
+		"sort":    queryParams.Sort,
+		"order":   queryParams.Order,
+		"post_id": queryParams.PostID,
+		"cursor":  map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		} else if queryParams.Cursor.ID != "" {
+			queryOptions["cursor"].(map[string]interface{})["id"] = queryParams.Cursor.ID
+		} else if queryParams.Cursor.LikeCount != "" {
+			queryOptions["cursor"].(map[string]interface{})["like_count"] = queryParams.Cursor.LikeCount
+		}
+	}
+
+	meta, comments, err := u.commentRepo.GetCommentsByPostID(queryParams.PostID, queryOptions)
 	if err != nil {
 		fmt.Printf("댓글 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "댓글 조회 실패", err)
 	}
 
-	commentRes := make([]*res.CommentResponse, len(comments))
-	for i, comment := range comments {
-		commentRes[i] = &res.CommentResponse{
-			CommentId:   comment.ID,
-			UserId:      comment.UserID,
-			Content:     comment.Content,
-			IsAnonymous: comment.IsAnonymous,
-			CreatedAt:   _util.ParseKst(comment.CreatedAt).Format(time.DateTime),
-			UpdatedAt:   _util.ParseKst(comment.UpdatedAt).Format(time.DateTime),
+	var nextCursor string
+	if len(comments) > 0 {
+		lastComment := comments[len(comments)-1]
+		if queryParams.Sort == "created_at" {
+			nextCursor = _util.ParseKst(lastComment.CreatedAt).Format(time.DateTime)
+		} else if queryParams.Sort == "id" {
+			nextCursor = strconv.Itoa(int(lastComment.ID))
 		}
 	}
 
-	return nil, nil
+	commentRes := make([]*res.CommentResponse, len(comments))
+	for i, comment := range comments {
+
+		userName := "익명"
+		var profileImage string
+		if !*comment.IsAnonymous {
+			userName = comment.UserName
+			profileImage = comment.ProfileImage
+		}
+
+		commentRes[i] = &res.CommentResponse{
+			CommentId:    comment.ID,
+			UserId:       comment.UserID,
+			UserName:     userName,
+			ProfileImage: profileImage,
+			Content:      comment.Content,
+			IsAnonymous:  *comment.IsAnonymous,
+			CreatedAt:    _util.ParseKst(comment.CreatedAt).Format(time.DateTime),
+			UpdatedAt:    _util.ParseKst(comment.UpdatedAt).Format(time.DateTime),
+		}
+	}
+
+	return &res.GetCommentsResponse{
+		Comments: commentRes,
+		Meta: &res.CommentMeta{
+			NextCursor: nextCursor,
+			HasMore:    meta.HasMore,
+			TotalCount: meta.TotalCount,
+			PageSize:   meta.PageSize,
+			PrevPage:   meta.PrevPage,
+			NextPage:   meta.NextPage,
+		},
+	}, nil
 }
 
 // TODO 해당 댓글에 대한 대댓글 리스트 조회 - 얘는 오프셋 x 무조건 날짜 기반
