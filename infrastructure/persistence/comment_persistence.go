@@ -126,13 +126,23 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 			}
 		}
 
+		var profileImage string
+		if img, ok := authorMap["image"].(*string); ok && img != nil {
+			profileImage = *img
+		}
+
+		var userName string
+		if name, ok := authorMap["name"].(string); ok && name != "" {
+			userName = name
+		}
+
 		result = append(result, &entity.Comment{
 			ID:           comment.ID,
 			UserID:       comment.UserID,
 			PostID:       comment.PostID,
 			Content:      comment.Content,
-			ProfileImage: authorMap["image"].(string),
-			UserName:     authorMap["name"].(string),
+			ProfileImage: profileImage,
+			UserName:     userName,
 			IsAnonymous:  &comment.IsAnonymous,
 			CreatedAt:    comment.CreatedAt,
 		})
