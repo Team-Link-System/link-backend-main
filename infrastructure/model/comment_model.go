@@ -14,4 +14,5 @@ type Comment struct {
 	UpdatedAt   time.Time
 	ParentID    *uint      `gorm:"null"`
 	Replies     []*Comment `gorm:"foreignKey:ParentID;references:ID;constraint:OnDelete:CASCADE"`
+	Likes       []*Like    `gorm:"polymorphic:Target;polymorphicValue:comment;constraint:OnDelete:CASCADE"`
 }

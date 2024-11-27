@@ -18,7 +18,7 @@ type Post struct {
 	CreatedAt   time.Time `gorm:"not null, autoCreateTime"`
 	UpdatedAt   time.Time
 	Comments    []*Comment    `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	Likes       []*Like       `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	Likes       []*Like       `gorm:"polymorphic:Target;polymorphicValue:post;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	PostImages  []*PostImage  `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	Departments []*Department `gorm:"many2many:post_departments;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }
