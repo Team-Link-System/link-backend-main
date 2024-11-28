@@ -42,9 +42,8 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 
 // TODO 댓글 리스트
 func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
-
+	comments := []*model.Comment{}
 	query := r.db.Model(&model.Comment{}).
-		Select("comments.*, (SELECT COUNT(id) FROM comments replies WHERE replies.parent_id = comments.id) as reply_count").
 		Where("post_id = ? AND parent_id IS NULL", postId).
 		Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name, email, nickname")
@@ -99,15 +98,24 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 		}
 	}
 
-	//TODO 해당 댓글에 대한 대댓글 갯수도 필요함
-
+	//TODO 해당 댓글에 대한 대댓글 갯수도 필요
 	if limit, ok := queryOptions["limit"].(int); ok {
 		query = query.Limit(limit)
 	}
 
-	comments := []*model.Comment{}
 	if err := query.Find(&comments).Error; err != nil {
 		return nil, nil, fmt.Errorf("댓글 조회에 실패하였습니다: %w", err)
+	}
+
+	// 2. 각 댓글의 대댓글 수를 별도로 조회
+	for _, comment := range comments {
+		var replyCount int64
+		if err := r.db.Model(&model.Comment{}).
+			Where("parent_id = ?", comment.ID).
+			Count(&replyCount).Error; err != nil {
+			return nil, nil, fmt.Errorf("대댓글 수 조회에 실패하였습니다: %w", err)
+		}
+		comment.ReplyCount = int(replyCount)
 	}
 
 	result := make([]*entity.Comment, 0)
