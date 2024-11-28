@@ -5,6 +5,8 @@ const (
 	UserCreatedEvent = "user.created"
 	UserUpdatedEvent = "user.updated"
 	UserDeletedEvent = "user.deleted"
+	UserLoginEvent   = "user.login"
+	UserLogoutEvent  = "user.logout"
 
 	CompanyCreatedEvent = "company.created"
 	CompanyUpdatedEvent = "company.updated"
@@ -24,4 +26,18 @@ const (
 	ChatRoomCreatedEvent = "chat_room.created"
 	ChatRoomUpdatedEvent = "chat_room.updated"
 	ChatRoomDeletedEvent = "chat_room.deleted"
+
+	//게시물 관련
+	PostCreatedEvent = "post.created"
+	PostUpdatedEvent = "post.updated"
+	PostDeletedEvent = "post.deleted"
+
+	//댓글 관련
+	CommentCreatedEvent = "comment.created"
+	CommentUpdatedEvent = "comment.updated"
+	CommentDeletedEvent = "comment.deleted"
+
+	//좋아요 관련
+	LikeCreatedEvent = "like.created"
+	LikeDeletedEvent = "like.deleted"
 )
