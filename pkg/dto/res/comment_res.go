@@ -7,7 +7,9 @@ type CommentResponse struct {
 	ProfileImage string `json:"profile_image,omitempty"`
 	Content      string `json:"content"`
 	IsAnonymous  bool   `json:"is_anonymous"`
+	ReplyCount   int    `json:"reply_count" default:"0"`
 	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
 }
 
 type ReplyResponse struct {

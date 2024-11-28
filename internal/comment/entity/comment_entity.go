@@ -21,6 +21,7 @@ type Comment struct {
 	ProfileImage string    `json:"profile_image,omitempty"`
 	Content      string    `json:"content,omitempty"`
 	IsAnonymous  *bool     `json:"is_anonymous,omitempty"`
+	ReplyCount   int       `json:"reply_count"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 	UpdatedAt    time.Time `json:"updated_at,omitempty"`
 }

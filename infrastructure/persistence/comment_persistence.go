@@ -43,7 +43,9 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 // TODO 댓글 리스트
 func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
 
-	query := r.db.Model(&model.Comment{}).Where("post_id = ? AND parent_id IS NULL", postId).
+	query := r.db.Model(&model.Comment{}).
+		Select("comments.*, (SELECT COUNT(id) FROM comments replies WHERE replies.parent_id = comments.id) as reply_count").
+		Where("post_id = ? AND parent_id IS NULL", postId).
 		Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name, email, nickname")
 		}).
@@ -97,6 +99,8 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 		}
 	}
 
+	//TODO 해당 댓글에 대한 대댓글 갯수도 필요함
+
 	if limit, ok := queryOptions["limit"].(int); ok {
 		query = query.Limit(limit)
 	}
@@ -144,6 +148,7 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 			ProfileImage: profileImage,
 			UserName:     userName,
 			IsAnonymous:  &comment.IsAnonymous,
+			ReplyCount:   comment.ReplyCount,
 			CreatedAt:    comment.CreatedAt,
 		})
 	}

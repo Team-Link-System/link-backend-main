@@ -5,6 +5,8 @@ const (
 	UserCreatedEvent = "user.created"
 	UserUpdatedEvent = "user.updated"
 	UserDeletedEvent = "user.deleted"
+	UserLoginEvent   = "user.login"
+	UserLogoutEvent  = "user.logout"
 
 	CompanyCreatedEvent = "company.created"
 	CompanyUpdatedEvent = "company.updated"

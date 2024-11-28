@@ -320,6 +320,8 @@ func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQuer
 			profileImage = comment.ProfileImage
 		}
 
+		fmt.Println(comment.ReplyCount)
+
 		commentRes[i] = &res.CommentResponse{
 			CommentId:    comment.ID,
 			UserId:       comment.UserID,
@@ -327,6 +329,7 @@ func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQuer
 			ProfileImage: profileImage,
 			Content:      comment.Content,
 			IsAnonymous:  *comment.IsAnonymous,
+			ReplyCount:   comment.ReplyCount,
 			CreatedAt:    _util.ParseKst(comment.CreatedAt).Format(time.DateTime),
 		}
 	}
