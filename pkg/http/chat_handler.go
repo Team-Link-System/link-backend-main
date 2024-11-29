@@ -1,17 +1,16 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"link/internal/chat/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
-	"link/pkg/dto/res"
 	"link/pkg/ws"
 )
 
@@ -179,8 +178,14 @@ func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 
 //TODO 채팅방 삭제 - 둘다 나가면 채팅 내용 삭제?? 이건 고민
 
-// TODO 채팅방의 채팅 내용 가져오기
+// TODO 채팅방의 채팅 내용 가져오기 - 페이지네이션 추가 - 무조건 날짜 순으로 정렬
 func (h *ChatHandler) GetChatMessages(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
 
 	chatRoomId := c.Param("chatroomid")
 	targetChatRoomId, err := strconv.ParseUint(chatRoomId, 10, 64)
@@ -190,7 +195,36 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 		return
 	}
 
-	chatMessages, err := h.chatUsecase.GetChatMessages(uint(targetChatRoomId))
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	//TODO 채팅은 위로 올리니까 가장 최근 오래된 내용이 맨 위로 오도록 만들기
+	cursorParam := c.Query("cursor")
+	var cursor *req.ChatCursor
+
+	if cursorParam != "" {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+	}
+
+	//TODO 얘는 무조건 날짜 내림 차순
+	queryParams := req.GetChatMessagesQueryParams{
+		Page:   page,
+		Limit:  limit,
+		Cursor: cursor,
+	}
+
+	responses, err := h.chatUsecase.GetChatMessages(userId.(uint), uint(targetChatRoomId), &queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("채팅 내용 조회 오류: %v", appError.Err)
@@ -202,18 +236,7 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 		return
 	}
 
-	var response []res.GetChatMessagesResponse
-	for _, chatMessage := range chatMessages {
-		response = append(response, res.GetChatMessagesResponse{
-			ChatMessageID: chatMessage.ID,
-			Content:       chatMessage.Content,
-			SenderID:      chatMessage.SenderID,
-			ChatRoomID:    chatMessage.ChatRoomID,
-			CreatedAt:     chatMessage.CreatedAt.Format(time.RFC3339),
-		})
-	}
-
-	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅 내용 조회 성공", response))
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "채팅 내용 조회 성공", responses))
 }
 
 // TODO 채팅 메시지 삭제

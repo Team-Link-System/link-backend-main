@@ -34,11 +34,28 @@ type ChatPayload struct {
 	CreatedAt   string `json:"created_at,omitempty"`
 }
 
-type GetChatMessagesResponse struct {
+type ChatMessagesResponse struct {
 	ChatMessageID string `json:"chat_message_id"`
 	Content       string `json:"content"`
 	SenderID      uint   `json:"sender_id"`
+	SenderName    string `json:"sender_name"`
 	ChatRoomID    uint   `json:"chat_room_id"`
+	UnreadCount   uint   `json:"unread_count"`
 	CreatedAt     string `json:"created_at"`
 	UpdatedAt     string `json:"updated_at,omitempty"`
+}
+
+type ChatMeta struct {
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    *bool  `json:"has_more,omitempty"`
+	TotalCount int    `json:"total_count"`
+	TotalPages int    `json:"total_pages"`
+	PageSize   int    `json:"page_size"`
+	PrevPage   int    `json:"prev_page"`
+	NextPage   int    `json:"next_page"`
+}
+
+type GetChatMessagesResponse struct {
+	ChatMessages []*ChatMessagesResponse `json:"chat_messages"`
+	Meta         *ChatMeta               `json:"meta"`
 }
