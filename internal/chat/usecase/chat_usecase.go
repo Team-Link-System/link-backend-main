@@ -17,6 +17,7 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
+	_util "link/pkg/util"
 )
 
 type ChatUsecase interface {
@@ -26,7 +27,7 @@ type ChatUsecase interface {
 	LeaveChatRoom(userId uint, chatRoomId uint) error
 
 	SaveMessage(senderID uint, chatRoomID uint, content string) (*entity.Chat, error)
-	GetChatMessages(chatRoomID uint) ([]*entity.Chat, error)
+	GetChatMessages(userId uint, chatRoomID uint, queryParams *req.GetChatMessagesQueryParams) (*res.GetChatMessagesResponse, error)
 	DeleteChatMessage(senderID uint, request *req.DeleteChatMessageRequest) error
 
 	SetChatRoomToRedis(roomId uint, chatRoomInfo map[string]interface{}) error
@@ -159,6 +160,8 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRe
 		})
 	}
 
+	//TODO 레디스에 채팅방 저장
+
 	response := &res.CreateChatRoomResponse{
 		Name:      chatRoom.Name,
 		IsPrivate: chatRoom.IsPrivate,
@@ -170,6 +173,8 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRe
 
 // TODO 채팅방 조회
 func (uc *chatUsecase) GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, error) {
+	//TODO 먼저 레디스에 조회
+
 	chatRoom, err := uc.chatRepository.GetChatRoomById(roomId)
 	if err != nil {
 		log.Printf("채팅방 조회 중 DB 오류: %v", err)
@@ -293,7 +298,6 @@ func (uc *chatUsecase) LeaveChatRoom(userId uint, chatRoomId uint) error {
 
 // TODO 채팅방 사용자 추가 1:1 채팅의 경우
 func (uc *chatUsecase) AddUserChatRoom(requestUserId uint, targetUserId uint, chatRoomId uint) error {
-	//TODO 요청 사용자가 있는지 확인
 	_, err := uc.userRepository.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("채팅방 사용자 추가 중 요청 사용자 조회 오류: %v", err)
@@ -359,11 +363,16 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다", err)
 	}
 
+	senderImage := ""
+	if sender.UserProfile != nil && sender.UserProfile.Image != nil {
+		senderImage = *sender.UserProfile.Image
+	}
 	chat := &entity.Chat{
 		SenderID:    senderID,
 		ChatRoomID:  chatRoomID,
 		SenderName:  *sender.Name,
 		SenderEmail: *sender.Email,
+		SenderImage: senderImage,
 		Content:     content,
 		CreatedAt:   time.Now(),
 	}
@@ -385,14 +394,64 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 }
 
 // TODO 채팅방 내용 조회
-func (uc *chatUsecase) GetChatMessages(chatRoomID uint) ([]*entity.Chat, error) {
-	chatMessages, err := uc.chatRepository.GetChatMessages(chatRoomID)
+func (uc *chatUsecase) GetChatMessages(userId uint, chatRoomID uint, queryParams *req.GetChatMessagesQueryParams) (*res.GetChatMessagesResponse, error) {
+
+	user, err := uc.userRepository.GetUserByID(userId)
+	if err != nil {
+		log.Printf("채팅 내용 조회 중 사용자 조회 오류: %v", err)
+		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 사용자입니다", err)
+	}
+
+	//TODO 해당 채팅방에 사용자가 있는지 확인
+	if !uc.chatRepository.IsUserInChatRoom(*user.ID, chatRoomID) {
+		log.Printf("채팅 내용 조회 중 사용자 조회 오류: %v", err)
+		return nil, common.NewError(http.StatusNotFound, "해당 채팅방에 사용자가 없습니다", err)
+	}
+
+	queryOptions := map[string]interface{}{
+		"page":   queryParams.Page,
+		"limit":  queryParams.Limit,
+		"cursor": map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		}
+	}
+
+	chatMeta, chatMessages, err := uc.chatRepository.GetChatMessages(chatRoomID, queryOptions)
 	if err != nil {
 		log.Printf("채팅 내용 조회 중 DB 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "채팅 내용 조회에 실패했습니다", err)
 	}
 
-	return chatMessages, nil
+	chatMessagesResponse := make([]*res.ChatMessagesResponse, len(chatMessages))
+	for i, chatMessage := range chatMessages {
+		chatMessagesResponse[i] = &res.ChatMessagesResponse{
+			ChatMessageID: chatMessage.ID,
+			Content:       chatMessage.Content,
+			SenderID:      chatMessage.SenderID,
+			SenderName:    chatMessage.SenderName,
+			// SenderImage:   chatMessage.SenderImage, //! 메시지 작성할때 송신자 이미지 추가
+			ChatRoomID:  chatMessage.ChatRoomID,
+			UnreadCount: chatMessage.UnreadCount,
+			CreatedAt:   _util.ParseKst(chatMessage.CreatedAt).Format(time.DateTime),
+		}
+	}
+
+	return &res.GetChatMessagesResponse{
+		ChatMessages: chatMessagesResponse,
+		Meta: &res.ChatMeta{
+			NextCursor: chatMeta.NextCursor,
+			HasMore:    chatMeta.HasMore,
+			TotalCount: chatMeta.TotalCount,
+			TotalPages: chatMeta.TotalPages,
+			PageSize:   chatMeta.PageSize,
+			PrevPage:   chatMeta.PrevPage,
+			NextPage:   chatMeta.NextPage,
+		},
+	}, nil
 }
 
 // TODO 채팅 메시지 삭제
@@ -443,6 +502,8 @@ func (uc *chatUsecase) GetChatRoomByIdFromRedis(roomId uint) (*res.ChatRoomInfoR
 		IsPrivate: &chatRoom.IsPrivate,
 		Users:     userResponse,
 	}
+
+	fmt.Println(chatRoomResponse)
 
 	return chatRoomResponse, nil
 }

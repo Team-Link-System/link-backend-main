@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -180,6 +182,10 @@ func (r *chatPersistence) SaveMessage(chat *chatEntity.Chat) error {
 		UnreadCount: len(users), // 처음엔 모든 사용자가 읽지 않았으므로 UnreadCount는 사용자 수와 동일
 	}
 
+	if chat.SenderImage != "" {
+		chatModel.SenderImage = chat.SenderImage
+	}
+
 	// MongoDB에 메시지 저장
 	collection := r.mongo.Database("link").Collection("messages")
 	_, err = collection.InsertOne(context.Background(), chatModel)
@@ -231,36 +237,80 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 }
 
 // TODO 메시지 조회
-func (r *chatPersistence) GetChatMessages(chatRoomID uint) ([]*chatEntity.Chat, error) {
+func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[string]interface{}) (*chatEntity.ChatMeta, []*chatEntity.Chat, error) {
 	collection := r.mongo.Database("link").Collection("messages")
-
-	// MongoDB에서 채팅방 ID로 메시지 조회
+	//TODO 페이지네이션 처리
 	filter := bson.M{"chat_room_id": chatRoomID}
-	cursor, err := collection.Find(context.Background(), filter)
+
+	limit, ok := queryOptions["limit"].(int)
+	if !ok || limit <= 0 {
+		limit = 10 // 기본값
+	}
+
+	page, ok := queryOptions["page"].(int)
+	if !ok || page <= 0 {
+		page = 1 // 기본값
+	}
+
+	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
+		if createdAt, exists := cursor["created_at"].(string); exists {
+			filter["created_at"] = bson.M{"$lt": createdAt}
+		}
+	}
+
+	opts := options.Find()
+	opts.SetSort(bson.M{"created_at": 1}) //오름 차순
+	opts.SetLimit(int64(limit))
+
+	cursor, err := collection.Find(context.Background(), filter, opts)
 	if err != nil {
-		return nil, fmt.Errorf("채팅 내용 조회 중 MongoDB 오류: %w", err)
+		return nil, nil, fmt.Errorf("채팅 내용 조회 중 MongoDB 오류: %w", err)
 	}
 	defer cursor.Close(context.Background())
 
 	// MongoDB에서 조회한 메시지를 저장할 슬라이스
 	var chatMessages []model.Chat
 	if err = cursor.All(context.Background(), &chatMessages); err != nil {
-		return nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
+		return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
+	}
+
+	//TODO 전체 채팅 카운트
+	totalCount, err := collection.CountDocuments(context.Background(), filter)
+	if err != nil {
+		return nil, nil, fmt.Errorf("채팅 카운트 조회 중 MongoDB 오류: %w", err)
 	}
 
 	// 조회한 데이터를 entity로 변환
 	entityChatMessages := make([]*chatEntity.Chat, len(chatMessages))
 	for i, chatMessage := range chatMessages {
 		entityChatMessages[i] = &chatEntity.Chat{
-			ID:         chatMessage.ID.Hex(),
-			Content:    chatMessage.Content,
-			ChatRoomID: chatMessage.ChatRoomID,
-			SenderID:   chatMessage.SenderID,
-			CreatedAt:  chatMessage.CreatedAt,
+			ID:          chatMessage.ID.Hex(),
+			Content:     chatMessage.Content,
+			ChatRoomID:  chatMessage.ChatRoomID,
+			SenderID:    chatMessage.SenderID,
+			SenderName:  chatMessage.SenderName,
+			SenderEmail: chatMessage.SenderEmail,
+			CreatedAt:   chatMessage.CreatedAt,
 		}
 	}
 
-	return entityChatMessages, nil
+	var nextCursor string
+	if len(entityChatMessages) > 0 {
+		nextCursor = entityChatMessages[len(entityChatMessages)-1].CreatedAt.Format("2006-01-02 15:04:05")
+	} else {
+		nextCursor = ""
+	}
+
+	hasMore := totalCount > int64(limit*page)
+	return &chatEntity.ChatMeta{
+		TotalCount: int(totalCount),
+		TotalPages: int(math.Ceil(float64(totalCount) / float64(limit))),
+		PageSize:   limit,
+		NextCursor: nextCursor,
+		HasMore:    &hasMore,
+		PrevPage:   page - 1,
+		NextPage:   page + 1,
+	}, entityChatMessages, nil
 }
 
 // TODO 메시지 삭제
