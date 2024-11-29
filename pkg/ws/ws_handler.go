@@ -434,7 +434,8 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			log.Printf("온라인 상태 업데이트 실패: %v", err)
 		}
 	}
-	// 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
+
+	//! 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
 	for {
 		_, messageBytes, err := conn.ReadMessage()
 		if err != nil {
