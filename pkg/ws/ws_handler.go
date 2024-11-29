@@ -166,7 +166,6 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		if err == nil && chatRoomFromRedis != nil {
 			h.hub.AddToChatRoom(uint(roomIdUint), uint(userIdUint), conn)
 		} else {
-			//TODO 2단계 postgres에서 채팅방 조회
 			chatRoomResponse, err := h.chatUsecase.GetChatRoomById(uint(roomIdUint))
 			if err != nil || chatRoomResponse == nil {
 				log.Printf("DB 채팅방 조회 실패: %v", err)
