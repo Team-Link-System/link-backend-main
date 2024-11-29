@@ -2,11 +2,12 @@ package nats
 
 // ! 이벤트 정의 패키지
 const (
-	UserCreatedEvent = "user.created"
-	UserUpdatedEvent = "user.updated"
-	UserDeletedEvent = "user.deleted"
-	UserLoginEvent   = "user.login"
-	UserLogoutEvent  = "user.logout"
+	UserCreatedEvent   = "user.created"
+	UserUpdatedEvent   = "user.updated"
+	UserDeletedEvent   = "user.deleted"
+	UserLoginEvent     = "user.login"
+	UserLogoutEvent    = "user.logout"
+	UserMentionedEvent = "user.mentioned"
 
 	CompanyCreatedEvent = "company.created"
 	CompanyUpdatedEvent = "company.updated"

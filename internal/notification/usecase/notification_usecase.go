@@ -83,7 +83,6 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 		RequestType:  string(notification.RequestType),
 		CompanyId:    notification.CompanyId,
 		DepartmentId: notification.DepartmentId,
-		TeamId:       notification.TeamId,
 		Title:        notification.Title,
 		IsRead:       notification.IsRead,
 		Status:       notification.Status,
@@ -172,7 +171,7 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
 	}
 
-	//TODO 회사 초대 , 혹은 부서 초대, 팀 초대라면 메시지 달라야하고,
+	//TODO 회사 초대 , 혹은 부서 초대,
 
 	response := &res.CreateNotificationResponse{
 		ID:           notification.ID,
@@ -184,7 +183,6 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		RequestType:  string(notification.RequestType),
 		CompanyId:    notification.CompanyId,
 		DepartmentId: notification.DepartmentId,
-		TeamId:       notification.TeamId,
 		Title:        notification.Title,
 		IsRead:       notification.IsRead,
 		Status:       notification.Status,
@@ -238,7 +236,6 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 		RequestType:  string(notification.RequestType),
 		CompanyId:    notification.CompanyId,
 		DepartmentId: notification.DepartmentId,
-		TeamId:       notification.TeamId,
 		Title:        notification.Title,
 		IsRead:       notification.IsRead,
 		Status:       notification.Status,

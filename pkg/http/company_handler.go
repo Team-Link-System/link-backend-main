@@ -153,8 +153,6 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 			CompanyName:    response.CompanyName,
 			DepartmentId:   response.DepartmentId,
 			DepartmentName: response.DepartmentName,
-			TeamId:         response.TeamId,
-			TeamName:       response.TeamName,
 			Title:          response.Title,
 			IsRead:         response.IsRead,
 			Status:         response.Status,
