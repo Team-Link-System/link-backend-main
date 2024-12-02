@@ -173,7 +173,6 @@ func (uc *chatUsecase) CreateChatRoom(userId uint, request *req.CreateChatRoomRe
 
 // TODO 채팅방 조회
 func (uc *chatUsecase) GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, error) {
-	//TODO 먼저 레디스에 조회
 
 	chatRoom, err := uc.chatRepository.GetChatRoomById(roomId)
 	if err != nil {
