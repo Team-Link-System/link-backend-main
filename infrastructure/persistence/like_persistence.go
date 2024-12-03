@@ -80,45 +80,38 @@ func (r *likePersistence) CreatePostLike(like *entity.Like) error {
 }
 
 func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
-	var modelLikes []*model.Like
-	var count int64
-
-	//TODO 여기서 행의 갯수를 세야함
-	if err := r.db.Where("target_id = ? AND target_type = ? AND content IS NOT NULL",
-		postId, "POST").
-		Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email, nickname")
-		}).
-		Find(&modelLikes).Error; err != nil {
-		return nil, fmt.Errorf("게시물 좋아요 조회 실패: %w", err)
+	type EmojiCount struct {
+		EmojiID uint
+		Unified string
+		Content string
+		Count   int64
 	}
 
-	fmt.Println("modelLikes")
-	fmt.Println(modelLikes)
+	var emojiCounts []EmojiCount
 
-	//TODO count 세야함
-	if err := r.db.Model(&model.Like{}).
-		Where("target_id = ? AND target_type = ? AND content IS NOT NULL", postId, "POST").
-		Count(&count).Error; err != nil {
-		return nil, fmt.Errorf("게시물 좋아요 조회 실패: %w", err)
+	// 이모지별 반응 수 조회
+	if err := r.db.Raw(`
+        SELECT e.id as emoji_id, e.unified, e.content, COUNT(l.id) as count
+        FROM emojis e
+        JOIN likes l ON e.id = l.emoji_id
+        WHERE l.target_type = 'POST' AND l.target_id = ?
+        GROUP BY e.id, e.unified, e.content
+        ORDER BY count DESC
+    `, postId).Scan(&emojiCounts).Error; err != nil {
+		return nil, fmt.Errorf("게시물 이모지 반응 조회 실패: %w", err)
 	}
 
-	likeList := make([]*entity.Like, len(modelLikes))
-	for i, like := range modelLikes {
-		likeList[i] = &entity.Like{
-			ID:         like.ID,
-			UserID:     like.UserID,
-			TargetType: like.TargetType,
-			TargetID:   like.TargetID,
-			EmojiID:    like.EmojiID,
-			Unified:    like.Emoji.Unified,
-			User: map[string]interface{}{
-				"id":    like.User.ID,
-				"name":  like.User.Name,
-				"email": like.User.Email,
-			},
+	result := make([]*entity.Like, len(emojiCounts))
+	for i, ec := range emojiCounts {
+		result[i] = &entity.Like{
+			EmojiID:    ec.EmojiID,
+			Unified:    ec.Unified,
+			Content:    ec.Content,
+			Count:      int(ec.Count),
+			TargetID:   postId,
+			TargetType: "POST",
 		}
 	}
 
-	return likeList, nil
+	return result, nil
 }

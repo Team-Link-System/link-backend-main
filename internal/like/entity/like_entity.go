@@ -11,6 +11,7 @@ type Like struct {
 	Unified    string                 `json:"unified,omitempty"`
 	Content    string                 `json:"content,omitempty"`
 	User       map[string]interface{} `json:"user,omitempty"`
+	Count      int                    `json:"count,omitempty"`
 	CreatedAt  time.Time              `json:"created_at,omitempty"`
 	UpdatedAt  time.Time              `json:"updated_at,omitempty"`
 }
