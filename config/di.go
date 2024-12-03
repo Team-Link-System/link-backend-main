@@ -18,10 +18,10 @@ import (
 	commentUsecase "link/internal/comment/usecase"
 	companyUsecase "link/internal/company/usecase"
 	departmentUsecase "link/internal/department/usecase"
+	likeUsecase "link/internal/like/usecase"
 	notificationUsecase "link/internal/notification/usecase"
 	postUsecase "link/internal/post/usecase"
 	userUsecase "link/internal/user/usecase"
-
 	_nats "link/pkg/nats"
 
 	"github.com/go-redis/redis/v8"
@@ -72,6 +72,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(persistence.NewPostPersistence)
 	container.Provide(persistence.NewCompanyPersistence)
 	container.Provide(persistence.NewCommentPersistence)
+	container.Provide(persistence.NewLikePersistence)
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)
 	container.Provide(userUsecase.NewUserUsecase)
@@ -82,7 +83,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(companyUsecase.NewCompanyUsecase)
 	container.Provide(adminUsecase.NewAdminUsecase)
 	container.Provide(commentUsecase.NewCommentUsecase)
-
+	container.Provide(likeUsecase.NewLikeUsecase)
 	// Handler 계층 등록
 	container.Provide(http.NewUserHandler)
 	container.Provide(http.NewAuthHandler)
@@ -93,7 +94,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(http.NewPostHandler)
 	container.Provide(http.NewCommentHandler)
 	container.Provide(http.NewAdminHandler)
-
+	container.Provide(http.NewLikeHandler)
 	container.Provide(ws.NewWebSocketHub)
 
 	return container
