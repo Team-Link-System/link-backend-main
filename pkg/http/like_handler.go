@@ -18,7 +18,7 @@ func NewLikeHandler(likeUsecase usecase.LikeUsecase) *LikeHandler {
 	return &LikeHandler{likeUsecase: likeUsecase}
 }
 
-// CreateLike는 게시물 좋아요 혹은 댓글 좋아요를 생성합니다.
+// CreatePostLike는 게시물 이모지 좋아요를 생성합니다.
 func (h *LikeHandler) CreateLike(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
@@ -27,7 +27,7 @@ func (h *LikeHandler) CreateLike(c *gin.Context) {
 		return
 	}
 
-	var request req.LikeRequest
+	var request req.LikePostRequest
 	if err := c.ShouldBind(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
@@ -46,5 +46,3 @@ func (h *LikeHandler) CreateLike(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "좋아요 생성 성공", nil))
 }
-
-//TODO 좋아요 상위 목록 10개 조회 핸들러 추가
