@@ -106,13 +106,13 @@ func (u *likeUsecase) CreateCommentLike(requestUserId uint, commentId uint) erro
 	_, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("해당 사용자가 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "해당 사용자가 존재하지 않습니다", err)
+		return common.NewError(http.StatusNotFound, "해당 사용자가 존재하지 않습니다", err)
 	}
 
 	_, err = u.commentRepo.GetCommentByID(commentId)
 	if err != nil {
 		fmt.Printf("해당 댓글이 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "해당 댓글이 존재하지 않습니다", err)
+		return common.NewError(http.StatusNotFound, "해당 댓글이 존재하지 않습니다", err)
 	}
 
 	like := &entity.Like{
@@ -123,8 +123,8 @@ func (u *likeUsecase) CreateCommentLike(requestUserId uint, commentId uint) erro
 	}
 
 	if err := u.likeRepo.CreateCommentLike(like); err != nil {
-		fmt.Printf("좋아요 생성 실패: %v", err)
-		return common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err)
+		fmt.Printf("좋아요 생성 실패: %v", err.Error())
+		return common.NewError(http.StatusInternalServerError, err.Error(), err)
 	}
 
 	return nil

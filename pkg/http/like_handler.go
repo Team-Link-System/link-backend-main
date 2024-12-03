@@ -96,8 +96,10 @@ func (h *LikeHandler) CreateCommentLike(c *gin.Context) {
 	err = h.likeUsecase.CreateCommentLike(requestUserId.(uint), uint(commentId))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("좋아요 생성 실패: %v", appError)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
+			fmt.Printf("좋아요 생성 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err))
 		}
 		return
