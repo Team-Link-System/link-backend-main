@@ -48,7 +48,7 @@ func (h *LikeHandler) CreatePostLike(c *gin.Context) {
 	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "좋아요 생성 성공", nil))
 }
 
-// 게시물 이모지 리스트
+// TODO 게시물 이모지 리스트
 func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
 	_, exists := c.Get("userId")
 	if !exists {
@@ -75,4 +75,33 @@ func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "좋아요 조회 성공", likeList))
+}
+
+// TODO 댓글 좋아요 생성
+func (h *LikeHandler) CreateCommentLike(c *gin.Context) {
+	requestUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	commentId, err := strconv.Atoi(c.Param("commentid"))
+	if err != nil {
+		fmt.Printf("댓글 ID 조회 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "댓글 ID 조회 실패", err))
+		return
+	}
+
+	err = h.likeUsecase.CreateCommentLike(requestUserId.(uint), uint(commentId))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "좋아요 생성 성공", nil))
 }

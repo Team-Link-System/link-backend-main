@@ -115,3 +115,7 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 
 	return result, nil
 }
+
+func (r *likePersistence) CreateCommentLike(like *entity.Like) error {
+	return r.db.Create(like).Error
+}
