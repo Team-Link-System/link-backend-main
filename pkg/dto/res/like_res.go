@@ -8,5 +8,9 @@ type GetPostLikeListResponse struct {
 	Email      string `json:"email"`
 	TargetID   uint   `json:"target_id"`
 	TargetType string `json:"target_type"`
+	Unified    string `json:"unified"`
 	Content    string `json:"content"`
+}
+
+type GetCommentLikeListResponse struct {
 }

@@ -18,23 +18,65 @@ func NewLikePersistence(db *gorm.DB) _likeRepo.LikeRepository {
 	return &likePersistence{db: db}
 }
 
-func (r *likePersistence) CreateLike(like *entity.Like) error {
+func (r *likePersistence) CreatePostLike(like *entity.Like) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. 이모지 확인/생성
+	var emoji model.Emoji
+	if err := tx.Where("unified = ?", like.Unified).First(&emoji).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			emoji = model.Emoji{
+				Unified: like.Unified,
+				Content: like.Content,
+			}
+			if err := tx.Create(&emoji).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("이모지 생성 실패: %w", err)
+			}
+		} else {
+			tx.Rollback()
+			return fmt.Errorf("이모지 조회 실패: %w", err)
+		}
+	}
+
+	// 2. 해당 게시글에 대한 사용자의 이모지 반응 확인
+	var existingLike model.Like
+	err := tx.Where(
+		"user_id = ? AND target_type = ? AND target_id = ? AND emoji_id = ?",
+		like.UserID,
+		strings.ToUpper(like.TargetType),
+		like.TargetID,
+		emoji.ID,
+	).First(&existingLike).Error
+
+	if err == nil {
+		tx.Rollback()
+		return fmt.Errorf("이미 동일한 이모지 반응이 존재합니다")
+	}
+	if err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return fmt.Errorf("좋아요 조회 실패: %w", err)
+	}
+
+	// 3. 새로운 이모지 반응 생성
 	modelLike := &model.Like{
 		UserID:     like.UserID,
-		TargetType: strings.ToUpper(like.TargetType), // 대문자로 통일
+		TargetType: strings.ToUpper(like.TargetType),
 		TargetID:   like.TargetID,
-		Content:    like.Content,
+		EmojiID:    emoji.ID,
 	}
 
-	if modelLike.TargetType == "COMMENT" {
-		modelLike.Content = "" // 댓글은 content를 빈 문자열로 처리
-	}
-
-	if err := r.db.Create(modelLike).Error; err != nil {
+	if err := tx.Create(modelLike).Error; err != nil {
+		tx.Rollback()
 		return fmt.Errorf("좋아요 생성 실패: %w", err)
 	}
 
-	return nil
+	return tx.Commit().Error
 }
 
 func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
@@ -68,7 +110,8 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 			UserID:     like.UserID,
 			TargetType: like.TargetType,
 			TargetID:   like.TargetID,
-			Content:    like.Content,
+			EmojiID:    like.EmojiID,
+			Unified:    like.Emoji.Unified,
 			User: map[string]interface{}{
 				"id":    like.User.ID,
 				"name":  like.User.Name,
@@ -78,32 +121,4 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 	}
 
 	return likeList, nil
-}
-
-func (r *likePersistence) CheckLikeByUserIDAndTargetID(userId uint, targetType string, targetId uint) (*entity.Like, error) {
-	var modelLike model.Like
-
-	result := r.db.Where(
-		"user_id = ? AND target_type = ? AND target_id = ?",
-		userId,
-		strings.ToUpper(targetType),
-		targetId,
-	).First(&modelLike)
-
-	if result.Error == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
-
-	if result.Error != nil {
-		return nil, fmt.Errorf("좋아요 조회 실패: %w", result.Error)
-	}
-
-	return &entity.Like{
-		ID:         modelLike.ID,
-		UserID:     modelLike.UserID,
-		TargetType: modelLike.TargetType,
-		TargetID:   modelLike.TargetID,
-		Content:    modelLike.Content,
-		CreatedAt:  modelLike.CreatedAt,
-	}, nil
 }

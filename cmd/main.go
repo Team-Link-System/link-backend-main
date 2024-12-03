@@ -227,7 +227,7 @@ func startServer() {
 			//TODO 좋아요 관련 핸들러
 			like := protectedRoute.Group("like")
 			{
-				like.POST("", likeHandler.CreateLike)                       //! 게시물 이모지 좋아요
+				like.POST("/post", likeHandler.CreatePostLike)              //! 게시물 이모지 좋아요
 				like.GET("/post/list/:postid", likeHandler.GetPostLikeList) //! 게시글 좋아요
 				// like.GET("/top10", likeHandler.GetTop10Likes) //! 좋아요 상위 목록 10개 조회
 			}
