@@ -78,6 +78,8 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 	return nil
 }
 
+//TODO 게시글 이모지 취소 -> 좋아요 삭제
+
 func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error) {
 
 	likeList, err := u.likeRepo.GetPostLikeList(postId)
