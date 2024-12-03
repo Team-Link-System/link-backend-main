@@ -75,14 +75,12 @@ func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListRespon
 	response := make([]*res.GetPostLikeListResponse, len(likeList))
 	for i, like := range likeList {
 		response[i] = &res.GetPostLikeListResponse{
-			ID:         like.ID,
+			TargetType: "POST",
 			TargetID:   like.TargetID,
-			TargetType: like.TargetType,
-			Count:      len(likeList),
-			Name:       like.User["name"].(string),
-			UserID:     like.UserID,
-			Email:      like.User["email"].(string),
+			EmojiId:    like.EmojiID,
 			Unified:    like.Unified,
+			Content:    like.Content,
+			Count:      len(likeList),
 		}
 	}
 

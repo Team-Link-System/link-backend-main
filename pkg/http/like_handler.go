@@ -19,7 +19,7 @@ func NewLikeHandler(likeUsecase usecase.LikeUsecase) *LikeHandler {
 	return &LikeHandler{likeUsecase: likeUsecase}
 }
 
-// CreatePostLike는 게시물 이모지 좋아요를 생성합니다.
+// TODO CreatePostLike는 게시물 이모지 좋아요를 생성
 func (h *LikeHandler) CreatePostLike(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
