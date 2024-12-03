@@ -223,6 +223,12 @@ func startServer() {
 				admin.GET("/department/list/:companyid", adminHandler.GetDepartments)
 				// admin.GET("/department/:departmentid", adminHandler.GetDepartment)
 			}
+
+			//TODO 좋아요 관련 핸들러
+			// like := protectedRoute.Group("like")
+			// {
+			// 	// like.POST("/:postid", likeHandler.CreateLike) //! 게시물 좋아요 혹은 댓글 좋아요
+			// }
 		}
 	})
 	if err != nil {
