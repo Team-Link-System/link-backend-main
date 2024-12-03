@@ -7,13 +7,15 @@ import (
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type LikeUsecase interface {
-	CreateLike(requestUserId uint, request req.LikePostRequest) error
+	CreatePostLike(requestUserId uint, request req.LikePostRequest) error
+	GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error)
 }
 
 type likeUsecase struct {
@@ -26,7 +28,8 @@ func NewLikeUsecase(userRepo _userRepo.UserRepository,
 	return &likeUsecase{userRepo: userRepo, likeRepo: likeRepo}
 }
 
-func (u *likeUsecase) CreateLike(requestUserId uint, request req.LikePostRequest) error {
+// TODO 게시글 이모지 좋아요
+func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostRequest) error {
 
 	_, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
@@ -34,30 +37,54 @@ func (u *likeUsecase) CreateLike(requestUserId uint, request req.LikePostRequest
 		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
 	}
 
-	if strings.ToUpper(request.TargetType) == "POST" {
-		if request.Content == "" {
-			fmt.Printf("게시물 좋아요는 내용이 필요합니다")
-			return common.NewError(http.StatusBadRequest, "게시물 좋아요는 내용이 필요합니다", nil)
-		}
-	} else if strings.ToUpper(request.TargetType) == "COMMENT" {
-		if request.Content != "" {
-			fmt.Printf("댓글 좋아요는 내용이 필요없습니다")
-			return common.NewError(http.StatusBadRequest, "댓글 좋아요는 내용이 필요없습니다", nil)
-		}
+	if strings.ToUpper(request.TargetType) != "POST" {
+		fmt.Printf("이모지 좋아요 대상이 올바르지 않습니다")
+		return common.NewError(http.StatusBadRequest, "이모지 좋아요 대상이 올바르지 않습니다", nil)
+	}
+
+	if request.Content == "" {
+		fmt.Printf("이모지가 없습니다")
+		return common.NewError(http.StatusBadRequest, "이모지가 없습니다", nil)
 	}
 
 	like := &entity.Like{
 		UserID:     requestUserId,
 		TargetType: strings.ToUpper(request.TargetType),
 		TargetID:   request.TargetID,
+		Unified:    request.Unified,
 		Content:    request.Content,
 		CreatedAt:  time.Now(),
 	}
 
-	if err := u.likeRepo.CreateLike(like); err != nil {
+	if err := u.likeRepo.CreatePostLike(like); err != nil {
 		fmt.Printf("좋아요 생성 실패: %v", err)
 		return common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err)
 	}
 
 	return nil
+}
+
+func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error) {
+
+	likeList, err := u.likeRepo.GetPostLikeList(postId)
+	if err != nil {
+		fmt.Printf("게시물 좋아요 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "게시물 좋아요 조회 실패", err)
+	}
+
+	response := make([]*res.GetPostLikeListResponse, len(likeList))
+	for i, like := range likeList {
+		response[i] = &res.GetPostLikeListResponse{
+			ID:         like.ID,
+			TargetID:   like.TargetID,
+			TargetType: like.TargetType,
+			Count:      len(likeList),
+			Name:       like.User["name"].(string),
+			UserID:     like.UserID,
+			Email:      like.User["email"].(string),
+			Unified:    like.Unified,
+		}
+	}
+
+	return response, nil
 }
