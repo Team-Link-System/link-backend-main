@@ -115,3 +115,44 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 
 	return result, nil
 }
+
+func (r *likePersistence) CreateCommentLike(like *entity.Like) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 해당 댓글에 좋아요 여부 확인
+	err := tx.Where(
+		"user_id = ? AND target_type = ? AND target_id = ?",
+		like.UserID,
+		strings.ToUpper(like.TargetType),
+		like.TargetID,
+	).First(&model.Like{}).Error
+
+	if err == nil {
+		tx.Rollback()
+		return fmt.Errorf("이미 좋아요한 댓글입니다")
+	}
+
+	if err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return fmt.Errorf("좋아요 조회 실패: %w", err)
+	}
+
+	// 좋아요 생성
+	modelLike := &model.Like{
+		UserID:     like.UserID,
+		TargetType: strings.ToUpper(like.TargetType),
+		TargetID:   like.TargetID,
+	}
+
+	if err := tx.Create(modelLike).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("좋아요 생성 실패: %w", err)
+	}
+
+	return tx.Commit().Error
+}
