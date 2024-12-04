@@ -8,4 +8,6 @@ type LikeRepository interface {
 	GetPostLikeByID(userId uint, postId uint, emojiId uint) (*entity.Like, error)
 	DeletePostLike(likeId uint) error
 	CreateCommentLike(like *entity.Like) error
+	GetCommentLikeByID(userId uint, commentId uint) (*entity.Like, error)
+	DeleteCommentLike(likeId uint) error
 }
