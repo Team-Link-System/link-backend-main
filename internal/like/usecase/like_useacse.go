@@ -96,7 +96,7 @@ func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListRespon
 			EmojiId:    like.EmojiID,
 			Unified:    like.Unified,
 			Content:    like.Content,
-			Count:      len(likeList),
+			Count:      int(like.Count),
 		}
 	}
 
