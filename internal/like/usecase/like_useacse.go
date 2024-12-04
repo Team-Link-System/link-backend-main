@@ -43,23 +43,39 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 	_, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
-		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "사용자 조회 실패",
+			Err:        err,
+		}
 	}
 
 	_, err = u.postRepo.GetPostByID(request.TargetID)
 	if err != nil {
 		fmt.Printf("해당 게시물이 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "해당 게시물이 존재하지 않습니다", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "해당 게시물이 존재하지 않습니다",
+			Err:        err,
+		}
 	}
 
 	if strings.ToUpper(request.TargetType) != "POST" {
 		fmt.Printf("이모지 좋아요 대상이 올바르지 않습니다")
-		return common.NewError(http.StatusBadRequest, "이모지 좋아요 대상이 올바르지 않습니다", nil)
+		return &common.AppError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "이모지 좋아요 대상이 올바르지 않습니다",
+			Err:        nil,
+		}
 	}
 
 	if request.Content == "" {
 		fmt.Printf("이모지가 없습니다")
-		return common.NewError(http.StatusBadRequest, "이모지가 없습니다", nil)
+		return &common.AppError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "이모지가 없습니다",
+			Err:        nil,
+		}
 	}
 
 	like := &entity.Like{
@@ -73,7 +89,11 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 
 	if err := u.likeRepo.CreatePostLike(like); err != nil {
 		fmt.Printf("좋아요 생성 실패: %v", err)
-		return common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "좋아요 생성 실패",
+			Err:        err,
+		}
 	}
 
 	return nil
@@ -86,12 +106,20 @@ func (u *likeUsecase) DeletePostLike(requestUserId uint, postId uint, emojiId ui
 	like, err := u.likeRepo.GetPostLikeByID(requestUserId, postId, emojiId)
 	if err != nil {
 		fmt.Printf("해당 사용자가 좋아요를 해당 이모지를 누른 적이 없습니다: %v", err)
-		return common.NewError(http.StatusInternalServerError, "해당 사용자가 좋아요를 해당 이모지를 누른 적이 없습니다", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "해당 사용자가 좋아요를 해당 이모지를 누른 적이 없습니다",
+			Err:        err,
+		}
 	}
 
 	if err := u.likeRepo.DeletePostLike(like.ID); err != nil {
 		fmt.Printf("좋아요 삭제 실패: %v", err)
-		return common.NewError(http.StatusInternalServerError, "좋아요 삭제 실패", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "좋아요 삭제 실패",
+			Err:        err,
+		}
 	}
 
 	return nil
@@ -102,7 +130,11 @@ func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListRespon
 	likeList, err := u.likeRepo.GetPostLikeList(postId)
 	if err != nil {
 		fmt.Printf("게시물 좋아요 조회 실패: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "게시물 좋아요 조회 실패", err)
+		return nil, &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "게시물 좋아요 조회 실패",
+			Err:        err,
+		}
 	}
 
 	response := make([]*res.GetPostLikeListResponse, len(likeList))
@@ -125,13 +157,21 @@ func (u *likeUsecase) CreateCommentLike(requestUserId uint, commentId uint) erro
 	_, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("해당 사용자가 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusNotFound, "해당 사용자가 존재하지 않습니다", err)
+		return &common.AppError{
+			StatusCode: http.StatusNotFound,
+			Message:    "해당 사용자가 존재하지 않습니다",
+			Err:        err,
+		}
 	}
 
 	_, err = u.commentRepo.GetCommentByID(commentId)
 	if err != nil {
 		fmt.Printf("해당 댓글이 존재하지 않습니다: %v", err)
-		return common.NewError(http.StatusNotFound, "해당 댓글이 존재하지 않습니다", err)
+		return &common.AppError{
+			StatusCode: http.StatusNotFound,
+			Message:    "해당 댓글이 존재하지 않습니다",
+			Err:        err,
+		}
 	}
 
 	like := &entity.Like{
@@ -143,7 +183,11 @@ func (u *likeUsecase) CreateCommentLike(requestUserId uint, commentId uint) erro
 
 	if err := u.likeRepo.CreateCommentLike(like); err != nil {
 		fmt.Printf("좋아요 생성 실패: %v", err.Error())
-		return common.NewError(http.StatusInternalServerError, err.Error(), err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "좋아요 생성 실패",
+			Err:        err,
+		}
 	}
 
 	return nil
