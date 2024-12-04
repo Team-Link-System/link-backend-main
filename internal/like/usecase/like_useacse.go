@@ -20,6 +20,7 @@ type LikeUsecase interface {
 	GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error)
 	DeletePostLike(requestUserId uint, postId uint, emojiId uint) error
 	CreateCommentLike(requestUserId uint, commentId uint) error
+	DeleteCommentLike(requestUserId uint, commentId uint) error
 }
 
 type likeUsecase struct {
@@ -143,6 +144,49 @@ func (u *likeUsecase) CreateCommentLike(requestUserId uint, commentId uint) erro
 	if err := u.likeRepo.CreateCommentLike(like); err != nil {
 		fmt.Printf("좋아요 생성 실패: %v", err.Error())
 		return common.NewError(http.StatusInternalServerError, err.Error(), err)
+	}
+
+	return nil
+}
+
+func (u *likeUsecase) DeleteCommentLike(requestUserId uint, commentId uint) error {
+	_, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return &common.AppError{
+			StatusCode: http.StatusNotFound,
+			Message:    "사용자 조회 실패",
+			Err:        err,
+		}
+	}
+
+	_, err = u.commentRepo.GetCommentByID(commentId)
+	if err != nil {
+		fmt.Printf("해당 댓글이 존재하지 않습니다: %v", err)
+		return &common.AppError{
+			StatusCode: http.StatusNotFound,
+			Message:    "해당 댓글이 존재하지 않습니다",
+			Err:        err,
+		}
+	}
+
+	like, err := u.likeRepo.GetCommentLikeByID(requestUserId, commentId)
+	if err != nil {
+		fmt.Printf("해당 사용자가 해당 댓글에 좋아요를 누른 적이 없습니다: %v", err)
+		return &common.AppError{
+			StatusCode: http.StatusNotFound,
+			Message:    "해당 사용자가 해당 댓글에 좋아요를 누른 적이 없습니다",
+			Err:        err,
+		}
+	}
+
+	if err := u.likeRepo.DeleteCommentLike(like.ID); err != nil {
+		fmt.Printf("좋아요 삭제 실패: %v", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "좋아요 삭제 실패",
+			Err:        err,
+		}
 	}
 
 	return nil

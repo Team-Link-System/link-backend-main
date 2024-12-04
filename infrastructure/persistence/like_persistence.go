@@ -189,3 +189,29 @@ func (r *likePersistence) CreateCommentLike(like *entity.Like) error {
 
 	return tx.Commit().Error
 }
+
+func (r *likePersistence) GetCommentLikeByID(userId uint, commentId uint) (*entity.Like, error) {
+	var like model.Like
+
+	err := r.db.Where("user_id = ? AND target_id = ? AND target_type = 'COMMENT' AND emoji_id IS NULL", userId, commentId).First(&like).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("해당하는 좋아요를 찾을 수 없습니다")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("좋아요 조회 실패: %w", err)
+	}
+
+	return &entity.Like{
+		ID:         like.ID,
+		UserID:     like.UserID,
+		TargetID:   like.TargetID,
+		TargetType: like.TargetType,
+	}, nil
+}
+
+func (r *likePersistence) DeleteCommentLike(likeId uint) error {
+	if err := r.db.Delete(&model.Like{}, likeId).Error; err != nil {
+		return fmt.Errorf("좋아요 삭제 실패: %w", err)
+	}
+	return nil
+}
