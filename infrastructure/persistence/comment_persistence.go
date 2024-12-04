@@ -246,6 +246,14 @@ func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions ma
 
 	result := make([]*entity.Comment, 0)
 	for _, comment := range comments {
+
+		//TODO 대댓글 좋아요 수 조회
+		var likeCount int64
+		if err := r.db.Model(&model.Like{}).Where("target_type = 'COMMENT' AND target_id = ?", comment.ID).Count(&likeCount).Error; err != nil {
+			return nil, nil, fmt.Errorf("대댓글 좋아요 수 조회에 실패하였습니다: %w", err)
+		}
+		comment.LikeCount = int(likeCount)
+
 		authorMap := map[string]interface{}{
 			"name": "익명",
 		}
@@ -281,6 +289,7 @@ func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions ma
 			Content:      comment.Content,
 			ProfileImage: profileImage,
 			UserName:     userName,
+			LikeCount:    comment.LikeCount,
 			IsAnonymous:  &comment.IsAnonymous,
 			CreatedAt:    comment.CreatedAt,
 		})

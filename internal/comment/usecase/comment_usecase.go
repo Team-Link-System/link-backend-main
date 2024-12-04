@@ -455,6 +455,7 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 			ProfileImage: profileImage,
 			ParentID:     parentId,
 			Content:      reply.Content,
+			LikeCount:    reply.LikeCount,
 			IsAnonymous:  *reply.IsAnonymous,
 			CreatedAt:    _util.ParseKst(reply.CreatedAt).Format(time.DateTime),
 		}

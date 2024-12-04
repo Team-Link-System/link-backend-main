@@ -20,6 +20,7 @@ type ReplyResponse struct {
 	ProfileImage string `json:"profile_image,omitempty"`
 	ParentID     uint   `json:"parent_id"`
 	Content      string `json:"content"`
+	LikeCount    int    `json:"like_count"`
 	IsAnonymous  bool   `json:"is_anonymous"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
