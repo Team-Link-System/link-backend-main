@@ -53,40 +53,98 @@ func NewWsHandler(hub *WebSocketHub,
 
 // nats sub 설정
 func (h *WsHandler) setUpNatsSubscriber() {
-	err := h.natsSubscriber.SubscribeEvent("chat.message.sent", func(msg *nats.Msg) {
-		fmt.Println("채팅 메시지 이벤트 수신")
-	})
-	if err != nil {
-		fmt.Printf("NATS 이벤트 수신 오류: %v", err)
-	}
+	// 채팅 메시지 관련
+	h.subscribeToChat()
+	// 좋아요 관련
+	h.subscribeToLikes()
+	// 알림 관련
+	h.subscribeToNotifications()
+}
 
-	err = h.natsSubscriber.SubscribeEvent("chat.room.leave", func(msg *nats.Msg) {
-
+func (h *WsHandler) subscribeToChat() {
+	// 채팅 메시지 전송
+	h.natsSubscriber.SubscribeEvent("chat.message.sent", func(msg *nats.Msg) {
 		var message map[string]interface{}
 		if err := json.Unmarshal(msg.Data, &message); err != nil {
-			fmt.Printf("메시지 파싱 오류: %v", err)
+			log.Printf("메시지 파싱 오류: %v", err)
+			return
+		}
+		// 채팅방에 메시지 전송
+		h.hub.SendMessageToChatRoom(uint(message["roomId"].(float64)), res.JsonResponse{
+			Success: true,
+			Type:    "chat",
+			Payload: message,
+		})
+	})
+
+	// 채팅방 나가기
+	h.natsSubscriber.SubscribeEvent("chat.room.leave", func(msg *nats.Msg) {
+		var message map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &message); err != nil {
+			log.Printf("메시지 파싱 오류: %v", err)
+			return
+		}
+		// 채팅방 나가기 처리
+		h.handleChatRoomLeave(message)
+	})
+}
+
+func (h *WsHandler) subscribeToLikes() {
+	// 게시글 좋아요
+	h.natsSubscriber.SubscribeEvent("like.post.created", func(msg *nats.Msg) {
+		var notification map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &notification); err != nil {
+			log.Printf("알림 파싱 오류: %v", err)
 			return
 		}
 
-		leaveUserName := message["leaveUserName"].(string)
-		h.hub.SendMessageToChatRoom(uint(message["roomId"].(float64)), res.JsonResponse{
+		fmt.Println("좋아요 알림 수신")
+		fmt.Println(notification)
+		// 좋아요 알림 전송
+		receiverId := uint(notification["receiver_id"].(float64))
+		h.hub.SendMessageToUser(receiverId, res.JsonResponse{
 			Success: true,
-			Message: "채팅방 나가기 이벤트 수신",
-			Payload: &res.ChatPayload{
-				ChatRoomID: uint(message["roomId"].(float64)),
-				SenderID:   uint(message["userId"].(float64)),
-				SenderName: leaveUserName,
-				Content:    fmt.Sprintf("%s님이 채팅방을 나갔습니다.", leaveUserName),
-			},
-			Type: "chat",
+			Type:    "notification",
+			Payload: notification,
 		})
-		h.hub.RemoveFromChatRoom(uint(message["roomId"].(float64)), uint(message["userId"].(float64)))
-
 	})
-	if err != nil {
-		fmt.Printf("NATS 이벤트 수신 오류: %v", err)
-	}
+}
 
+func (h *WsHandler) subscribeToNotifications() {
+	// 일반 알림
+	h.natsSubscriber.SubscribeEvent("notification.created", func(msg *nats.Msg) {
+		var notification map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &notification); err != nil {
+			log.Printf("알림 파싱 오류: %v", err)
+			return
+		}
+		// 알림 전송
+		receiverId := uint(notification["receiver_id"].(float64))
+		h.hub.SendMessageToUser(receiverId, res.JsonResponse{
+			Success: true,
+			Type:    "notification",
+			Payload: notification,
+		})
+	})
+}
+
+func (h *WsHandler) handleChatRoomLeave(message map[string]interface{}) {
+	leaveUserName := message["leaveUserName"].(string)
+	roomId := uint(message["roomId"].(float64))
+	userId := uint(message["userId"].(float64))
+
+	h.hub.SendMessageToChatRoom(roomId, res.JsonResponse{
+		Success: true,
+		Message: "채팅방 나가기 이벤트 수신",
+		Payload: &res.ChatPayload{
+			ChatRoomID: roomId,
+			SenderID:   userId,
+			SenderName: leaveUserName,
+			Content:    fmt.Sprintf("%s님이 채팅방을 나갔습니다.", leaveUserName),
+		},
+		Type: "chat",
+	})
+	h.hub.RemoveFromChatRoom(roomId, userId)
 }
 
 // TODO 채팅 웹소켓 연결 핸들러
@@ -445,7 +503,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 				// 다른 활성 연결이 없을 때만 상태 업데이트
 				if _, exists := h.hub.Clients.Load(uint(userIdUint)); !exists {
 					if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-						log.Printf("유저 상태 업데이트 실패: %v", err)
+						log.Printf("유저 상��� 업데이트 실패: %v", err)
 					}
 				}
 			}
