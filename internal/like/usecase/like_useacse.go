@@ -17,7 +17,7 @@ import (
 
 type LikeUsecase interface {
 	CreatePostLike(requestUserId uint, request req.LikePostRequest) error
-	GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error)
+	GetPostLikeList(requestUserId uint, postId uint) ([]*res.GetPostLikeListResponse, error)
 	DeletePostLike(requestUserId uint, postId uint, emojiId uint) error
 	CreateCommentLike(requestUserId uint, commentId uint) error
 	DeleteCommentLike(requestUserId uint, commentId uint) error
@@ -125,9 +125,8 @@ func (u *likeUsecase) DeletePostLike(requestUserId uint, postId uint, emojiId ui
 	return nil
 }
 
-func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error) {
-
-	likeList, err := u.likeRepo.GetPostLikeList(postId)
+func (u *likeUsecase) GetPostLikeList(requestUserId uint, postId uint) ([]*res.GetPostLikeListResponse, error) {
+	likeList, err := u.likeRepo.GetPostLikeList(requestUserId, postId)
 	if err != nil {
 		fmt.Printf("게시물 좋아요 조회 실패: %v", err)
 		return nil, &common.AppError{
@@ -145,7 +144,9 @@ func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListRespon
 			EmojiId:    like.EmojiID,
 			Unified:    like.Unified,
 			Content:    like.Content,
-			Count:      int(like.Count),
+			//TODO 본인이 해당 이모지를 눌렀는지 확인하는 필드 (다른사람이 추가한걸	확인하는것)
+			IsCliked: like.IsCliked,
+			Count:    int(like.Count),
 		}
 	}
 

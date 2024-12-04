@@ -79,26 +79,31 @@ func (r *likePersistence) CreatePostLike(like *entity.Like) error {
 	return tx.Commit().Error
 }
 
-func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
+func (r *likePersistence) GetPostLikeList(userId uint, postId uint) ([]*entity.Like, error) {
 	type EmojiCount struct {
-		EmojiID uint
-		Unified string
-		Content string
-		Count   int64
+		EmojiID  uint
+		Unified  string
+		Content  string
+		Count    int64
+		IsCliked bool `gorm:"column:is_clicked"`
 	}
 
 	var emojiCounts []EmojiCount
 
 	// 이모지별 반응 수 조회
 	if err := r.db.Raw(`
-		SELECT e.id as emoji_id, e.unified, e.content, COUNT(DISTINCT l.user_id) as count
+		SELECT e.id as emoji_id,
+		e.unified,
+		e.content,
+		COUNT(DISTINCT l.user_id) as count,
+		BOOL_OR(l.user_id = ?) as is_clicked
 		FROM emojis e
 		JOIN likes l
 		ON e.id = l.emoji_id
 		WHERE l.target_type = 'POST' AND l.target_id = ?
 		GROUP BY e.id, e.unified, e.content
 		ORDER BY count DESC
-    `, postId).Scan(&emojiCounts).Error; err != nil {
+    `, userId, postId).Scan(&emojiCounts).Error; err != nil {
 		return nil, fmt.Errorf("게시물 이모지 반응 조회 실패: %w", err)
 	}
 
@@ -110,6 +115,7 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 			Unified:    ec.Unified,
 			Content:    ec.Content,
 			Count:      int(ec.Count),
+			IsCliked:   ec.IsCliked,
 			TargetID:   postId,
 			TargetType: "POST",
 		}

@@ -22,8 +22,8 @@ type ReplyResponse struct {
 	Content      string `json:"content"`
 	LikeCount    int    `json:"like_count"`
 	IsAnonymous  bool   `json:"is_anonymous"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	CreatedAt    string `json:"created_at,omitempty"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
 // TODO parentId 없는 댓글은 무한스크롤 (커서)로 처리

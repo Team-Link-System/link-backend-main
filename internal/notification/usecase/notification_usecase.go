@@ -396,8 +396,6 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 	return nil, nil
 }
 
-//TODO 요청 알림 수락 및 거절 (관리자가 응답하는 것)
-
 // TODO 읽음 처리
 func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
 	notification, err := n.notificationRepo.GetNotificationByID(notificationId)

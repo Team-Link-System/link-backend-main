@@ -468,7 +468,7 @@ func (u *adminUsecase) AdminUpdateCompany(requestUserID uint, request *req.Admin
 	return nil
 }
 
-// TODO 사용자 검색 Query 파라미터로 해당 회사의 사용자 검색 구분자는 company 전체로보는게 default 부서는 department 팀은 team
+// TODO 사용자 검색 Query 파라미터로 해당 회사의 사용자 검색 구분자는 company 전체로보는게 default 부서는 department
 func (u *adminUsecase) AdminSearchUser(adminUserId uint, searchTerm string) ([]res.AdminGetUserByIdResponse, error) {
 	adminUser, err := u.userRepository.GetUserByID(adminUserId)
 	if err != nil {

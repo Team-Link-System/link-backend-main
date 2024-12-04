@@ -57,7 +57,7 @@ func LoadEnv() {
 	if err != nil {
 		logger.LogError(fmt.Sprintf("에러 %s 파일 로드", envFile))
 	} else {
-		logger.LogError(fmt.Sprintf("%s 파일 로드 성공", envFile))
+		fmt.Printf("%s 파일 로드 성공", envFile)
 	}
 }
 
