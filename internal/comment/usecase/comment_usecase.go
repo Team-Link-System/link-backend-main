@@ -320,8 +320,6 @@ func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQuer
 			profileImage = comment.ProfileImage
 		}
 
-		fmt.Println(comment.ReplyCount)
-
 		commentRes[i] = &res.CommentResponse{
 			CommentId:    comment.ID,
 			UserId:       comment.UserID,
