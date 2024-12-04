@@ -329,6 +329,7 @@ func (u *commentUsecase) GetComments(userId uint, queryParams req.GetCommentQuer
 			ProfileImage: profileImage,
 			Content:      comment.Content,
 			IsAnonymous:  *comment.IsAnonymous,
+			LikeCount:    comment.LikeCount,
 			ReplyCount:   comment.ReplyCount,
 			CreatedAt:    _util.ParseKst(comment.CreatedAt).Format(time.DateTime),
 		}
