@@ -89,6 +89,7 @@ func (h *WsHandler) subscribeToChat() {
 	})
 }
 
+// TODO 좋아요는 고민-> 너무 많은 로그는 필요 없을 거 같아서
 func (h *WsHandler) subscribeToLikes() {
 	// 게시글 좋아요
 	h.natsSubscriber.SubscribeEvent("like.post.created", func(msg *nats.Msg) {

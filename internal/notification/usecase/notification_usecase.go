@@ -66,10 +66,6 @@ func (n *notificationUsecase) SubscribeToNotifications() {
 		}
 
 		switch msg.Subject {
-		case "notification.like.post.created": //게시글에 좋아요 post나 comment 중간에 넣어야함
-			//TODO mongodb에 알림 로그 저장
-		case "notification.like.comment.created": //댓글에 좋아요
-			//TODO mongodb에 알림 로그 저장
 		case "notification.mention.post.created": //게시글에 멘션
 			//TODO mongodb에 알림 로그 저장
 		case "notification.mention.comment.created": //댓글에 멘션
