@@ -109,13 +109,25 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 
 	// 2. 각 댓글의 대댓글 수를 별도로 조회
 	for _, comment := range comments {
-		var replyCount int64
-		if err := r.db.Model(&model.Comment{}).
-			Where("parent_id = ?", comment.ID).
-			Count(&replyCount).Error; err != nil {
-			return nil, nil, fmt.Errorf("대댓글 수 조회에 실패하였습니다: %w", err)
+		type Result struct {
+			ReplyCount int64 `gorm:"column:reply_count"`
+			LikeCount  int64 `gorm:"column:like_count"`
 		}
-		comment.ReplyCount = int(replyCount)
+		var result Result
+
+		if err := r.db.Model(&model.Comment{}).
+			Select(`
+            COUNT(DISTINCT replies.id) as reply_count,
+            COUNT(DISTINCT likes.id) as like_count
+        `).
+			Joins("LEFT JOIN comments replies ON replies.parent_id = ?", comment.ID).
+			Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = ?", comment.ID).
+			Scan(&result).Error; err != nil {
+			return nil, nil, fmt.Errorf("댓글 정보 조회 실패: %w", err)
+		}
+
+		comment.ReplyCount = int(result.ReplyCount)
+		comment.LikeCount = int(result.LikeCount)
 	}
 
 	result := make([]*entity.Comment, 0)
@@ -157,6 +169,7 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 			UserName:     userName,
 			IsAnonymous:  &comment.IsAnonymous,
 			ReplyCount:   comment.ReplyCount,
+			LikeCount:    comment.LikeCount,
 			CreatedAt:    comment.CreatedAt,
 		})
 	}
