@@ -98,8 +98,6 @@ func (h *WsHandler) subscribeToLikes() {
 			return
 		}
 
-		fmt.Println("좋아요 알림 수신")
-		fmt.Println(notification)
 		// 좋아요 알림 전송
 		receiverId := uint(notification["receiver_id"].(float64))
 		h.hub.SendMessageToUser(receiverId, res.JsonResponse{
@@ -503,7 +501,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 				// 다른 활성 연결이 없을 때만 상태 업데이트
 				if _, exists := h.hub.Clients.Load(uint(userIdUint)); !exists {
 					if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-						log.Printf("유저 상��� 업데이트 실패: %v", err)
+						log.Printf("유저 상태 업데이트 실패: %v", err)
 					}
 				}
 			}
