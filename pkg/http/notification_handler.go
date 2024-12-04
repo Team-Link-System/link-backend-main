@@ -81,7 +81,7 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		return
 	}
 
-	//TODO 해당내용 웹소켓으로 전달
+	//TODO 해당내용 웹소켓으로 전달 -> 웹소켓이 아닌 nats로 pub 전달
 	h.hub.SendMessageToUser(notification.ReceiverID, res.JsonResponse{
 		Success: true,
 		Type:    "notification",
@@ -99,8 +99,6 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "알림 상태 수정 성공", notification))
 }
-
-// TODO 요청 알림 수락 및 거절
 
 // TODO 알림 읽음 처리
 func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {

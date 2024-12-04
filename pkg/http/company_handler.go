@@ -163,11 +163,6 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 초대 요청 성공", nil))
 }
 
-// TODO 일반 유저가 운영자에게 초대 요청
-// func (h *CompanyHandler) RequestAddUserToCompany(c *gin.Context) {
-
-// }
-
 //TODO 회사 수정은 관리자만 가능 -> 유저가 요청하는 것임(따로 admin도메인에 요청 핸들러만들것)
 
 //TODO 회사 삭제는 관리자만 가능 -> 유저가 요청하는 것임(따로 admin도메인에 요청 핸들러만들것)

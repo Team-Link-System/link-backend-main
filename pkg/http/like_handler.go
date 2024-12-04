@@ -50,7 +50,7 @@ func (h *LikeHandler) CreatePostLike(c *gin.Context) {
 
 // TODO 게시물 이모지 리스트
 func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
-	_, exists := c.Get("userId")
+	requestUserId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
@@ -64,7 +64,7 @@ func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
 		return
 	}
 
-	likeList, err := h.likeUsecase.GetPostLikeList(uint(postId))
+	likeList, err := h.likeUsecase.GetPostLikeList(requestUserId.(uint), uint(postId))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
