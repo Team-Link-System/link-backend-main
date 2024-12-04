@@ -9,6 +9,7 @@ type CommentResponse struct {
 	IsAnonymous  bool   `json:"is_anonymous"`
 	LikeCount    int    `json:"like_count" default:"0"`
 	ReplyCount   int    `json:"reply_count" default:"0"`
+	IsLiked      bool   `json:"is_liked"`
 	CreatedAt    string `json:"created_at,omitempty"`
 	UpdatedAt    string `json:"updated_at,omitempty"`
 }
@@ -21,6 +22,7 @@ type ReplyResponse struct {
 	ParentID     uint   `json:"parent_id"`
 	Content      string `json:"content"`
 	LikeCount    int    `json:"like_count"`
+	IsLiked      bool   `json:"is_liked"`
 	IsAnonymous  bool   `json:"is_anonymous"`
 	CreatedAt    string `json:"created_at,omitempty"`
 	UpdatedAt    string `json:"updated_at,omitempty"`

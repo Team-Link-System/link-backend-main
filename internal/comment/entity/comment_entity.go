@@ -23,6 +23,7 @@ type Comment struct {
 	IsAnonymous  *bool     `json:"is_anonymous,omitempty"`
 	LikeCount    int       `json:"like_count,omitempty"`
 	ReplyCount   int       `json:"reply_count,omitempty"`
+	IsLiked      *bool     `json:"is_liked,omitempty"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 	UpdatedAt    time.Time `json:"updated_at,omitempty"`
 }
