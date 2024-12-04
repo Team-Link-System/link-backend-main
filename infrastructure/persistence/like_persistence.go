@@ -91,18 +91,20 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 
 	// 이모지별 반응 수 조회
 	if err := r.db.Raw(`
-        SELECT e.id as emoji_id, e.unified, e.content, COUNT(l.id) as count
-        FROM emojis e
-        JOIN likes l ON e.id = l.emoji_id
-        WHERE l.target_type = 'POST' AND l.target_id = ?
-        GROUP BY e.id, e.unified, e.content
-        ORDER BY count DESC
+		SELECT e.id as emoji_id, e.unified, e.content, COUNT(DISTINCT l.user_id) as count
+		FROM emojis e
+		JOIN likes l
+		ON e.id = l.emoji_id
+		WHERE l.target_type = 'POST' AND l.target_id = ?
+		GROUP BY e.id, e.unified, e.content
+		ORDER BY count DESC
     `, postId).Scan(&emojiCounts).Error; err != nil {
 		return nil, fmt.Errorf("게시물 이모지 반응 조회 실패: %w", err)
 	}
 
 	result := make([]*entity.Like, len(emojiCounts))
 	for i, ec := range emojiCounts {
+
 		result[i] = &entity.Like{
 			EmojiID:    ec.EmojiID,
 			Unified:    ec.Unified,
