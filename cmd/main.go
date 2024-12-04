@@ -229,6 +229,7 @@ func startServer() {
 			{
 				like.POST("/post", likeHandler.CreatePostLike)                  //! 게시물 이모지 좋아요
 				like.GET("/post/list/:postid", likeHandler.GetPostLikeList)     //! 게시글 좋아요
+				like.DELETE("/post", likeHandler.DeletePostLike)                //! 게시글 이모지 좋아요 취소
 				like.POST("/comment/:commentid", likeHandler.CreateCommentLike) //! 댓글 이모지 좋아요
 			}
 		}
