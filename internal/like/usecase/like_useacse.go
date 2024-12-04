@@ -18,7 +18,7 @@ import (
 type LikeUsecase interface {
 	CreatePostLike(requestUserId uint, request req.LikePostRequest) error
 	GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error)
-
+	DeletePostLike(requestUserId uint, postId uint, emojiId uint) error
 	CreateCommentLike(requestUserId uint, commentId uint) error
 }
 
@@ -78,7 +78,23 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 	return nil
 }
 
-//TODO 게시글 이모지 취소 -> 좋아요 삭제
+// TODO 게시글 이모지 취소 -> 좋아요 삭제
+func (u *likeUsecase) DeletePostLike(requestUserId uint, postId uint, emojiId uint) error {
+
+	//TODO 해당 게시물에 대한 이모지가 있는지 확인
+	like, err := u.likeRepo.GetPostLikeByID(requestUserId, postId, emojiId)
+	if err != nil {
+		fmt.Printf("해당 사용자가 좋아요를 해당 이모지를 누른 적이 없습니다: %v", err)
+		return common.NewError(http.StatusInternalServerError, "해당 사용자가 좋아요를 해당 이모지를 누른 적이 없습니다", err)
+	}
+
+	if err := u.likeRepo.DeletePostLike(like.ID); err != nil {
+		fmt.Printf("좋아요 삭제 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "좋아요 삭제 실패", err)
+	}
+
+	return nil
+}
 
 func (u *likeUsecase) GetPostLikeList(postId uint) ([]*res.GetPostLikeListResponse, error) {
 

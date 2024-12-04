@@ -118,6 +118,37 @@ func (r *likePersistence) GetPostLikeList(postId uint) ([]*entity.Like, error) {
 	return result, nil
 }
 
+func (r *likePersistence) GetPostLikeByID(userId uint, postId uint, emojiId uint) (*entity.Like, error) {
+	var like model.Like
+
+	err := r.db.Joins("JOIN emojis ON likes.emoji_id = emojis.id").
+		Where("likes.user_id = ? AND likes.target_id = ? AND likes.target_type = 'POST' AND likes.emoji_id = ?",
+			userId, postId, emojiId).
+		First(&like).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("해당하는 좋아요를 찾을 수 없습니다")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("좋아요 조회 실패: %w", err)
+	}
+
+	return &entity.Like{
+		ID:         like.ID,
+		UserID:     like.UserID,
+		TargetID:   like.TargetID,
+		TargetType: like.TargetType,
+		EmojiID:    like.EmojiID,
+	}, nil
+}
+
+func (r *likePersistence) DeletePostLike(likeId uint) error {
+	if err := r.db.Delete(&model.Like{}, likeId).Error; err != nil {
+		return fmt.Errorf("좋아요 삭제 실패: %w", err)
+	}
+	return nil
+}
+
 func (r *likePersistence) CreateCommentLike(like *entity.Like) error {
 	tx := r.db.Begin()
 	defer func() {
