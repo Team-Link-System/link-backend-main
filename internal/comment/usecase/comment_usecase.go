@@ -418,7 +418,7 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 		}
 	}
 
-	meta, replies, err := u.commentRepo.GetRepliesByParentID(queryParams.ParentID, queryOptions)
+	meta, replies, err := u.commentRepo.GetRepliesByParentID(userId, queryParams.ParentID, queryOptions)
 	if err != nil {
 		fmt.Printf("대댓글 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "대댓글 조회 실패", err)
@@ -457,6 +457,7 @@ func (u *commentUsecase) GetReplies(userId uint, queryParams req.GetReplyQueryPa
 			ParentID:     parentId,
 			Content:      reply.Content,
 			LikeCount:    reply.LikeCount,
+			IsLiked:      *reply.IsLiked,
 			IsAnonymous:  *reply.IsAnonymous,
 			CreatedAt:    _util.ParseKst(reply.CreatedAt).Format(time.DateTime),
 		}
