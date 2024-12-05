@@ -136,9 +136,9 @@ func (h *CommentHandler) GetComments(c *gin.Context) {
 		sort = "created_at"
 	}
 
-	order := c.DefaultQuery("order", "desc")
+	order := c.DefaultQuery("order", "asc")
 	if order != "asc" && order != "desc" {
-		order = "desc"
+		order = "asc"
 	}
 
 	cursorParam := c.Query("cursor")
@@ -227,9 +227,9 @@ func (h *CommentHandler) GetReplies(c *gin.Context) {
 		sort = "created_at"
 	}
 
-	order := c.DefaultQuery("order", "desc")
+	order := c.DefaultQuery("order", "asc")
 	if order != "asc" && order != "desc" {
-		order = "desc"
+		order = "asc"
 	}
 
 	cursorParam := c.Query("cursor")

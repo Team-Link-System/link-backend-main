@@ -10,8 +10,9 @@ type Comment struct {
 	Post        *Post     `gorm:"foreignKey:PostID"`
 	Content     string    `gorm:"type:text"`
 	IsAnonymous bool      `gorm:"not null;default:false"`
-	ReplyCount  int       `gorm:"-" column:"reply_count"` // GORM이 무시하도록 설정
-	LikeCount   int       `gorm:"-" column:"like_count"`  // GORM이 무시하도록 설정
+	ReplyCount  int       `gorm:"-" column:"reply_count"`
+	LikeCount   int       `gorm:"-" column:"like_count"`
+	IsLiked     bool      `gorm:"-" column:"is_liked"`
 	CreatedAt   time.Time `gorm:"not null;autoCreateTime"`
 	UpdatedAt   time.Time
 	ParentID    *uint      `gorm:"null"`

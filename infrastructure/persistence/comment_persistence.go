@@ -41,29 +41,35 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 }
 
 // TODO 댓글 리스트
-func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
-	comments := []*model.Comment{}
+func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
+	type CommentResult struct {
+		model.Comment
+		ReplyCount int  `gorm:"column:reply_count"`
+		LikeCount  int  `gorm:"column:like_count"`
+		IsLiked    bool `gorm:"column:is_liked"`
+	}
+
+	var results []CommentResult
 	query := r.db.Model(&model.Comment{}).
-		Where("post_id = ? AND parent_id IS NULL", postId).
-		Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email, nickname")
-		}).
-		Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
-			return db.Select("user_id, image")
-		}).
+		Select(`
+			comments.*,
+			users.id as user_id,
+			users.name,
+			users.email,
+			users.nickname,
+			user_profiles.image,
+			COUNT(DISTINCT replies.id) as reply_count,
+			COUNT(DISTINCT likes.id) as like_count,
+			BOOL_OR(user_likes.user_id = ?) as is_liked
+	`, requestUserId).
+		Joins("LEFT JOIN users ON comments.user_id = users.id").
+		Joins("LEFT JOIN user_profiles ON users.id = user_profiles.user_id").
+		Joins("LEFT JOIN comments replies ON replies.parent_id = comments.id").
+		Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = comments.id").
+		Joins("LEFT JOIN likes user_likes ON user_likes.target_type = 'COMMENT' AND user_likes.target_id = comments.id AND user_likes.user_id = ?", requestUserId).
+		Where("comments.post_id = ? AND comments.parent_id IS NULL", postId).
+		Group("comments.id, users.id, user_profiles.image").
 		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"]))
-
-	if sort, ok := queryOptions["sort"].(string); ok {
-		if order, ok := queryOptions["order"].(string); ok {
-			query = query.Order(fmt.Sprintf("%s %s", sort, order))
-		}
-	}
-
-	var totalCount int64
-	countQuery := *query
-	if err := countQuery.Count(&totalCount).Error; err != nil {
-		return nil, nil, fmt.Errorf("댓글 전체 개수 조회에 실패하였습니다: %w", err)
-	}
 
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 		if createdAt, ok := cursor["created_at"].(string); ok {
@@ -103,35 +109,12 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 		query = query.Limit(limit)
 	}
 
-	if err := query.Find(&comments).Error; err != nil {
+	if err := query.Scan(&results).Error; err != nil {
 		return nil, nil, fmt.Errorf("댓글 조회에 실패하였습니다: %w", err)
 	}
 
-	// 2. 각 댓글의 대댓글 수를 별도로 조회
-	for _, comment := range comments {
-		type Result struct {
-			ReplyCount int64 `gorm:"column:reply_count"`
-			LikeCount  int64 `gorm:"column:like_count"`
-		}
-		var result Result
-
-		if err := r.db.Model(&model.Comment{}).
-			Select(`
-            COUNT(DISTINCT replies.id) as reply_count,
-            COUNT(DISTINCT likes.id) as like_count
-        `).
-			Joins("LEFT JOIN comments replies ON replies.parent_id = ?", comment.ID).
-			Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = ?", comment.ID).
-			Scan(&result).Error; err != nil {
-			return nil, nil, fmt.Errorf("댓글 정보 조회 실패: %w", err)
-		}
-
-		comment.ReplyCount = int(result.ReplyCount)
-		comment.LikeCount = int(result.LikeCount)
-	}
-
 	result := make([]*entity.Comment, 0)
-	for _, comment := range comments {
+	for _, comment := range results {
 
 		authorMap := map[string]interface{}{
 			"name": "익명",
@@ -170,8 +153,15 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 			IsAnonymous:  &comment.IsAnonymous,
 			ReplyCount:   comment.ReplyCount,
 			LikeCount:    comment.LikeCount,
+			IsLiked:      &comment.IsLiked,
 			CreatedAt:    comment.CreatedAt,
 		})
+	}
+
+	var totalCount int64
+	countQuery := r.db.Model(&model.Comment{}).Where("post_id = ? AND parent_id IS NULL", postId)
+	if err := countQuery.Count(&totalCount).Error; err != nil {
+		return nil, nil, fmt.Errorf("댓글 전체 개수 조회에 실패하였습니다: %w", err)
 	}
 
 	hasMore := totalCount > int64(queryOptions["limit"].(int)*queryOptions["page"].(int))
@@ -187,22 +177,32 @@ func (r *commentPersistence) GetCommentsByPostID(postId uint, queryOptions map[s
 }
 
 // TODO 대댓글 리스트
-func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
+func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
 
-	query := r.db.Model(&model.Comment{}).Where("parent_id = ?", parentId).
-		Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email, nickname")
-		}).
-		Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
-			return db.Select("user_id, image")
-		}).
-		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"]))
-
-	if sort, ok := queryOptions["sort"].(string); ok {
-		if order, ok := queryOptions["order"].(string); ok {
-			query = query.Order(fmt.Sprintf("%s %s", sort, order))
-		}
+	type ReplyResult struct {
+		model.Comment
+		LikeCount int  `gorm:"column:like_count"`
+		IsLiked   bool `gorm:"column:is_liked"`
 	}
+
+	query := r.db.Model(&model.Comment{}).
+		Select(`
+				comments.*,
+				users.id as user_id,
+				users.name,
+				users.email,
+				users.nickname,
+				user_profiles.image,
+				COUNT(DISTINCT likes.id) as like_count,
+				BOOL_OR(user_likes.user_id = ?) as is_liked
+		`, requestUserId).
+		Joins("LEFT JOIN users ON comments.user_id = users.id").
+		Joins("LEFT JOIN user_profiles ON users.id = user_profiles.user_id").
+		Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = comments.id").
+		Joins("LEFT JOIN likes user_likes ON user_likes.target_type = 'COMMENT' AND user_likes.target_id = comments.id AND user_likes.user_id = ?", requestUserId).
+		Where("comments.parent_id = ?", parentId).
+		Group("comments.id, users.id, user_profiles.image").
+		Order(fmt.Sprintf("comments.%s %s", queryOptions["sort"], queryOptions["order"]))
 
 	var totalCount int64
 	countQuery := *query
@@ -239,13 +239,13 @@ func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions ma
 		query = query.Limit(limit)
 	}
 
-	comments := []*model.Comment{}
-	if err := query.Find(&comments).Error; err != nil {
+	var results []ReplyResult
+	if err := query.Scan(&results).Error; err != nil {
 		return nil, nil, fmt.Errorf("대댓글 조회에 실패하였습니다: %w", err)
 	}
 
 	result := make([]*entity.Comment, 0)
-	for _, comment := range comments {
+	for _, comment := range results {
 
 		//TODO 대댓글 좋아요 수 조회
 		var likeCount int64
@@ -290,6 +290,7 @@ func (r *commentPersistence) GetRepliesByParentID(parentId uint, queryOptions ma
 			ProfileImage: profileImage,
 			UserName:     userName,
 			LikeCount:    comment.LikeCount,
+			IsLiked:      &comment.IsLiked,
 			IsAnonymous:  &comment.IsAnonymous,
 			CreatedAt:    comment.CreatedAt,
 		})

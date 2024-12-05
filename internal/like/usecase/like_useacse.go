@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"encoding/json"
 	"fmt"
 	_commentRepo "link/internal/comment/repository"
 	"link/internal/like/entity"
@@ -10,6 +11,7 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	_nats "link/pkg/nats"
 	"net/http"
 	"strings"
 	"time"
@@ -24,17 +26,25 @@ type LikeUsecase interface {
 }
 
 type likeUsecase struct {
-	userRepo    _userRepo.UserRepository
-	likeRepo    _likeRepo.LikeRepository
-	postRepo    _postRepo.PostRepository
-	commentRepo _commentRepo.CommentRepository
+	userRepo      _userRepo.UserRepository
+	likeRepo      _likeRepo.LikeRepository
+	postRepo      _postRepo.PostRepository
+	commentRepo   _commentRepo.CommentRepository
+	natsPublisher *_nats.NatsPublisher
 }
 
 func NewLikeUsecase(userRepo _userRepo.UserRepository,
 	likeRepo _likeRepo.LikeRepository,
 	postRepo _postRepo.PostRepository,
-	commentRepo _commentRepo.CommentRepository) LikeUsecase {
-	return &likeUsecase{userRepo: userRepo, likeRepo: likeRepo, postRepo: postRepo, commentRepo: commentRepo}
+	commentRepo _commentRepo.CommentRepository,
+	natsPublisher *_nats.NatsPublisher) LikeUsecase {
+	return &likeUsecase{
+		userRepo:      userRepo,
+		likeRepo:      likeRepo,
+		postRepo:      postRepo,
+		commentRepo:   commentRepo,
+		natsPublisher: natsPublisher,
+	}
 }
 
 // TODO 게시글 이모지 좋아요
@@ -50,7 +60,7 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 		}
 	}
 
-	_, err = u.postRepo.GetPostByID(request.TargetID)
+	post, err := u.postRepo.GetPostByID(request.TargetID)
 	if err != nil {
 		fmt.Printf("해당 게시물이 존재하지 않습니다: %v", err)
 		return &common.AppError{
@@ -96,6 +106,26 @@ func (u *likeUsecase) CreatePostLike(requestUserId uint, request req.LikePostReq
 		}
 	}
 
+	//TODO 구조는 notification 패키지에 맞춰서 변경
+	notification := map[string]interface{}{
+		"alarm_type":  "LIKE",
+		"sender_id":   like.UserID,
+		"receiver_id": post.UserID,
+		"post_id":     post.ID,
+		"created_at":  like.CreatedAt,
+	}
+	notificationJson, err := json.Marshal(notification)
+	if err != nil {
+		fmt.Printf("알림 생성 실패: %v", err)
+		return &common.AppError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "알림 생성 실패",
+			Err:        err,
+		}
+	}
+
+	//TODO nats pub으로 해당 게시글 주인에게 알림 전송 로그성 데이터는 mongodb에 저장
+	u.natsPublisher.PublishEvent("like.post.created", notificationJson)
 	return nil
 }
 
