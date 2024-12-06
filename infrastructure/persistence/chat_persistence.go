@@ -274,15 +274,45 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
 	}
 
+	// 송신자 ID 수집
+	senderIDs := make([]uint, len(chatMessages))
+	for i, msg := range chatMessages {
+		senderIDs[i] = msg.SenderID
+	}
+
+	// 사용자 프로필 이미지 조회
+	var userProfiles []struct {
+		UserID uint    `gorm:"column:user_id"`
+		Image  *string `gorm:"column:image"`
+	}
+
+	if err := r.db.Table("user_profiles").
+		Select("user_id, image").
+		Where("user_id IN ?", senderIDs).
+		Scan(&userProfiles).Error; err != nil {
+		return nil, nil, fmt.Errorf("사용자 프로필 이미지 조회 중 오류: %w", err)
+	}
+
+	// 이미지 매핑을 위한 맵 생성
+	profileImageMap := make(map[uint]*string)
+	for _, profile := range userProfiles {
+		profileImageMap[profile.UserID] = profile.Image
+	}
+
 	//TODO 전체 채팅 카운트
 	totalCount, err := collection.CountDocuments(context.Background(), filter)
 	if err != nil {
 		return nil, nil, fmt.Errorf("채팅 카운트 조회 중 MongoDB 오류: %w", err)
 	}
-
 	// 조회한 데이터를 entity로 변환
 	entityChatMessages := make([]*chatEntity.Chat, len(chatMessages))
 	for i, chatMessage := range chatMessages {
+
+		var senderImage string
+		if img := profileImageMap[chatMessage.SenderID]; img != nil {
+			senderImage = *img
+		}
+
 		entityChatMessages[i] = &chatEntity.Chat{
 			ID:          chatMessage.ID.Hex(),
 			Content:     chatMessage.Content,
@@ -290,7 +320,7 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 			SenderID:    chatMessage.SenderID,
 			SenderName:  chatMessage.SenderName,
 			SenderEmail: chatMessage.SenderEmail,
-			SenderImage: chatMessage.SenderImage,
+			SenderImage: senderImage,
 			CreatedAt:   chatMessage.CreatedAt,
 		}
 	}
