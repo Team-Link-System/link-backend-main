@@ -39,8 +39,8 @@ type ChatMessagesResponse struct {
 	Content       string `json:"content"`
 	SenderID      uint   `json:"sender_id"`
 	SenderName    string `json:"sender_name"`
+	SenderImage   string `json:"sender_image"`
 	ChatRoomID    uint   `json:"chat_room_id"`
-	UnreadCount   uint   `json:"unread_count"`
 	CreatedAt     string `json:"created_at"`
 	UpdatedAt     string `json:"updated_at,omitempty"`
 }

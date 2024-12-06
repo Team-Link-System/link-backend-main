@@ -379,7 +379,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		// 	}()
 		// }
 
-		// 메시지 저장
+		// 메시지 저장 -> nats pub으로 발행 저장 로직 처리
 		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
 			log.Printf("채팅 메시지 저장 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
