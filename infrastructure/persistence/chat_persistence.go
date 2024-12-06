@@ -290,6 +290,7 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 			SenderID:    chatMessage.SenderID,
 			SenderName:  chatMessage.SenderName,
 			SenderEmail: chatMessage.SenderEmail,
+			SenderImage: chatMessage.SenderImage,
 			CreatedAt:   chatMessage.CreatedAt,
 		}
 	}

@@ -383,11 +383,33 @@ func (uc *chatUsecase) SaveMessage(senderID uint, chatRoomID uint, content strin
 		return nil, common.NewError(http.StatusNotFound, "존재하지 않는 채팅방입니다", err)
 	}
 
-	err = uc.chatRepository.SaveMessage(chat)
+	// err = uc.chatRepository.SaveMessage(chat)
+	// if err != nil {
+	// 	log.Printf("메시지 저장 중 DB 오류: %v", err)
+	// 	return nil, common.NewError(http.StatusInternalServerError, "메시지 저장에 실패했습니다", err)
+	// }
+
+	publishData := map[string]interface{}{
+		"topic":   "link.event.chat.message",
+		"eventId": "chat_test",
+		"payload": map[string]interface{}{
+			"chat_room_id": chatRoomID,
+			"sender_id":    senderID,
+			"sender_name":  *sender.Name,
+			"sender_email": *sender.Email,
+			"content":      content,
+		},
+	}
+
+	//TODO nats로 발행 로직 처리
+	jsonData, err := json.Marshal(publishData)
 	if err != nil {
-		log.Printf("메시지 저장 중 DB 오류: %v", err)
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "메시지 저장에 실패했습니다", err)
 	}
+	go func() {
+		uc.natsPublisher.PublishEvent("link.event.chat.message", jsonData)
+	}()
 
 	return chat, nil
 }
@@ -432,10 +454,10 @@ func (uc *chatUsecase) GetChatMessages(userId uint, chatRoomID uint, queryParams
 			Content:       chatMessage.Content,
 			SenderID:      chatMessage.SenderID,
 			SenderName:    chatMessage.SenderName,
-			// SenderImage:   chatMessage.SenderImage, //! 메시지 작성할때 송신자 이미지 추가
-			ChatRoomID:  chatMessage.ChatRoomID,
-			UnreadCount: chatMessage.UnreadCount,
-			CreatedAt:   _util.ParseKst(chatMessage.CreatedAt).Format(time.DateTime),
+			SenderImage:   chatMessage.SenderImage, //! 메시지 작성할때 송신자 이미지 추가
+			ChatRoomID:    chatMessage.ChatRoomID,
+			// UnreadCount: chatMessage.UnreadCount,
+			CreatedAt: _util.ParseKst(chatMessage.CreatedAt).Format(time.DateTime),
 		}
 	}
 

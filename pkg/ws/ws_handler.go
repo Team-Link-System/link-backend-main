@@ -380,30 +380,15 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 		// }
 
 		// 메시지 저장 -> nats pub으로 발행 저장 로직 처리
-		// if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
-		// 	log.Printf("채팅 메시지 저장 실패: %v", err)
-		// 	conn.WriteJSON(res.JsonResponse{
-		// 		Success: false,
-		// 		Message: "채팅 메시지 저장 실패",
-		// 		Type:    "error",
-		// 	})
-		// 	continue
-		// }
-
-		messageData := map[string]interface{}{
-			"topic":   "link.event.chat.message",
-			"eventId": "chat_test",
-			"payload": message,
+		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
+			log.Printf("채팅 메시지 저장 실패: %v", err)
+			conn.WriteJSON(res.JsonResponse{
+				Success: false,
+				Message: "채팅 메시지 저장 실패",
+				Type:    "error",
+			})
+			continue
 		}
-		jsonData, err := json.Marshal(messageData)
-		if err != nil {
-			log.Printf("NATS 데이터 직렬화 오류: %v", err)
-		}
-
-		//! nats로 발행 로직 처리
-		go func() {
-			h.natsPublisher.PublishEvent("link.event.chat.message", jsonData)
-		}()
 
 		// 메시지 전송 성공 및 브로드캐스트
 		h.hub.SendMessageToChatRoom(message.RoomID, res.JsonResponse{
