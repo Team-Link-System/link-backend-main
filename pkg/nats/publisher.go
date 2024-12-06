@@ -22,6 +22,5 @@ func (p *NatsPublisher) PublishEvent(subject string, data []byte) error {
 		fmt.Printf("NATS 이벤트 발행 오류[TOPIC: %s]: %v ", subject, err)
 		return common.NewError(500, "NATS 이벤트 발행 오류", err)
 	}
-	fmt.Printf("NATS 이벤트 발행 성공[TOPIC: %s]: %v ", subject, data)
 	return nil
 }

@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"encoding/json"
 	"fmt"
 	"link/internal/auth/entity"
 	_authRepo "link/internal/auth/repository"
@@ -9,6 +10,7 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	_nats "link/pkg/nats"
 	_utils "link/pkg/util"
 	"log"
 	"net/http"
@@ -25,14 +27,15 @@ type AuthUsecase interface {
 
 // authUsecase 구조체 정의
 type authUsecase struct {
-	authRepo _authRepo.AuthRepository // Redis와 상호작용하는 저장소
-	userRepo _userRepo.UserRepository // 사용자 정보 저장소
+	authRepo      _authRepo.AuthRepository // Redis와 상호작용하는 저장소
+	userRepo      _userRepo.UserRepository // 사용자 정보 저장소
+	natsPublisher *_nats.NatsPublisher
 }
 
 // NewAuthUsecase 생성자 함수
 // userRepo 주입
-func NewAuthUsecase(authRepo _authRepo.AuthRepository, userRepo _userRepo.UserRepository) AuthUsecase {
-	return &authUsecase{authRepo: authRepo, userRepo: userRepo} //TODO 사용자 정보 저장소 주입
+func NewAuthUsecase(authRepo _authRepo.AuthRepository, userRepo _userRepo.UserRepository, publisher *_nats.NatsPublisher) AuthUsecase {
+	return &authUsecase{authRepo: authRepo, userRepo: userRepo, natsPublisher: publisher} //TODO 사용자 정보 저장소 주입
 }
 
 func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse, *entity.Token, error) {
@@ -70,6 +73,22 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 		log.Printf("리프레시 토큰 저장 오류: %v", err)
 		return nil, nil, common.NewError(http.StatusInternalServerError, "리프레시 토큰 저장에 실패했습니다", err)
 	}
+
+	natsData := map[string]interface{}{
+		"topic":   "link.event.user.signin",
+		"eventId": "test",
+		"payload": map[string]interface{}{
+			"userId": *user.ID,
+			"email":  *user.Email,
+			"name":   *user.Name,
+		},
+	}
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
+		return nil, nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+	}
+	u.natsPublisher.PublishEvent("link.event.user.signin", []byte(jsonData))
 
 	return &res.LoginUserResponse{
 			ID:           _utils.GetValueOrDefault(user.ID, 0),
