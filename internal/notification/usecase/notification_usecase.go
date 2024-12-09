@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,8 +16,6 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
-
-	"github.com/nats-io/nats.go"
 )
 
 type NotificationUsecase interface {
@@ -55,34 +52,6 @@ func NewNotificationUsecase(
 		natsSubscriber:   natsSubscriber,
 	}
 }
-
-// TODO 알림 이벤트 토픽 추가
-func (n *notificationUsecase) SubscribeToNotifications() {
-	n.natsSubscriber.SubscribeEvent("notification.>", func(msg *nats.Msg) {
-		var notification map[string]interface{}
-		if err := json.Unmarshal(msg.Data, &notification); err != nil {
-			log.Printf("알림 파싱 오류: %v", err)
-			return
-		}
-
-		switch msg.Subject {
-		case "notification.mention.post.created": //게시글에 멘션
-			//TODO mongodb에 알림 로그 저장
-		case "notification.mention.comment.created": //댓글에 멘션
-			//TODO mongodb에 알림 로그 저장
-		case "notification.invite.created": //초대
-			//TODO mongodb에 알림 로그 저장
-		case "notification.request.created": //요청
-			//TODO mongodb에 알림 로그 저장
-		}
-
-	})
-}
-
-// TODO 알림저장 기본 알림 처리 함수
-// func (n *notificationUsecase) CreateDefaultNotification(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
-
-// }
 
 // TODO 알림저장 usecase 멘션 -- 수정해야함
 func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
