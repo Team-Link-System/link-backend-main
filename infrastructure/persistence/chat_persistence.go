@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -239,7 +238,6 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 // TODO 메시지 조회
 func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[string]interface{}) (*chatEntity.ChatMeta, []*chatEntity.Chat, error) {
 	collection := r.mongo.Database("link").Collection("messages")
-	//TODO 페이지네이션 처리
 	filter := bson.M{"chat_room_id": chatRoomID}
 
 	limit, ok := queryOptions["limit"].(int)
@@ -252,28 +250,61 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 		page = 1 // 기본값
 	}
 
+	var chatMessages []model.Chat
+
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
-		if createdAt, exists := cursor["created_at"].(string); exists {
-			filter["created_at"] = bson.M{"$lt": createdAt}
+		// cursor가 있고 created_at이 있는 경우
+		if createdAt, exists := cursor["created_at"].(string); exists && createdAt != "" {
+			parsedTime, err := time.Parse(time.RFC3339Nano, createdAt)
+			if err != nil {
+				parsedTime, err = time.Parse("2006-01-02 15:04:05.999999999", createdAt)
+				if err != nil {
+					return nil, nil, fmt.Errorf("cursor 시간 파싱 실패: %w", err)
+				}
+			}
+
+			pipeline := []bson.M{
+				{
+					"$match": bson.M{
+						"chat_room_id": chatRoomID,
+						"created_at":   bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())},
+					},
+				},
+				{"$sort": bson.M{"created_at": -1}},
+				{"$limit": int64(limit)},
+				{"$sort": bson.M{"created_at": 1}},
+			}
+
+			cursor, err := collection.Aggregate(context.Background(), pipeline)
+			if err != nil {
+				return nil, nil, fmt.Errorf("이전 메시지 조회 중 MongoDB 오류: %w", err)
+			}
+			defer cursor.Close(context.Background())
+
+			if err = cursor.All(context.Background(), &chatMessages); err != nil {
+				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
+			}
+		} else {
+			// cursor는 있지만 created_at이 없거나 빈 문자열인 경우 (첫 조회)
+			fmt.Println("첫 조회입니다")
+			pipeline := []bson.M{
+				{"$match": filter},
+				{"$sort": bson.M{"created_at": -1}},
+				{"$limit": int64(limit)},
+				{"$sort": bson.M{"created_at": 1}},
+			}
+
+			cursor, err := collection.Aggregate(context.Background(), pipeline)
+			if err != nil {
+				return nil, nil, fmt.Errorf("최신 메시지 조회 중 MongoDB 오류: %w", err)
+			}
+			defer cursor.Close(context.Background())
+
+			if err = cursor.All(context.Background(), &chatMessages); err != nil {
+				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
+			}
 		}
 	}
-
-	opts := options.Find()
-	opts.SetSort(bson.M{"created_at": 1}) //오름 차순
-	opts.SetLimit(int64(limit))
-
-	cursor, err := collection.Find(context.Background(), filter, opts)
-	if err != nil {
-		return nil, nil, fmt.Errorf("채팅 내용 조회 중 MongoDB 오류: %w", err)
-	}
-	defer cursor.Close(context.Background())
-
-	// MongoDB에서 조회한 메시지를 저장할 슬라이스
-	var chatMessages []model.Chat
-	if err = cursor.All(context.Background(), &chatMessages); err != nil {
-		return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
-	}
-
 	// 송신자 ID 수집
 	senderIDs := make([]uint, len(chatMessages))
 	for i, msg := range chatMessages {
@@ -325,14 +356,27 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 		}
 	}
 
-	var nextCursor string
+	// hasMore 계산
+	hasMore := false
 	if len(entityChatMessages) > 0 {
-		nextCursor = entityChatMessages[len(entityChatMessages)-1].CreatedAt.Format("2006-01-02 15:04:05")
+		oldestTime := entityChatMessages[0].CreatedAt
+		olderCount, err := collection.CountDocuments(context.Background(), bson.M{
+			"chat_room_id": chatRoomID,
+			"created_at":   bson.M{"$lt": oldestTime},
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("이전 메시지 확인 중 오류: %w", err)
+		}
+		hasMore = olderCount > 0
+	}
+
+	var nextCursor string
+	if len(entityChatMessages) > 0 && hasMore {
+		nextCursor = entityChatMessages[0].CreatedAt.Format(time.RFC3339Nano)
 	} else {
 		nextCursor = ""
 	}
 
-	hasMore := totalCount > int64(limit*page)
 	return &chatEntity.ChatMeta{
 		TotalCount: int(totalCount),
 		TotalPages: int(math.Ceil(float64(totalCount) / float64(limit))),
@@ -344,7 +388,6 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 	}, entityChatMessages, nil
 }
 
-// TODO 메시지 삭제
 // TODO 메시지 삭제
 func (r *chatPersistence) DeleteChatMessage(senderID uint, chatRoomID uint, chatMessageID string) error {
 	// MongoDB에서 삭제

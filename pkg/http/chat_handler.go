@@ -207,7 +207,9 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 	cursorParam := c.Query("cursor")
 	var cursor *req.ChatCursor
 
-	if cursorParam != "" {
+	if cursorParam == "" {
+		cursor = nil
+	} else {
 		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
 			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
