@@ -1,7 +1,5 @@
 package req
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
-
 type InviteType string
 
 const (
@@ -39,6 +37,6 @@ type NotificationRequest struct {
 }
 
 type UpdateNotificationStatusRequest struct {
-	ID     primitive.ObjectID `json:"_id" binding:"required" bson:"_id"`
-	Status string             `json:"status" binding:"required"`
+	DocID  string `json:"doc_id" binding:"required"`
+	Status string `json:"status" binding:"required"`
 }

@@ -134,7 +134,7 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 		Success: true,
 		Type:    "notification",
 		Payload: &res.NotificationPayload{
-			ID:             response.ID,
+			DocID:          response.DocID,
 			SenderID:       response.SenderID,
 			ReceiverID:     response.ReceiverID,
 			Content:        response.Content,
