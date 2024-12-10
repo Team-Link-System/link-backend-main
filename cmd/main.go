@@ -36,6 +36,7 @@ func startServer() {
 	}()
 
 	cfg := config.LoadConfig()
+	logger.LogSuccess("서버 초기화 성공")
 
 	config.AutoMigrate(cfg.DB)
 	config.InitCompany(cfg.DB)
@@ -72,7 +73,6 @@ func startServer() {
 
 	r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
 
-	// 프록시 신뢰 설정 (프록시를 사용하지 않으면 nil 설정)
 	r.SetTrustedProxies(nil)
 	r.Use(interceptor.ErrorHandler())
 
@@ -156,7 +156,7 @@ func startServer() {
 
 			company := protectedRoute.Group("company")
 			{
-				company.POST("/:companyId/invite", companyHandler.InviteUserToCompany)
+				company.POST("/invite", companyHandler.InviteUserToCompany)
 				company.GET("/search", userHandler.SearchUser)
 
 				//TODO 회사 조직도 조회

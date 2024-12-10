@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -157,26 +158,52 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	}
 
 	notification := &_notificationEntity.Notification{
-		SenderId:       *users[0].ID,
-		ReceiverId:     *users[1].ID,
-		Title:          "INVITE",
-		Content:        Content,
-		AlarmType:      "INVITE",
-		InviteType:     string(req.InviteType),
-		CompanyId:      req.CompanyID,
-		CompanyName:    CompanyName,
-		DepartmentId:   req.DepartmentID,
-		DepartmentName: DepartmentName,
-		Status:         "PENDING",
-		IsRead:         false,
-		CreatedAt:      time.Now(),
+		SenderId:    *users[0].ID,
+		ReceiverId:  *users[1].ID,
+		Title:       "INVITE",
+		Content:     Content,
+		AlarmType:   "INVITE",
+		InviteType:  string(req.InviteType),
+		CompanyId:   req.CompanyID,
+		CompanyName: CompanyName,
+		Status:      "PENDING",
+		IsRead:      false,
+		CreatedAt:   time.Now(),
 	}
 
 	//TODO 알림 저장
-	notification, err = n.notificationRepo.CreateNotification(notification)
-	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
+	// notification, err = n.notificationRepo.CreateNotification(notification)
+	// if err != nil {
+	// 	return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
+	// }
+
+	//TODO nats 통신
+	natsData := map[string]interface{}{
+		"topic":   "link.event.user.invite.request",
+		"eventId": "test",
+		"payload": map[string]interface{}{
+			"sender_id":       notification.SenderId,
+			"receiver_id":     notification.ReceiverId,
+			"title":           notification.Title,
+			"content":         notification.Content,
+			"alarm_type":      notification.AlarmType,
+			"is_read":         notification.IsRead,
+			"invite_type":     notification.InviteType,
+			"company_id":      notification.CompanyId,
+			"company_name":    notification.CompanyName,
+			"department_id":   notification.DepartmentId,
+			"department_name": notification.DepartmentName,
+			"status":          notification.Status,
+			"timestamp":       notification.CreatedAt,
+		}, //TODO id값 제거하고 전송
 	}
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+	}
+
+	n.natsPublisher.PublishEvent("link.event.notification.invite.request", []byte(jsonData))
 
 	//TODO 회사 초대 , 혹은 부서 초대,
 

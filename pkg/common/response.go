@@ -56,6 +56,6 @@ func NewError(status int, message string, err error) *AppError {
 		Message:    message,
 	}
 
-	logger.LogError(fmt.Sprintf("[%d] %s: %v", status, message, err))
+	logger.LogError(fmt.Sprintf("[%d] %s: %v", appErr.StatusCode, appErr.Message, appErr.Err))
 	return appErr
 }

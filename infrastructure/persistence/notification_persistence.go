@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"link/infrastructure/model"
 	"link/internal/notification/entity"
 	"link/internal/notification/repository"
 )
@@ -23,7 +24,26 @@ func NewNotificationPersistence(db *mongo.Client) repository.NotificationReposit
 func (r *notificationPersistence) CreateNotification(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
 	notification.ID = primitive.NewObjectID()
-	_, err := collection.InsertOne(context.Background(), notification)
+
+	model := model.Notification{
+		ID:             notification.ID,
+		SenderID:       notification.SenderId,
+		ReceiverID:     notification.ReceiverId,
+		Title:          notification.Title,
+		Status:         &notification.Status,
+		Content:        notification.Content,
+		AlarmType:      notification.AlarmType,
+		IsRead:         notification.IsRead,
+		InviteType:     notification.InviteType,
+		RequestType:    notification.RequestType,
+		CompanyId:      notification.CompanyId,
+		CompanyName:    notification.CompanyName,
+		DepartmentId:   notification.DepartmentId,
+		DepartmentName: notification.DepartmentName,
+		CreatedAt:      notification.CreatedAt,
+	}
+
+	_, err := collection.InsertOne(context.Background(), model)
 	if err != nil {
 		return nil, fmt.Errorf("알림 생성에 실패했습니다: %w", err)
 	}

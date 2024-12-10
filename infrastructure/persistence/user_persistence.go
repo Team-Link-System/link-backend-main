@@ -406,11 +406,6 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 	var users []model.User
 
-	// ids 슬라이스가 비어있는지 확인
-	if len(ids) == 0 {
-		return nil, fmt.Errorf("유효하지 않은 사용자 ID 목록")
-	}
-
 	// 관련 데이터를 Preload하여 로드
 	if err := r.db.Preload("UserProfile.Company").
 		Preload("UserProfile.Departments").
@@ -420,18 +415,28 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 		return nil, fmt.Errorf("사용자 조회 중 DB 오류: %w", err)
 	}
 
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("유효하지 않은 사용자 ID 목록")
+	}
+
 	// Entity 변환
 	entityUsers := make([]entity.User, len(users))
 	for i, user := range users {
 
+		if user.UserProfile == nil {
+			return nil, fmt.Errorf("사용자 프로필이 없습니다: 사용자 ID %d", user.ID)
+		}
+
 		// Departments 변환
 		var departmentMaps []*map[string]interface{}
-		for _, dept := range user.UserProfile.Departments {
-			deptMap := map[string]interface{}{
-				"id":   dept.ID,
-				"name": dept.Name,
+		if user.UserProfile.Departments != nil {
+			for _, dept := range user.UserProfile.Departments {
+				deptMap := map[string]interface{}{
+					"id":   dept.ID,
+					"name": dept.Name,
+				}
+				departmentMaps = append(departmentMaps, &deptMap)
 			}
-			departmentMaps = append(departmentMaps, &deptMap)
 		}
 
 		// Position 변환

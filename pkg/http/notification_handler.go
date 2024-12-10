@@ -24,8 +24,6 @@ func NewNotificationHandler(
 	return &NotificationHandler{notificationUsecase: notificationUsecase, hub: hub}
 }
 
-//TODO 초대 알림 보내기 nats sub으로 받아서 처리 -> 웹소켓 알림 전달
-
 // TODO 알림 조회 핸들러
 func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 
@@ -81,7 +79,8 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		return
 	}
 
-	//TODO 해당내용 웹소켓으로 전달 -> 웹소켓이 아닌 nats로 pub 전달
+	//TODO nats pub으로 해당 이벤트 전달
+
 	h.hub.SendMessageToUser(notification.ReceiverID, res.JsonResponse{
 		Success: true,
 		Type:    "notification",

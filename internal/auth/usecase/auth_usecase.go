@@ -78,9 +78,10 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 		"topic":   "link.event.user.signin",
 		"eventId": "test",
 		"payload": map[string]interface{}{
-			"userId": *user.ID,
-			"email":  *user.Email,
-			"name":   *user.Name,
+			"user_id":   *user.ID,
+			"email":     *user.Email,
+			"name":      *user.Name,
+			"timestamp": time.Now(),
 		},
 	}
 	jsonData, err := json.Marshal(natsData)

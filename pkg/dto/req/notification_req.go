@@ -7,7 +7,6 @@ type InviteType string
 const (
 	InviteTypeCompany    InviteType = "COMPANY"
 	InviteTypeDepartment InviteType = "DEPARTMENT"
-	InviteTypeProject    InviteType = "TEAM"
 )
 
 type RequestType string
@@ -15,8 +14,17 @@ type RequestType string
 const (
 	RequestTypeCompany    RequestType = "COMPANY"
 	RequestTypeDepartment RequestType = "DEPARTMENT"
-	RequestTypeTeam       RequestType = "TEAM"
 )
+
+type SendInviteNotificationRequest struct {
+	SenderID   uint   `json:"sender_id" binding:"required"`
+	ReceiverID uint   `json:"receiver_id" binding:"required"`
+	ActionType string `json:"action_type" binding:"required"`
+	TargetType string `json:"target_type" binding:"required"`
+	TargetID   uint   `json:"target_id,omitempty"`
+	TargetName string `json:"target_name,omitempty"`
+	Content    string `json:"content,omitempty"`
+}
 
 type NotificationRequest struct {
 	SenderId     uint        `json:"sender_id" binding:"required"`

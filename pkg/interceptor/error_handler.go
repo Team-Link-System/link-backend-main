@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 )
 
 func ErrorHandler() gin.HandlerFunc {
@@ -29,9 +30,11 @@ func ErrorHandler() gin.HandlerFunc {
 			}
 
 			// 에러 로그 기록
+			// 에러 로그 기록 (스택 트레이스 포함)
+			errorWithStack := errors.WithStack(err.Err) // 스택 트레이스 추가
 			errorMsg := fmt.Sprintf(
-				"경로: %s, 메소드: %s, 클라이언트 IP: %s, 상태 코드: %d, 에러 메시지: %s",
-				c.FullPath(), c.Request.Method, c.ClientIP(), statusCode, err.Error(),
+				"경로: %s, 메소드: %s, 클라이언트 IP: %s, 상태 코드: %d, 에러 메시지: %s\n스택 트레이스:\n%+v",
+				c.FullPath(), c.Request.Method, c.ClientIP(), statusCode, err.Error(), errorWithStack,
 			)
 			logger.LogError(errorMsg)
 

@@ -203,10 +203,10 @@ func (hub *WebSocketHub) Run() {
 			// 경로에 따라 다른 웹소켓 처리를 진행
 			if registration.RoomID == 0 {
 				// RoomID가 0이면 유저 상태 웹소켓
-				hub.RegisterClient(registration.Conn, registration.UserID, 0) // 유저 상태 처리
+				hub.RegisterClient(registration.Conn, registration.UserID, 0)
 			} else {
 				// RoomID가 존재하면 채팅 웹소켓
-				hub.RegisterClient(registration.Conn, registration.UserID, registration.RoomID) // 채팅 처리
+				hub.RegisterClient(registration.Conn, registration.UserID, registration.RoomID)
 			}
 
 		case conn := <-hub.Unregister:
