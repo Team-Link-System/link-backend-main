@@ -78,11 +78,6 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		}
 		return
 	}
-
-	//TODO nats pub으로 해당 이벤트 전달
-	fmt.Println("notification", notification.ReceiverID)
-	fmt.Println("notification", notification.SenderID)
-
 	h.hub.SendMessageToUser(notification.ReceiverID, res.JsonResponse{
 		Success: true,
 		Type:    "notification",

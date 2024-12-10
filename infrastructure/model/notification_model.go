@@ -9,6 +9,7 @@ import (
 // TODO mongoDB 모델추가
 type Notification struct {
 	ID             primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	DocID          string             `json:"doc_id" bson:"doc_id"`
 	SenderID       uint               `json:"sender_id" bson:"sender_id"`                                 // 초대를 보낸 사용자 ID
 	ReceiverID     uint               `json:"receiver_id" bson:"receiver_id"`                             // 초대를 받은 사용자 ID
 	Title          string             `json:"title" bson:"title"`                                         // 알림 제목

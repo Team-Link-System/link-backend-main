@@ -184,6 +184,8 @@ func (du *departmentUsecase) DeleteDepartment(requestUserId uint, departmentID u
 
 //TODO 부서 수정 요청 (부서 관리자만 가능) - 따로 요청 기록 테이블을 만들어야하나?
 
+//TODO 일반 사용자 부서에 초대 요청
+
 //TODO 부서에 사용자 추가
 //! 시스템 관리자는 해당 부서에 사용자 추가 가능
 //! 부 관리자는 해당 부서에 사용자 추가 가능

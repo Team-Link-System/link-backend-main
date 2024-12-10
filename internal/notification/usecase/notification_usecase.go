@@ -28,7 +28,7 @@ type NotificationUsecase interface {
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
-	UpdateNotificationReadStatus(receiverId uint, notificationDocId string) error
+	UpdateNotificationReadStatus(receiverId uint, notificationId string) error
 }
 
 type notificationUsecase struct {
@@ -386,8 +386,8 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, ta
 }
 
 // TODO 읽음 처리
-func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationDocId string) error {
-	notification, err := n.notificationRepo.GetNotificationByID(notificationDocId)
+func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
+	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
 	if err != nil || notification == nil {
 		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
@@ -396,26 +396,34 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 		return common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다", err)
 	}
 
-	notification.IsRead = true
-	notification.UpdatedAt = time.Now()
-
-	//TODO entity 변경
-	_ = &_notificationEntity.Notification{
-		ID:        notification.ID,
-		IsRead:    true,
-		UpdatedAt: time.Now(),
+	var alarmType string = strings.ToUpper(notification.AlarmType)
+	if alarmType == "RESPONSE" || alarmType == "REQUEST" || alarmType == "INVITE" {
+		return common.NewError(http.StatusBadRequest, "처리할 수 없는 알림입니다", nil)
 	}
 
-	// _, err = n.notificationRepo.UpdateNotificationReadStatus(updatedNotification)
-	// if err != nil {
-	// 	return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다", err)
-	// }
+	if notification.IsRead || notification.Status == "ACCEPTED" || notification.Status == "REJECTED" {
+		return common.NewError(http.StatusBadRequest, "이미 처리된 알림입니다", nil)
+	}
 
 	//TODO nats 통신
+	natsData := map[string]interface{}{
+		"topic": "link.event.notification.read",
+		"payload": map[string]interface{}{
+			"doc_id": notification.DocID,
+		},
+	}
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
+		return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+	}
+
+	go n.natsPublisher.PublishEvent("link.event.notification.read", []byte(jsonData))
 
 	return nil
 }
 
+// TODO 알림 리스트 조회
 func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEntity.Notification, error) {
 
 	//TODO 수신자 id가 존재하는지 확인

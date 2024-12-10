@@ -56,6 +56,7 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 	fmt.Println("notification", notification)
 	notificationEntity := &entity.Notification{
 		ID:             notification.ID,
+		DocID:          notification.DocID,
 		SenderId:       notification.SenderID,
 		ReceiverId:     notification.ReceiverID,
 		Title:          notification.Title,
@@ -87,6 +88,7 @@ func (r *notificationPersistence) GetNotificationByDocID(docID string) (*entity.
 
 	notificationEntity := &entity.Notification{
 		ID:             notification.ID,
+		DocID:          notification.DocID,
 		SenderId:       notification.SenderID,
 		ReceiverId:     notification.ReceiverID,
 		Title:          notification.Title,
