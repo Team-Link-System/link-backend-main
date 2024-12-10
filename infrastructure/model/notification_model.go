@@ -22,8 +22,6 @@ type Notification struct {
 	CompanyName    string             `json:"company_name,omitempty" bson:"company_name,omitempty"`       // 회사 이름
 	DepartmentId   uint               `json:"department_id,omitempty" bson:"department_id,omitempty"`     // 부서 ID
 	DepartmentName string             `json:"department_name,omitempty" bson:"department_name,omitempty"` // 부서 이름
-	TeamId         uint               `json:"team_id,omitempty" bson:"team_id,omitempty"`                 // 팀 ID
-	TeamName       string             `json:"team_name,omitempty" bson:"team_name,omitempty"`             // 팀 이름
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
 }

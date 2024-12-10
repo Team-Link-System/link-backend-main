@@ -21,8 +21,6 @@ type Notification struct {
 	CompanyName    string             `json:"company_name,omitempty"`
 	DepartmentId   uint               `json:"department_id,omitempty"`
 	DepartmentName string             `json:"department_name,omitempty"`
-	TeamId         uint               `json:"team_id,omitempty"`
-	TeamName       string             `json:"team_name,omitempty"`
 	CreatedAt      time.Time          `json:"created_at,omitempty"`
 	UpdatedAt      time.Time          `json:"updated_at,omitempty"`
 }

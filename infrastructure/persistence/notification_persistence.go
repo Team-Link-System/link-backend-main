@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"link/infrastructure/model"
 	"link/internal/notification/entity"
 	"link/internal/notification/repository"
 )
@@ -23,7 +24,26 @@ func NewNotificationPersistence(db *mongo.Client) repository.NotificationReposit
 func (r *notificationPersistence) CreateNotification(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
 	notification.ID = primitive.NewObjectID()
-	_, err := collection.InsertOne(context.Background(), notification)
+
+	model := model.Notification{
+		ID:             notification.ID,
+		SenderID:       notification.SenderId,
+		ReceiverID:     notification.ReceiverId,
+		Title:          notification.Title,
+		Status:         &notification.Status,
+		Content:        notification.Content,
+		AlarmType:      notification.AlarmType,
+		IsRead:         notification.IsRead,
+		InviteType:     notification.InviteType,
+		RequestType:    notification.RequestType,
+		CompanyId:      notification.CompanyId,
+		CompanyName:    notification.CompanyName,
+		DepartmentId:   notification.DepartmentId,
+		DepartmentName: notification.DepartmentName,
+		CreatedAt:      notification.CreatedAt,
+	}
+
+	_, err := collection.InsertOne(context.Background(), model)
 	if err != nil {
 		return nil, fmt.Errorf("알림 생성에 실패했습니다: %w", err)
 	}
@@ -33,7 +53,7 @@ func (r *notificationPersistence) CreateNotification(notification *entity.Notifi
 
 func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint) ([]*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
-	filter := bson.M{"receiverid": receiverId}
+	filter := bson.M{"receiver_id": receiverId}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
@@ -58,18 +78,40 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 	collection := r.db.Database("link").Collection("notifications")
 	filter := bson.M{"_id": id}
 	result := collection.FindOne(context.Background(), filter)
-	var notification *entity.Notification
+	var notification *model.Notification
 	if err := result.Decode(&notification); err != nil {
 		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
 	}
 
-	return notification, nil
+	fmt.Println("notification", notification)
+	notificationEntity := &entity.Notification{
+		ID:             notification.ID,
+		SenderId:       notification.SenderID,
+		ReceiverId:     notification.ReceiverID,
+		Title:          notification.Title,
+		Status:         *notification.Status,
+		Content:        notification.Content,
+		AlarmType:      notification.AlarmType,
+		IsRead:         notification.IsRead,
+		InviteType:     notification.InviteType,
+		RequestType:    notification.RequestType,
+		CompanyId:      notification.CompanyId,
+		CompanyName:    notification.CompanyName,
+		DepartmentId:   notification.DepartmentId,
+		DepartmentName: notification.DepartmentName,
+		CreatedAt:      notification.CreatedAt,
+		UpdatedAt:      notification.UpdatedAt,
+	}
+
+	return notificationEntity, nil
 }
 
 func (r *notificationPersistence) UpdateNotificationStatus(notification *entity.Notification) (*entity.Notification, error) {
 	collection := r.db.Database("link").Collection("notifications")
-	fmt.Println("notification", notification)
-	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": notification.ID}, bson.M{"$set": notification})
+	model := model.Notification{
+		AlarmType: notification.AlarmType,
+	}
+	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": notification.ID}, bson.M{"$set": model})
 	if err != nil {
 		return nil, fmt.Errorf("알림 상태 업데이트에 실패했습니다: %w", err)
 	}

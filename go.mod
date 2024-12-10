@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.37.0
+	github.com/pkg/errors v0.9.1
 	go.mongodb.org/mongo-driver v1.17.1
 	go.uber.org/dig v1.18.0
 	golang.org/x/crypto v0.27.0

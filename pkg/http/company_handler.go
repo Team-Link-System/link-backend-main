@@ -100,17 +100,10 @@ func (h *CompanyHandler) SearchCompany(c *gin.Context) {
 
 // TODO 사용자 Role3 (회사 관리자)가 일반 사용자 초대 요청 처리
 func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
-	companyAdminId, exists := c.Get("userId")
+	_, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
-		return
-	}
-
-	companyId, err := strconv.Atoi(c.Param("companyId"))
-	if err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
@@ -121,8 +114,6 @@ func (h *CompanyHandler) InviteUserToCompany(c *gin.Context) {
 		return
 	}
 
-	request.SenderId = companyAdminId.(uint)
-	request.CompanyID = uint(companyId)
 	request.InviteType = req.InviteTypeCompany //TODO 초대 타입
 
 	//TODO 초대 알림 MONGODB에 저장

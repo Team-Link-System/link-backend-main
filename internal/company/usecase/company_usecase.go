@@ -139,7 +139,6 @@ func (u *companyUsecase) AddUserToCompany(requestUserId uint, userId uint, compa
 //TODO 회사 구독 취소 (회사 관리자만 - 자기 회사 구독 취소 가능)
 
 // TODO 회사 조직도 조회
-// TODO 자기가 속한 회사 조직도 - 수정중
 func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.OrganizationResponse, error) {
 	user, err := u.userRepository.GetUserByID(requestUserId)
 	if err != nil {
