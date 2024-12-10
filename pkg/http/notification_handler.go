@@ -67,7 +67,7 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		return
 	}
 
-	notification, err := h.notificationUsecase.UpdateInviteNotificationStatus(userId.(uint), request.ID.Hex(), request.Status)
+	notification, err := h.notificationUsecase.UpdateInviteNotificationStatus(userId.(uint), request.DocID, request.Status)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("알림 상태 수정 오류: %v", appError.Err)
@@ -85,7 +85,7 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		Success: true,
 		Type:    "notification",
 		Payload: &res.NotificationPayload{
-			ID:         notification.ID,
+			DocID:      notification.DocID,
 			SenderID:   notification.SenderID,
 			ReceiverID: notification.ReceiverID,
 			Content:    notification.Content,

@@ -18,6 +18,8 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
+
+	"github.com/google/uuid"
 )
 
 type NotificationUsecase interface {
@@ -25,8 +27,8 @@ type NotificationUsecase interface {
 	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
-	UpdateInviteNotificationStatus(receiverId uint, notificationId string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
-	UpdateNotificationReadStatus(receiverId uint, notificationId string) error
+	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
+	UpdateNotificationReadStatus(receiverId uint, notificationDocId string) error
 }
 
 type notificationUsecase struct {
@@ -77,13 +79,9 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 		CreatedAt:  time.Now(),
 	}
 
-	notification, err = n.notificationRepo.CreateNotification(notification)
-	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
-	}
-
+	docID := uuid.New().String()
 	response := &res.CreateNotificationResponse{
-		ID:           notification.ID,
+		DocID:        docID,
 		SenderID:     notification.SenderId,
 		ReceiverID:   notification.ReceiverId,
 		Content:      notification.Content,
@@ -172,17 +170,12 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		CreatedAt:   time.Now(),
 	}
 
-	//TODO 알림 저장
-	// notification, err = n.notificationRepo.CreateNotification(notification)
-	// if err != nil {
-	// 	return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
-	// }
-
+	docID := uuid.New().String()
 	//TODO nats 통신
 	natsData := map[string]interface{}{
-		"topic":   "link.event.user.invite.request",
-		"eventId": "test",
+		"topic": "link.event.notification.invite.request",
 		"payload": map[string]interface{}{
+			"doc_id":          docID,
 			"sender_id":       notification.SenderId,
 			"receiver_id":     notification.ReceiverId,
 			"title":           notification.Title,
@@ -204,12 +197,10 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
 	}
 
-	n.natsPublisher.PublishEvent("link.event.notification.invite.request", []byte(jsonData))
-
-	//TODO 회사 초대 , 혹은 부서 초대,
+	go n.natsPublisher.PublishEvent("link.event.notification.invite.request", []byte(jsonData))
 
 	response := &res.CreateNotificationResponse{
-		ID:           notification.ID,
+		DocID:        docID,
 		SenderID:     notification.SenderId,
 		ReceiverID:   notification.ReceiverId,
 		Content:      notification.Content,
@@ -256,13 +247,9 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 		CreatedAt:   time.Now(),
 	}
 
-	notification, err = n.notificationRepo.CreateNotification(notification)
-	if err != nil {
-		return nil, common.NewError(http.StatusInternalServerError, "알림 생성에 실패했습니다", err)
-	}
+	//TODO nats 통신
 
 	response := &res.CreateNotificationResponse{
-		ID:           notification.ID,
 		SenderID:     notification.SenderId,
 		ReceiverID:   notification.ReceiverId,
 		Content:      notification.Content,
@@ -281,9 +268,9 @@ func (n *notificationUsecase) CreateRequest(req req.NotificationRequest) (*res.C
 }
 
 // TODO 알림 메시지 상태 업데이트 - 수락 및 거절 초대 요청 분리
-func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, notificationId string, status string) (*res.UpdateNotificationStatusResponseMessage, error) {
+func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error) {
 	// 알림 존재 여부 확인
-	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
+	notification, err := n.notificationRepo.GetNotificationByDocID(targetDocID)
 	if err != nil || notification == nil {
 		return nil, common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
@@ -312,15 +299,11 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
-	//TODO -> receiver가 회사가 속해있는지 확인
-	//TODO 상대방에게 응답한 내용 DB에 저장 및 전송
 	if strings.ToUpper(status) == "ACCEPTED" && users[1].UserProfile.CompanyID == nil {
-		//TODO 수신자 정보 업데이트
 		Title := "ACCEPTED"
 		Content := fmt.Sprintf("[ACCEPTED] %s님이 %s님의 [%s] 초대를 수락했습니다", *users[1].Name, *users[0].Name, notification.InviteType)
 		if notification.InviteType == "COMPANY" {
 			users[1].UserProfile.CompanyID = &notification.CompanyId
-			//TODO 사용자 정보에 회사 추가
 			err = n.userRepo.UpdateUser(*users[1].ID, nil, map[string]interface{}{"company_id": notification.CompanyId})
 			if err != nil {
 				return nil, common.NewError(http.StatusInternalServerError, "회사 추가에 실패했습니다", err)
@@ -360,10 +343,13 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			CreatedAt:      time.Now(),
 		}
 
+		docID := uuid.New().String()
 		natsData := map[string]interface{}{
-			"topic": "link.event.user.invite.response",
+			"topic": "link.event.notification.invite.response",
 			"payload": map[string]interface{}{
-				"_id":             notification.ID,
+				"doc_id":          docID,
+				"target_doc_id":   targetDocID,
+				"target_id":       notification.ID,
 				"sender_id":       notification.SenderId,
 				"receiver_id":     notification.ReceiverId,
 				"title":           notification.Title,
@@ -376,6 +362,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 				"company_name":    notification.CompanyName,
 				"department_id":   notification.DepartmentId,
 				"department_name": notification.DepartmentName,
+				"is_read":         false,
 				"timestamp":       notification.CreatedAt,
 			},
 		}
@@ -386,9 +373,9 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
 		}
 
-		n.natsPublisher.PublishEvent("link.event.notification.invite.response", []byte(jsonData))
+		go n.natsPublisher.PublishEvent("link.event.notification.invite.response", []byte(jsonData))
 		response := &res.UpdateNotificationStatusResponseMessage{
-			ID:         notification.ID,
+			DocID:      docID,
 			SenderID:   notification.ReceiverId,
 			ReceiverID: notification.SenderId,
 			Title:      Title,
@@ -405,7 +392,6 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 		Title := "REJECTED"
 		Content := fmt.Sprintf("[REJECTED] %s님이 %s님의 [%s] 초대를 거절했습니다", *users[1].Name, *users[0].Name, notification.InviteType)
 		notification := &_notificationEntity.Notification{
-			ID:             notification.ID,
 			SenderId:       notification.ReceiverId,
 			ReceiverId:     notification.SenderId,
 			Title:          Title,
@@ -417,15 +403,19 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			CompanyName:    notification.CompanyName,
 			DepartmentId:   notification.DepartmentId,
 			DepartmentName: notification.DepartmentName,
+			IsRead:         false,
 			Status:         "REJECTED",
 			CreatedAt:      time.Now(),
 		}
 
+		docID := uuid.New().String()
 		natsData := map[string]interface{}{
-			"topic":   "link.event.user.invite.response",
+			"topic":   "link.event.notification.invite.response",
 			"eventId": "test",
 			"payload": map[string]interface{}{
-				"_id":             notification.ID,
+				"doc_id":          docID,
+				"target_doc_id":   targetDocID,
+				"target_id":       notification.ID,
 				"sender_id":       notification.SenderId,
 				"receiver_id":     notification.ReceiverId,
 				"title":           notification.Title,
@@ -448,10 +438,10 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 			return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
 		}
 
-		n.natsPublisher.PublishEvent("link.event.notification.invite.response", []byte(jsonData))
+		go n.natsPublisher.PublishEvent("link.event.notification.invite.response", []byte(jsonData))
 
 		response := &res.UpdateNotificationStatusResponseMessage{
-			ID:         notification.ID,
+			DocID:      docID,
 			SenderID:   notification.ReceiverId,
 			ReceiverID: notification.SenderId,
 			Title:      Title,
@@ -470,8 +460,8 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, no
 }
 
 // TODO 읽음 처리
-func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
-	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
+func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationDocId string) error {
+	notification, err := n.notificationRepo.GetNotificationByID(notificationDocId)
 	if err != nil || notification == nil {
 		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
@@ -484,16 +474,18 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 	notification.UpdatedAt = time.Now()
 
 	//TODO entity 변경
-	updatedNotification := &_notificationEntity.Notification{
+	_ = &_notificationEntity.Notification{
 		ID:        notification.ID,
 		IsRead:    true,
 		UpdatedAt: time.Now(),
 	}
 
-	_, err = n.notificationRepo.UpdateNotificationReadStatus(updatedNotification)
-	if err != nil {
-		return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다", err)
-	}
+	// _, err = n.notificationRepo.UpdateNotificationReadStatus(updatedNotification)
+	// if err != nil {
+	// 	return common.NewError(http.StatusInternalServerError, "알림 읽음 처리에 실패했습니다", err)
+	// }
+
+	//TODO nats 통신
 
 	return nil
 }
