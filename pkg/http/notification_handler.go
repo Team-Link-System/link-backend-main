@@ -80,6 +80,8 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 	}
 
 	//TODO nats pub으로 해당 이벤트 전달
+	fmt.Println("notification", notification.ReceiverID)
+	fmt.Println("notification", notification.SenderID)
 
 	h.hub.SendMessageToUser(notification.ReceiverID, res.JsonResponse{
 		Success: true,
@@ -96,7 +98,7 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 		},
 	})
 
-	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "알림 상태 수정 성공", notification))
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "알림 상태 수정 성공", nil))
 }
 
 // TODO 알림 읽음 처리
