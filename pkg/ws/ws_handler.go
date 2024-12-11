@@ -242,7 +242,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomInfo["name"] = chatRoomResponse.Name
 			chatRoomInfo["users"] = []map[string]interface{}{}
 
-			for _, user := range chatRoomResponse.Users {
+			for i, user := range chatRoomResponse.Users {
 				chatRoomInfo["users"] = append(chatRoomInfo["users"].([]map[string]interface{}), map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,
@@ -250,7 +250,13 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 					"alias_name": user.AliasName,
 					"joined_at":  user.JoinedAt,
 					"left_at":    user.LeftAt,
+					"image":      "",
 				})
+
+				if user.Image != nil {
+					users := chatRoomInfo["users"].([]map[string]interface{})
+					users[i]["image"] = *user.Image
+				}
 			}
 
 			// DB에서 가져온 채팅방을 메모리에 추가 -> 수정해야함
@@ -315,6 +321,10 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomInfo["name"] = chatRoomFromDB.Name
 
 			for i, user := range chatRoomFromDB.Users {
+
+				fmt.Println("확인")
+				fmt.Println(user.Image)
+
 				chatRoomInfo["users"] = append(chatRoomInfo["users"].([]map[string]interface{}), map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,

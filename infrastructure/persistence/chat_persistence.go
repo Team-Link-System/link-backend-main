@@ -435,7 +435,6 @@ func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoomInfo map[strin
 		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
 	}
 
-	//redis에 저장
 	r.redis.Set(context.Background(), fmt.Sprintf("chatroom:%d", roomId), chatRoomJson, 0)
 
 	return nil
