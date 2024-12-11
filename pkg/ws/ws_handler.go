@@ -242,7 +242,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomInfo["name"] = chatRoomResponse.Name
 			chatRoomInfo["users"] = []map[string]interface{}{}
 
-			for _, user := range chatRoomResponse.Users {
+			for i, user := range chatRoomResponse.Users {
 				chatRoomInfo["users"] = append(chatRoomInfo["users"].([]map[string]interface{}), map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,
@@ -250,7 +250,13 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 					"alias_name": user.AliasName,
 					"joined_at":  user.JoinedAt,
 					"left_at":    user.LeftAt,
+					"image":      "",
 				})
+
+				if user.Image != nil {
+					users := chatRoomInfo["users"].([]map[string]interface{})
+					users[i]["image"] = *user.Image
+				}
 			}
 
 			// DB에서 가져온 채팅방을 메모리에 추가 -> 수정해야함
@@ -314,7 +320,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomInfo["is_private"] = chatRoomFromDB.IsPrivate
 			chatRoomInfo["name"] = chatRoomFromDB.Name
 
-			for _, user := range chatRoomFromDB.Users {
+			for i, user := range chatRoomFromDB.Users {
 				chatRoomInfo["users"] = append(chatRoomInfo["users"].([]map[string]interface{}), map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,
@@ -322,7 +328,14 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 					"alias_name": user.AliasName,
 					"joined_at":  user.JoinedAt,
 					"left_at":    user.LeftAt,
+					"image":      "",
 				})
+
+				if user.Image != nil {
+					users := chatRoomInfo["users"].([]map[string]interface{})
+					users[i]["image"] = *user.Image
+				}
+
 			}
 			// Redis에 캐싱
 			h.chatUsecase.SetChatRoomToRedis(message.RoomID, chatRoomInfo)
@@ -390,6 +403,17 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
+		userInfo, err := h.userUsecase.GetUserMyInfo(message.SenderID)
+		if err != nil {
+			log.Printf("사용자 정보 조회 실패: %v", err)
+			continue
+		}
+
+		userImage := ""
+		if userInfo.UserProfile.Image != nil {
+			userImage = *userInfo.UserProfile.Image
+		}
+
 		// 메시지 전송 성공 및 브로드캐스트
 		h.hub.SendMessageToChatRoom(message.RoomID, res.JsonResponse{
 			Success: true,
@@ -399,6 +423,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 				SenderID:    message.SenderID,
 				SenderName:  claims.Name,
 				SenderEmail: claims.Email,
+				SenderImage: userImage,
 				Content:     message.Content,
 				CreatedAt:   time.Now().Format(time.RFC3339),
 			},
@@ -473,8 +498,6 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	//TODO 메모리에 유저 상태 확인
 	_, exists := h.hub.Clients.Load(uint(userIdUint))
 	if !exists {
-		// 새로운 연결 인 경우
-		fmt.Println("새로운 연결")
 		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
 		if err != nil {
 			log.Printf("사용자 조회에 실패했습니다: %v", err)
@@ -486,7 +509,6 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			return
 		}
 		h.hub.RegisterClient(conn, *user.ID, 0)
-		// Redis나 DB에 온라인 상태 저장
 		if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
 			log.Printf("온라인 상태 업데이트 실패: %v", err)
 		}

@@ -203,6 +203,7 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 	err := r.db.
 		Preload("ChatRoomUsers").
 		Preload("ChatRoomUsers.User").
+		Preload("ChatRoomUsers.User.UserProfile").
 		Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
 		Where("chat_rooms.id = ?", chatRoomID).
 		First(&chatRoom).Error
@@ -217,6 +218,9 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 			ID:    &chatRoomUser.UserID,
 			Name:  &chatRoomUser.User.Name,
 			Email: &chatRoomUser.User.Email,
+			UserProfile: &userEntity.UserProfile{
+				Image: chatRoomUser.User.UserProfile.Image,
+			},
 			ChatRoomUsers: []map[string]interface{}{
 				{
 					"alias_name": chatRoomUser.ChatRoomAlias,
@@ -285,8 +289,6 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
 			}
 		} else {
-			// cursor는 있지만 created_at이 없거나 빈 문자열인 경우 (첫 조회)
-			fmt.Println("첫 조회입니다")
 			pipeline := []bson.M{
 				{"$match": filter},
 				{"$sort": bson.M{"created_at": -1}},
@@ -433,7 +435,6 @@ func (r *chatPersistence) SetChatRoomToRedis(roomId uint, chatRoomInfo map[strin
 		return fmt.Errorf("채팅방 직렬화 중 오류: %w", err)
 	}
 
-	//redis에 저장
 	r.redis.Set(context.Background(), fmt.Sprintf("chatroom:%d", roomId), chatRoomJson, 0)
 
 	return nil

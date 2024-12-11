@@ -22,6 +22,18 @@ type Notification struct {
 	CompanyName    string             `json:"company_name,omitempty"`
 	DepartmentId   uint               `json:"department_id,omitempty"`
 	DepartmentName string             `json:"department_name,omitempty"`
+	TargetType     string             `json:"target_type,omitempty"`
+	TargetID       uint               `json:"target_id,omitempty"`
 	CreatedAt      time.Time          `json:"created_at,omitempty"`
 	UpdatedAt      time.Time          `json:"updated_at,omitempty"`
+}
+
+type NotificationMeta struct {
+	TotalCount int    `json:"total_count"`
+	TotalPages int    `json:"total_pages"`
+	PageSize   int    `json:"page_size"`
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    *bool  `json:"has_more"`
+	PrevPage   int    `json:"prev_page"`
+	NextPage   int    `json:"next_page"`
 }

@@ -18,13 +18,14 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
+	_util "link/pkg/util"
 
 	"github.com/google/uuid"
 )
 
 type NotificationUsecase interface {
-	GetNotifications(userId uint) ([]*_notificationEntity.Notification, error)
-	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
+	GetNotifications(userId uint, queryParams *req.GetNotificationsQueryParams) (*res.GetNotificationsResponse, error)
+	CreateMention(req req.SendMentionNotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
@@ -58,8 +59,8 @@ func NewNotificationUsecase(
 }
 
 // TODO 알림저장 usecase 멘션 -- 수정해야함
-func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
-	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
+func (n *notificationUsecase) CreateMention(req req.SendMentionNotificationRequest) (*res.CreateNotificationResponse, error) {
+	users, err := n.userRepo.GetUserByIds([]uint{req.SenderID, req.ReceiverID})
 	if err != nil {
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
@@ -67,33 +68,44 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
-	//alarmType에 따른 처리
-	var notification *_notificationEntity.Notification
-	notification = &_notificationEntity.Notification{
-		SenderId:   *users[0].ID,
-		ReceiverId: *users[1].ID,
-		Title:      "Mention",
-		Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
-		AlarmType:  "MENTION",
-		IsRead:     false,
-		CreatedAt:  time.Now(),
+	docID := uuid.New().String()
+
+	//TODO nats 통신
+	natsData := map[string]interface{}{
+		"topic": "link.event.notification.mention",
+		"payload": map[string]interface{}{
+			"doc_id":      docID,
+			"sender_id":   *users[0].ID,
+			"receiver_id": *users[1].ID,
+			"title":       "MENTION",
+			"content":     fmt.Sprintf("[MENTION] %s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
+			"alarm_type":  "MENTION",
+			"is_read":     false,
+			"target_type": strings.ToUpper(req.TargetType), //POST에서한건지 COMMENT에서한건지
+			"target_id":   req.TargetID,
+			"timestamp":   time.Now(),
+		},
 	}
 
-	docID := uuid.New().String()
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+	}
+
+	go n.natsPublisher.PublishEvent("link.event.notification.mention", []byte(jsonData))
+
 	response := &res.CreateNotificationResponse{
-		DocID:        docID,
-		SenderID:     notification.SenderId,
-		ReceiverID:   notification.ReceiverId,
-		Content:      notification.Content,
-		AlarmType:    string(notification.AlarmType),
-		InviteType:   string(notification.InviteType),
-		RequestType:  string(notification.RequestType),
-		CompanyId:    notification.CompanyId,
-		DepartmentId: notification.DepartmentId,
-		Title:        notification.Title,
-		IsRead:       notification.IsRead,
-		Status:       notification.Status,
-		CreatedAt:    notification.CreatedAt.Format(time.DateTime),
+		DocID:      docID,
+		SenderID:   *users[0].ID,
+		ReceiverID: *users[1].ID,
+		Content:    fmt.Sprintf("[MENTION] %s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
+		AlarmType:  "MENTION",
+		Title:      "MENTION",
+		IsRead:     false,
+		TargetType: strings.ToUpper(req.TargetType),
+		TargetID:   req.TargetID,
+		CreatedAt:  time.Now().Format(time.DateTime),
 	}
 
 	return response, nil
@@ -424,7 +436,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 }
 
 // TODO 알림 리스트 조회
-func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEntity.Notification, error) {
+func (n *notificationUsecase) GetNotifications(userId uint, queryParams *req.GetNotificationsQueryParams) (*res.GetNotificationsResponse, error) {
 
 	//TODO 수신자 id가 존재하는지 확인
 	user, err := n.userRepo.GetUserByID(userId)
@@ -435,11 +447,57 @@ func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEnt
 		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다", err)
 	}
 
+	queryOptions := map[string]interface{}{
+		"is_read": queryParams.IsRead,
+		"page":    queryParams.Page,
+		"limit":   queryParams.Limit,
+		"cursor":  map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		}
+	}
+
 	//TODO 수신자 id로 알림 조회
-	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID)
+	notificationMeta, notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID, queryOptions)
 	if err != nil {
 		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다", err)
 	}
 
-	return notifications, nil
+	notificationsResponse := make([]*res.NotificationResponse, len(notifications))
+	for i, notification := range notifications {
+		notificationsResponse[i] = &res.NotificationResponse{
+			ID:             notification.ID.Hex(),
+			DocID:          notification.DocID,
+			SenderID:       notification.SenderId,
+			ReceiverID:     notification.ReceiverId,
+			Content:        notification.Content,
+			AlarmType:      notification.AlarmType,
+			Title:          notification.Title,
+			IsRead:         notification.IsRead,
+			Status:         notification.Status,
+			InviteType:     notification.InviteType,
+			RequestType:    notification.RequestType,
+			CompanyId:      notification.CompanyId,
+			CompanyName:    notification.CompanyName,
+			DepartmentId:   notification.DepartmentId,
+			DepartmentName: notification.DepartmentName,
+			CreatedAt:      _util.ParseKst(notification.CreatedAt).Format(time.DateTime),
+		}
+	}
+
+	return &res.GetNotificationsResponse{
+		Notifications: notificationsResponse,
+		Meta: &res.NotificationMeta{
+			NextCursor: notificationMeta.NextCursor,
+			HasMore:    notificationMeta.HasMore,
+			TotalCount: notificationMeta.TotalCount,
+			TotalPages: notificationMeta.TotalPages,
+			PageSize:   notificationMeta.PageSize,
+			PrevPage:   notificationMeta.PrevPage,
+			NextPage:   notificationMeta.NextPage,
+		},
+	}, nil
 }

@@ -57,8 +57,8 @@ func startServer() {
 
 	//TODO 이미지 정적 파일 제공
 
-	// r.Static("/static/posts", "./static/uploads/posts") 게시물
-	r.Static("/static/profiles", "./static/posts") //프로필
+	r.Static("/static/posts", "./static/posts")       //게시물
+	r.Static("/static/profiles", "./static/profiles") //프로필
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
@@ -174,7 +174,7 @@ func startServer() {
 
 			notification := protectedRoute.Group("notification")
 			{
-				// notification.POST("", notificationHandler.CreateNotification)
+				notification.POST("/mention", notificationHandler.SendMentionNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
 				notification.PUT("/invite/status", notificationHandler.UpdateInviteNotificationStatus) //! 초대 알림 수락 및 거절
 				notification.PUT("/:notificationId", notificationHandler.UpdateNotificationReadStatus) //! 알림 읽음 처리

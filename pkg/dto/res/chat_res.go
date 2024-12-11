@@ -8,6 +8,7 @@ type UserInfoResponse struct {
 	Email     *string    `json:"email,omitempty"`
 	Phone     *string    `json:"phone,omitempty"`
 	AliasName *string    `json:"alias_name,omitempty"`
+	Image     *string    `json:"image,omitempty"`
 	JoinedAt  *time.Time `json:"joined_at,omitempty"`
 	LeftAt    *time.Time `json:"left_at,omitempty"`
 }
@@ -30,6 +31,7 @@ type ChatPayload struct {
 	SenderID    uint   `json:"sender_id,omitempty"`
 	SenderName  string `json:"sender_name,omitempty"`
 	SenderEmail string `json:"sender_email,omitempty"`
+	SenderImage string `json:"sender_image,omitempty"`
 	Content     string `json:"content,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
 }

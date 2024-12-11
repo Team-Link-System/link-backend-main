@@ -1,8 +1,10 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,10 +26,58 @@ func NewNotificationHandler(
 	return &NotificationHandler{notificationUsecase: notificationUsecase, hub: hub}
 }
 
+// TODO 언급 처리
+func (h *NotificationHandler) SendMentionNotification(c *gin.Context) {
+	_, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
+		return
+	}
+
+	var request req.SendMentionNotificationRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	response, err := h.notificationUsecase.CreateMention(request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("언급 실패: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("언급 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	//TODO 웹소켓 통신
+	h.hub.SendMessageToUser(response.ReceiverID, res.JsonResponse{
+		Success: true,
+		Type:    "notification",
+		Payload: &res.NotificationPayload{
+			DocID:      response.DocID,
+			SenderID:   response.SenderID,
+			ReceiverID: response.ReceiverID,
+			Content:    response.Content,
+			AlarmType:  string(response.AlarmType),
+			Title:      response.Title,
+			IsRead:     response.IsRead,
+			Status:     response.Status,
+			TargetType: response.TargetType,
+			TargetID:   response.TargetID,
+			CreatedAt:  response.CreatedAt,
+		},
+	})
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "언급에 성공 했습니다", nil))
+}
+
 // TODO 알림 조회 핸들러
 func (h *NotificationHandler) GetNotifications(c *gin.Context) {
-
-	//TODO 로그인한 사람 확인
 	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
@@ -35,7 +85,41 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint))
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	//읽음 여부 조회
+	IsRead := c.Query("is_read")
+	//TODO isRead는 옵션값임 - 기본값 필요 x
+
+	cursorParam := c.Query("cursor")
+	var cursor *req.NotificationCursor
+
+	if cursorParam == "" {
+		cursor = nil
+	} else {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+	}
+
+	queryParams := &req.GetNotificationsQueryParams{
+		IsRead: IsRead,
+		Page:   page,
+		Limit:  limit,
+		Cursor: cursor,
+	}
+
+	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("알림 조회 오류: %v", appError.Err)
