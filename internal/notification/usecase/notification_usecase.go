@@ -25,7 +25,7 @@ import (
 
 type NotificationUsecase interface {
 	GetNotifications(userId uint, queryParams *req.GetNotificationsQueryParams) (*res.GetNotificationsResponse, error)
-	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
+	CreateMention(req req.SendMentionNotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
@@ -59,8 +59,8 @@ func NewNotificationUsecase(
 }
 
 // TODO 알림저장 usecase 멘션 -- 수정해야함
-func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error) {
-	users, err := n.userRepo.GetUserByIds([]uint{req.SenderId, req.ReceiverId})
+func (n *notificationUsecase) CreateMention(req req.SendMentionNotificationRequest) (*res.CreateNotificationResponse, error) {
+	users, err := n.userRepo.GetUserByIds([]uint{req.SenderID, req.ReceiverID})
 	if err != nil {
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
@@ -68,32 +68,44 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 		return nil, common.NewError(http.StatusNotFound, "senderId 또는 receiverId가 존재하지 않습니다", err)
 	}
 
-	//alarmType에 따른 처리
-	notification := &_notificationEntity.Notification{
-		SenderId:   *users[0].ID,
-		ReceiverId: *users[1].ID,
-		Title:      "Mention",
-		Content:    fmt.Sprintf("%s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
-		AlarmType:  "MENTION",
-		IsRead:     false,
-		CreatedAt:  time.Now(),
+	docID := uuid.New().String()
+
+	//TODO nats 통신
+	natsData := map[string]interface{}{
+		"topic": "link.event.notification.mention",
+		"payload": map[string]interface{}{
+			"doc_id":      docID,
+			"sender_id":   *users[0].ID,
+			"receiver_id": *users[1].ID,
+			"title":       "MENTION",
+			"content":     fmt.Sprintf("[MENTION] %s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
+			"alarm_type":  "MENTION",
+			"is_read":     false,
+			"target_type": strings.ToUpper(req.TargetType), //POST에서한건지 COMMENT에서한건지
+			"target_id":   req.TargetID,
+			"timestamp":   time.Now(),
+		},
 	}
 
-	docID := uuid.New().String()
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+	}
+
+	go n.natsPublisher.PublishEvent("link.event.notification.mention", []byte(jsonData))
+
 	response := &res.CreateNotificationResponse{
-		DocID:        docID,
-		SenderID:     notification.SenderId,
-		ReceiverID:   notification.ReceiverId,
-		Content:      notification.Content,
-		AlarmType:    string(notification.AlarmType),
-		InviteType:   string(notification.InviteType),
-		RequestType:  string(notification.RequestType),
-		CompanyId:    notification.CompanyId,
-		DepartmentId: notification.DepartmentId,
-		Title:        notification.Title,
-		IsRead:       notification.IsRead,
-		Status:       notification.Status,
-		CreatedAt:    notification.CreatedAt.Format(time.DateTime),
+		DocID:      docID,
+		SenderID:   *users[0].ID,
+		ReceiverID: *users[1].ID,
+		Content:    fmt.Sprintf("[MENTION] %s님이 %s님을 언급했습니다", *users[0].Name, *users[1].Name),
+		AlarmType:  "MENTION",
+		Title:      "MENTION",
+		IsRead:     false,
+		TargetType: strings.ToUpper(req.TargetType),
+		TargetID:   req.TargetID,
+		CreatedAt:  time.Now().Format(time.DateTime),
 	}
 
 	return response, nil

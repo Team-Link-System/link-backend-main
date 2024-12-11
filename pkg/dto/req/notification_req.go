@@ -25,14 +25,11 @@ type GetNotificationsQueryParams struct {
 	Cursor *NotificationCursor `query:"cursor,omitempty"`
 }
 
-type SendInviteNotificationRequest struct {
+type SendMentionNotificationRequest struct {
 	SenderID   uint   `json:"sender_id" binding:"required"`
 	ReceiverID uint   `json:"receiver_id" binding:"required"`
-	ActionType string `json:"action_type" binding:"required"`
 	TargetType string `json:"target_type" binding:"required"`
-	TargetID   uint   `json:"target_id,omitempty"`
-	TargetName string `json:"target_name,omitempty"`
-	Content    string `json:"content,omitempty"`
+	TargetID   uint   `json:"target_id" binding:"required"`
 }
 
 type NotificationRequest struct {

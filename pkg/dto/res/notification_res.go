@@ -16,6 +16,8 @@ type NotificationPayload struct {
 	CompanyName    string `json:"company_name,omitempty"`
 	DepartmentId   uint   `json:"department_id,omitempty"`
 	DepartmentName string `json:"department_name,omitempty"`
+	TargetType     string `json:"target_type,omitempty"` //POST에서한건지 COMMENT에서한건지
+	TargetID       uint   `json:"target_id,omitempty"`
 }
 
 type CreateNotificationResponse struct {
@@ -33,6 +35,8 @@ type CreateNotificationResponse struct {
 	Title          string `json:"title,omitempty"`
 	IsRead         bool   `json:"is_read,omitempty"`
 	Status         string `json:"status,omitempty"`
+	TargetType     string `json:"target_type,omitempty"` //POST에서한건지 COMMENT에서한건지
+	TargetID       uint   `json:"target_id,omitempty"`
 	CreatedAt      string `json:"created_at,omitempty"`
 }
 
