@@ -56,9 +56,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 						"created_at":  bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())},
 					},
 				},
-				{"$sort": bson.M{"created_at": 1}},
-				{"$limit": int64(limit)},
 				{"$sort": bson.M{"created_at": -1}},
+				{"$limit": int64(limit)},
 			}
 
 			cursor, err := collection.Aggregate(context.Background(), pipeline)
@@ -74,9 +73,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 			//TODO 첫 조회
 			pipeline := []bson.M{
 				{"$match": filter},
-				{"$sort": bson.M{"created_at": 1}},
-				{"$limit": int64(limit)},
 				{"$sort": bson.M{"created_at": -1}},
+				{"$limit": int64(limit)},
 			}
 
 			cursor, err := collection.Aggregate(context.Background(), pipeline)
