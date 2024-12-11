@@ -28,8 +28,6 @@ func NewNotificationHandler(
 
 // TODO 알림 조회 핸들러
 func (h *NotificationHandler) GetNotifications(c *gin.Context) {
-
-	//TODO 로그인한 사람 확인
 	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
@@ -47,6 +45,10 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		limit = 10
 	}
 
+	//읽음 여부 조회
+	IsRead := c.Query("is_read")
+	//TODO isRead는 옵션값임 - 기본값 필요 x
+
 	cursorParam := c.Query("cursor")
 	var cursor *req.NotificationCursor
 
@@ -61,6 +63,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	}
 
 	queryParams := &req.GetNotificationsQueryParams{
+		IsRead: IsRead,
 		Page:   page,
 		Limit:  limit,
 		Cursor: cursor,

@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -28,18 +29,28 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 
 	limit, ok := queryOptions["limit"].(int)
 	if !ok || limit <= 0 {
-		limit = 10 // 기본값
+		limit = 10
 	}
 
 	page, ok := queryOptions["page"].(int)
 	if !ok || page <= 0 {
-		page = 1 // 기본값
+		page = 1
+	}
+
+	fmt.Println("queryOptions", queryOptions)
+
+	isRead, _ := queryOptions["is_read"].(string)
+	if isRead != "" {
+		parsedIsRead, err := strconv.ParseBool(isRead)
+		if err != nil {
+			return nil, nil, fmt.Errorf("유효하지 않은 is_read 값: %s", isRead)
+		}
+		filter["is_read"] = parsedIsRead
 	}
 
 	var notifications []model.Notification
 
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
-		// cursor가 있고 created_at이 있는 경우
 		if createdAt, exists := cursor["created_at"].(string); exists && createdAt != "" {
 			parsedTime, err := time.Parse(time.RFC3339Nano, createdAt)
 			if err != nil {
@@ -48,50 +59,29 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 					return nil, nil, fmt.Errorf("cursor 시간 파싱 실패: %w", err)
 				}
 			}
-
-			pipeline := []bson.M{
-				{
-					"$match": bson.M{
-						"receiver_id": receiverId,
-						"created_at":  bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())},
-					},
-				},
-				{"$sort": bson.M{"created_at": -1}},
-				{"$limit": int64(limit)},
-			}
-
-			cursor, err := collection.Aggregate(context.Background(), pipeline)
-			if err != nil {
-				return nil, nil, fmt.Errorf("이전 알림 조회 중 MongoDB 오류: %w", err)
-			}
-			defer cursor.Close(context.Background())
-
-			if err = cursor.All(context.Background(), &notifications); err != nil {
-				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
-			}
-		} else {
-			//TODO 첫 조회
-			pipeline := []bson.M{
-				{"$match": filter},
-				{"$sort": bson.M{"created_at": -1}},
-				{"$limit": int64(limit)},
-			}
-
-			cursor, err := collection.Aggregate(context.Background(), pipeline)
-			if err != nil {
-				return nil, nil, fmt.Errorf("최신 알림 조회 중 MongoDB 오류: %w", err)
-			}
-			defer cursor.Close(context.Background())
-
-			if err = cursor.All(context.Background(), &notifications); err != nil {
-				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
-			}
+			filter["created_at"] = bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
 		}
+	}
+
+	pipeline := []bson.M{
+		{"$match": filter},
+		{"$sort": bson.M{"created_at": -1}},
+		{"$limit": int64(limit)},
+	}
+
+	cursor, err := collection.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, nil, fmt.Errorf("MongoDB 조회 오류: %w", err)
+	}
+	defer cursor.Close(context.Background())
+
+	if err = cursor.All(context.Background(), &notifications); err != nil {
+		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
 
 	totalCount, err := collection.CountDocuments(context.Background(), filter)
 	if err != nil {
-		return nil, nil, fmt.Errorf("알림 총 개수 조회 중 MongoDB 오류: %w", err)
+		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
 	}
 
 	notificationsEntity := make([]*entity.Notification, len(notifications))
@@ -116,29 +106,17 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		}
 	}
 
-	hasMore := false
-	if len(notificationsEntity) > 0 {
-		oldestTime := notificationsEntity[0].CreatedAt
-		olderCount, err := collection.CountDocuments(context.Background(), bson.M{
-			"receiver_id": receiverId,
-			"created_at":  bson.M{"$lt": oldestTime},
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("이전 알림 개수 조회 중 MongoDB 오류: %w", err)
-		}
-		hasMore = olderCount > 0
+	hasMore := len(notificationsEntity) == limit
+	nextCursor := ""
+	if hasMore {
+		nextCursor = notificationsEntity[len(notificationsEntity)-1].CreatedAt.Format(time.RFC3339Nano)
 	}
 
-	var nextCursor string
-	if len(notificationsEntity) > 0 && hasMore {
-		nextCursor = notificationsEntity[0].CreatedAt.Format(time.RFC3339Nano)
-	} else {
-		nextCursor = ""
-	}
+	totalPages := (int(totalCount) + limit - 1) / limit
 
 	return &entity.NotificationMeta{
 		TotalCount: int(totalCount),
-		TotalPages: 1,
+		TotalPages: totalPages,
 		PageSize:   limit,
 		NextCursor: nextCursor,
 		HasMore:    &hasMore,

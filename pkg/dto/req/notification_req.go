@@ -19,6 +19,7 @@ type NotificationCursor struct {
 }
 
 type GetNotificationsQueryParams struct {
+	IsRead string              `query:"is_read,omitempty"`
 	Page   int                 `query:"page" default:"1"`
 	Limit  int                 `query:"limit" default:"10"`
 	Cursor *NotificationCursor `query:"cursor,omitempty"`
