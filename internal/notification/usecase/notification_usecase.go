@@ -18,12 +18,13 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
+	_util "link/pkg/util"
 
 	"github.com/google/uuid"
 )
 
 type NotificationUsecase interface {
-	GetNotifications(userId uint) ([]*_notificationEntity.Notification, error)
+	GetNotifications(userId uint, queryParams *req.GetNotificationsQueryParams) (*res.GetNotificationsResponse, error)
 	CreateMention(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
@@ -68,8 +69,7 @@ func (n *notificationUsecase) CreateMention(req req.NotificationRequest) (*res.C
 	}
 
 	//alarmType에 따른 처리
-	var notification *_notificationEntity.Notification
-	notification = &_notificationEntity.Notification{
+	notification := &_notificationEntity.Notification{
 		SenderId:   *users[0].ID,
 		ReceiverId: *users[1].ID,
 		Title:      "Mention",
@@ -424,7 +424,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 }
 
 // TODO 알림 리스트 조회
-func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEntity.Notification, error) {
+func (n *notificationUsecase) GetNotifications(userId uint, queryParams *req.GetNotificationsQueryParams) (*res.GetNotificationsResponse, error) {
 
 	//TODO 수신자 id가 존재하는지 확인
 	user, err := n.userRepo.GetUserByID(userId)
@@ -435,11 +435,56 @@ func (n *notificationUsecase) GetNotifications(userId uint) ([]*_notificationEnt
 		return nil, common.NewError(http.StatusNotFound, "수신자가 존재하지 않습니다", err)
 	}
 
+	queryOptions := map[string]interface{}{
+		"page":   queryParams.Page,
+		"limit":  queryParams.Limit,
+		"cursor": map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		}
+	}
+
 	//TODO 수신자 id로 알림 조회
-	notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID)
+	notificationMeta, notifications, err := n.notificationRepo.GetNotificationsByReceiverId(*user.ID, queryOptions)
 	if err != nil {
 		return nil, common.NewError(http.StatusInternalServerError, "알림 조회에 실패했습니다", err)
 	}
 
-	return notifications, nil
+	notificationsResponse := make([]*res.NotificationResponse, len(notifications))
+	for i, notification := range notifications {
+		notificationsResponse[i] = &res.NotificationResponse{
+			ID:             notification.ID.Hex(),
+			DocID:          notification.DocID,
+			SenderID:       notification.SenderId,
+			ReceiverID:     notification.ReceiverId,
+			Content:        notification.Content,
+			AlarmType:      notification.AlarmType,
+			Title:          notification.Title,
+			IsRead:         notification.IsRead,
+			Status:         notification.Status,
+			InviteType:     notification.InviteType,
+			RequestType:    notification.RequestType,
+			CompanyId:      notification.CompanyId,
+			CompanyName:    notification.CompanyName,
+			DepartmentId:   notification.DepartmentId,
+			DepartmentName: notification.DepartmentName,
+			CreatedAt:      _util.ParseKst(notification.CreatedAt).Format(time.DateTime),
+		}
+	}
+
+	return &res.GetNotificationsResponse{
+		Notifications: notificationsResponse,
+		Meta: &res.NotificationMeta{
+			NextCursor: notificationMeta.NextCursor,
+			HasMore:    notificationMeta.HasMore,
+			TotalCount: notificationMeta.TotalCount,
+			TotalPages: notificationMeta.TotalPages,
+			PageSize:   notificationMeta.PageSize,
+			PrevPage:   notificationMeta.PrevPage,
+			NextPage:   notificationMeta.NextPage,
+		},
+	}, nil
 }

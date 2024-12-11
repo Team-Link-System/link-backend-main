@@ -14,6 +14,16 @@ const (
 	RequestTypeDepartment RequestType = "DEPARTMENT"
 )
 
+type NotificationCursor struct {
+	CreatedAt string `json:"created_at,omitempty"`
+}
+
+type GetNotificationsQueryParams struct {
+	Page   int                 `query:"page" default:"1"`
+	Limit  int                 `query:"limit" default:"10"`
+	Cursor *NotificationCursor `query:"cursor,omitempty"`
+}
+
 type SendInviteNotificationRequest struct {
 	SenderID   uint   `json:"sender_id" binding:"required"`
 	ReceiverID uint   `json:"receiver_id" binding:"required"`

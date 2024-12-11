@@ -25,3 +25,13 @@ type Notification struct {
 	CreatedAt      time.Time          `json:"created_at,omitempty"`
 	UpdatedAt      time.Time          `json:"updated_at,omitempty"`
 }
+
+type NotificationMeta struct {
+	TotalCount int    `json:"total_count"`
+	TotalPages int    `json:"total_pages"`
+	PageSize   int    `json:"page_size"`
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    *bool  `json:"has_more"`
+	PrevPage   int    `json:"prev_page"`
+	NextPage   int    `json:"next_page"`
+}

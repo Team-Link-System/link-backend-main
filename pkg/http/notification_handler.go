@@ -1,8 +1,10 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -35,7 +37,36 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint))
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	cursorParam := c.Query("cursor")
+	var cursor *req.NotificationCursor
+
+	if cursorParam == "" {
+		cursor = nil
+	} else {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+	}
+
+	queryParams := &req.GetNotificationsQueryParams{
+		Page:   page,
+		Limit:  limit,
+		Cursor: cursor,
+	}
+
+	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("알림 조회 오류: %v", appError.Err)

@@ -285,8 +285,6 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 				return nil, nil, fmt.Errorf("MongoDB 커서 처리 중 오류: %w", err)
 			}
 		} else {
-			// cursor는 있지만 created_at이 없거나 빈 문자열인 경우 (첫 조회)
-			fmt.Println("첫 조회입니다")
 			pipeline := []bson.M{
 				{"$match": filter},
 				{"$sort": bson.M{"created_at": -1}},
