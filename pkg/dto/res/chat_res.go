@@ -31,6 +31,7 @@ type ChatPayload struct {
 	SenderID    uint   `json:"sender_id,omitempty"`
 	SenderName  string `json:"sender_name,omitempty"`
 	SenderEmail string `json:"sender_email,omitempty"`
+	SenderImage string `json:"sender_image,omitempty"`
 	Content     string `json:"content,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
 }
