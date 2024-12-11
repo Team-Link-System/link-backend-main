@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -92,7 +93,7 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 			SenderId:       notification.SenderID,
 			ReceiverId:     notification.ReceiverID,
 			Title:          notification.Title,
-			Status:         *notification.Status,
+			Status:         "",
 			Content:        notification.Content,
 			AlarmType:      notification.AlarmType,
 			IsRead:         notification.IsRead,
@@ -102,7 +103,13 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 			CompanyName:    notification.CompanyName,
 			DepartmentId:   notification.DepartmentId,
 			DepartmentName: notification.DepartmentName,
+			TargetType:     strings.ToUpper(notification.TargetType),
+			TargetID:       notification.TargetID,
 			CreatedAt:      notification.CreatedAt,
+		}
+
+		if notification.Status != nil {
+			notificationsEntity[i].Status = *notification.Status
 		}
 	}
 

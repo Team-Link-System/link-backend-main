@@ -203,6 +203,7 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 	err := r.db.
 		Preload("ChatRoomUsers").
 		Preload("ChatRoomUsers.User").
+		Preload("ChatRoomUsers.User.UserProfile").
 		Joins("JOIN chat_room_users ON chat_room_users.chat_room_id = chat_rooms.id").
 		Where("chat_rooms.id = ?", chatRoomID).
 		First(&chatRoom).Error
@@ -217,6 +218,9 @@ func (r *chatPersistence) GetChatRoomById(chatRoomID uint) (*chatEntity.ChatRoom
 			ID:    &chatRoomUser.UserID,
 			Name:  &chatRoomUser.User.Name,
 			Email: &chatRoomUser.User.Email,
+			UserProfile: &userEntity.UserProfile{
+				Image: chatRoomUser.User.UserProfile.Image,
+			},
 			ChatRoomUsers: []map[string]interface{}{
 				{
 					"alias_name": chatRoomUser.ChatRoomAlias,

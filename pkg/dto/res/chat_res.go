@@ -8,6 +8,7 @@ type UserInfoResponse struct {
 	Email     *string    `json:"email,omitempty"`
 	Phone     *string    `json:"phone,omitempty"`
 	AliasName *string    `json:"alias_name,omitempty"`
+	Image     *string    `json:"image,omitempty"`
 	JoinedAt  *time.Time `json:"joined_at,omitempty"`
 	LeftAt    *time.Time `json:"left_at,omitempty"`
 }

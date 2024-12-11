@@ -187,6 +187,7 @@ func (uc *chatUsecase) GetChatRoomById(roomId uint) (*res.ChatRoomInfoResponse, 
 			ID:    user.ID,
 			Name:  user.Name,
 			Email: user.Email,
+			Image: user.UserProfile.Image,
 		}
 
 		for _, chatRoomUser := range user.ChatRoomUsers {

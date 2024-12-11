@@ -314,7 +314,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomInfo["is_private"] = chatRoomFromDB.IsPrivate
 			chatRoomInfo["name"] = chatRoomFromDB.Name
 
-			for _, user := range chatRoomFromDB.Users {
+			for i, user := range chatRoomFromDB.Users {
 				chatRoomInfo["users"] = append(chatRoomInfo["users"].([]map[string]interface{}), map[string]interface{}{
 					"id":         user.ID,
 					"name":       user.Name,
@@ -322,7 +322,14 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 					"alias_name": user.AliasName,
 					"joined_at":  user.JoinedAt,
 					"left_at":    user.LeftAt,
+					"image":      "",
 				})
+
+				if user.Image != nil {
+					users := chatRoomInfo["users"].([]map[string]interface{})
+					users[i]["image"] = *user.Image
+				}
+
 			}
 			// Redis에 캐싱
 			h.chatUsecase.SetChatRoomToRedis(message.RoomID, chatRoomInfo)

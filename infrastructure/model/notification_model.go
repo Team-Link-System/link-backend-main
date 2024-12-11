@@ -23,6 +23,8 @@ type Notification struct {
 	CompanyName    string             `json:"company_name,omitempty" bson:"company_name,omitempty"`       // 회사 이름
 	DepartmentId   uint               `json:"department_id,omitempty" bson:"department_id,omitempty"`     // 부서 ID
 	DepartmentName string             `json:"department_name,omitempty" bson:"department_name,omitempty"` // 부서 이름
+	TargetType     string             `json:"target_type,omitempty" bson:"target_type,omitempty"`         // POST에서한건지 COMMENT에서한건지
+	TargetID       uint               `json:"target_id,omitempty" bson:"target_id,omitempty"`             // POST ID or COMMENT ID
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
 }
