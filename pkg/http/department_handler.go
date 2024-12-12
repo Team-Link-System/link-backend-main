@@ -3,9 +3,13 @@ package http
 import (
 	"fmt"
 	"link/internal/department/entity"
-	"link/internal/department/usecase"
+
+	_departmentUsecase "link/internal/department/usecase"
+	_notificationUsecase "link/internal/notification/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
+	"link/pkg/ws"
 	"net/http"
 	"strconv"
 
@@ -13,11 +17,15 @@ import (
 )
 
 type DepartmentHandler struct {
-	departmentUsecase usecase.DepartmentUsecase
+	departmentUsecase   _departmentUsecase.DepartmentUsecase
+	notificationUsecase _notificationUsecase.NotificationUsecase
+	hub                 *ws.WebSocketHub
 }
 
-func NewDepartmentHandler(departmentUsecase usecase.DepartmentUsecase) *DepartmentHandler {
-	return &DepartmentHandler{departmentUsecase: departmentUsecase}
+func NewDepartmentHandler(departmentUsecase _departmentUsecase.DepartmentUsecase,
+	notificationUsecase _notificationUsecase.NotificationUsecase,
+	hub *ws.WebSocketHub) *DepartmentHandler {
+	return &DepartmentHandler{departmentUsecase: departmentUsecase, notificationUsecase: notificationUsecase, hub: hub}
 }
 
 // TODO 요청 유저가 회사 관리자여야하고, 해당 회사에 속해있어야함 Role 3 || 4
@@ -196,6 +204,58 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 삭제 성공", nil))
 }
 
-//TODO 부서 수정 요청 저장 - 일반 유저 -> Role 3에게
+// TODO 부서 초대 (Role 4 이하만)
+func (h *DepartmentHandler) InviteUserToDepartment(c *gin.Context) {
+	_, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
+		return
+	}
 
-//TODO 부서 수정 요청 조회해서 수락 및 거절 ( 관리자만 )
+	var request req.NotificationRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("부서 초대 요청 바디 검증 오류: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	request.InviteType = req.InviteTypeDepartment
+
+	//TODO 부서 초대 알림 MONGODB에 저장
+	response, err := h.notificationUsecase.CreateInvite(request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("부서 초대 알림 저장 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("부서 초대 알림 저장 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	h.hub.SendMessageToUser(response.ReceiverID, res.JsonResponse{
+		Success: true,
+		Type:    "notification",
+		Payload: &res.NotificationPayload{
+			DocID:          response.DocID,
+			SenderID:       response.SenderID,
+			ReceiverID:     response.ReceiverID,
+			Content:        response.Content,
+			AlarmType:      string(response.AlarmType),
+			InviteType:     string(response.InviteType),
+			CompanyId:      response.CompanyId,
+			CompanyName:    response.CompanyName,
+			DepartmentId:   response.DepartmentId,
+			DepartmentName: response.DepartmentName,
+			Title:          response.Title,
+			IsRead:         response.IsRead,
+			Status:         response.Status,
+			CreatedAt:      response.CreatedAt,
+		},
+	})
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 초대 요청 성공", nil))
+
+}

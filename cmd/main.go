@@ -170,6 +170,7 @@ func startServer() {
 				department.GET("/:id", departmentHandler.GetDepartment)
 				department.PUT("/:id", departmentHandler.UpdateDepartment)
 				department.DELETE("/:id", departmentHandler.DeleteDepartment)
+				department.POST("/invite", departmentHandler.InviteUserToDepartment)
 			}
 
 			notification := protectedRoute.Group("notification")
