@@ -135,6 +135,8 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 		return nil, common.NewError(http.StatusBadRequest, "senderId가 관리자가 아닙니다", err)
 	}
 
+	//TODO Role 3 이상일 때, 자기 회사 초대만 가능
+
 	if users[1].Role <= _userEntity.RoleSubAdmin {
 		log.Println("운영자는 초대할 수 없습니다")
 		return nil, common.NewError(http.StatusBadRequest, "운영자는 초대할 수 없습니다", err)
@@ -148,38 +150,53 @@ func (n *notificationUsecase) CreateInvite(req req.NotificationRequest) (*res.Cr
 	var Content string
 	var CompanyName string
 	var DepartmentName string
+	var DepartmentID uint
+
+	CompanyInfo, err := n.companyRepo.GetCompanyByID(uint(req.CompanyID))
+	if err != nil {
+		log.Println("회사 정보 조회 오류", err)
+		return nil, common.NewError(http.StatusInternalServerError, "회사 정보 조회에 실패했습니다", err)
+	}
+
+	if users[0].Role >= 3 && users[0].UserProfile.CompanyID != nil && *users[0].UserProfile.CompanyID != CompanyInfo.ID {
+		log.Println("자기 회사 초대만 가능합니다")
+		return nil, common.NewError(http.StatusBadRequest, "자기 회사 초대만 가능합니다", nil)
+	}
 
 	if string(req.InviteType) == "COMPANY" {
-		CompanyInfo, err := n.companyRepo.GetCompanyByID(uint(req.CompanyID))
-		if err != nil {
-			log.Println("회사 정보 조회 오류", err)
-			return nil, common.NewError(http.StatusInternalServerError, "회사 정보 조회에 실패했습니다", err)
-		}
-
 		CompanyName = CompanyInfo.CpName
 		Content = fmt.Sprintf("[COMPANY INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, CompanyName)
 	} else if string(req.InviteType) == "DEPARTMENT" {
 		companyId := users[0].UserProfile.CompanyID
+		if req.DepartmentID == 0 {
+			log.Println("부서 ID가 필요합니다")
+			return nil, common.NewError(http.StatusBadRequest, "부서 ID가 필요합니다", nil)
+		}
 		DepartmentInfo, err := n.departmentRepo.GetDepartmentByID(*companyId, req.DepartmentID)
 		if err != nil {
+			log.Println("부서 정보 조회오류", err)
 			return nil, common.NewError(http.StatusInternalServerError, "부서 정보 조회에 실패했습니다", err)
 		}
+
+		DepartmentID = DepartmentInfo.ID
 		DepartmentName = DepartmentInfo.Name
 		Content = fmt.Sprintf("[DEPARTMENT INVITE] %s님이 %s님을 %s에 초대했습니다", *users[0].Name, *users[1].Name, DepartmentName)
 	}
 
 	notification := &_notificationEntity.Notification{
-		SenderId:    *users[0].ID,
-		ReceiverId:  *users[1].ID,
-		Title:       "INVITE",
-		Content:     Content,
-		AlarmType:   "INVITE",
-		InviteType:  string(req.InviteType),
-		CompanyId:   req.CompanyID,
-		CompanyName: CompanyName,
-		Status:      "PENDING",
-		IsRead:      false,
-		CreatedAt:   time.Now(),
+		SenderId:       *users[0].ID,
+		ReceiverId:     *users[1].ID,
+		Title:          "INVITE",
+		Content:        Content,
+		AlarmType:      "INVITE",
+		InviteType:     string(req.InviteType),
+		CompanyId:      req.CompanyID,
+		CompanyName:    CompanyName,
+		DepartmentId:   DepartmentID,
+		DepartmentName: DepartmentName,
+		Status:         "PENDING",
+		IsRead:         false,
+		CreatedAt:      time.Now(),
 	}
 
 	docID := uuid.New().String()
