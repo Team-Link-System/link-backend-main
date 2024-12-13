@@ -19,10 +19,11 @@ type NotificationCursor struct {
 }
 
 type GetNotificationsQueryParams struct {
-	IsRead string              `query:"is_read,omitempty"`
-	Page   int                 `query:"page" default:"1"`
-	Limit  int                 `query:"limit" default:"10"`
-	Cursor *NotificationCursor `query:"cursor,omitempty"`
+	IsRead    string              `query:"is_read,omitempty"`
+	Page      int                 `query:"page" default:"1"`
+	Limit     int                 `query:"limit" default:"10"`
+	Direction string              `query:"direction" default:"next"` // cursor 방향 (next, prev)
+	Cursor    *NotificationCursor `query:"cursor,omitempty"`
 }
 
 type SendMentionNotificationRequest struct {
