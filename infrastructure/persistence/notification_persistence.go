@@ -38,10 +38,7 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		page = 1
 	}
 
-	fmt.Println("queryOptions", queryOptions)
-
-	isRead, _ := queryOptions["is_read"].(string)
-	if isRead != "" {
+	if isRead, _ := queryOptions["is_read"].(string); isRead != "" {
 		parsedIsRead, err := strconv.ParseBool(isRead)
 		if err != nil {
 			return nil, nil, fmt.Errorf("유효하지 않은 is_read 값: %s", isRead)
@@ -49,8 +46,7 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		filter["is_read"] = parsedIsRead
 	}
 
-	var notifications []model.Notification
-
+	// Cursor 처리 (커서 기반 페이징)
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 		if createdAt, exists := cursor["created_at"].(string); exists && createdAt != "" {
 			parsedTime, err := time.Parse(time.RFC3339Nano, createdAt)
@@ -70,17 +66,21 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		{"$limit": int64(limit)},
 	}
 
+	// MongoDB Aggregation 실행
 	cursor, err := collection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return nil, nil, fmt.Errorf("MongoDB 조회 오류: %w", err)
 	}
 	defer cursor.Close(context.Background())
 
+	var notifications []model.Notification
 	if err = cursor.All(context.Background(), &notifications); err != nil {
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
 
-	totalCount, err := collection.CountDocuments(context.Background(), filter)
+	totalCount, err := collection.CountDocuments(context.Background(), bson.M{
+		"receiver_id": receiverId,
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
 	}
@@ -127,8 +127,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		PageSize:   limit,
 		NextCursor: nextCursor,
 		HasMore:    &hasMore,
-		PrevPage:   page - 1,
-		NextPage:   page + 1,
+		PrevPage:   page - 1, //첫페이지일때는 사용 x
+		NextPage:   page + 1, //hasmore가 true일 때만 사용
 	}, notificationsEntity, nil
 }
 
