@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"runtime"
 	"time"
 
@@ -113,6 +114,9 @@ func startServer() {
 		api := r.Group("/api")
 		publicRoute := api.Group("/")
 		{
+			publicRoute.GET("/health", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{"statusCode": http.StatusOK, "message": "헬스체크 성공", "success": true})
+			})
 			publicRoute.POST("user/signup", userHandler.RegisterUser)
 			publicRoute.GET("user/validate-email", userHandler.ValidateEmail)
 			publicRoute.GET("user/validate-nickname", userHandler.ValidateNickname)
