@@ -95,17 +95,17 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	if err != nil || limit < 1 || limit > 100 {
 		limit = 10
 	}
+	direction := c.DefaultQuery("direction", "next")
+	fmt.Println("Direction: ", direction)
+	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
+		return
+	}
 
 	//읽음 여부 조회
 	IsRead := c.DefaultQuery("is_read", "false")
 	if IsRead == "" && IsRead != "true" && IsRead != "false" {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 읽음 여부 값입니다.", nil))
-		return
-	}
-
-	direction := c.DefaultQuery("direction", "next")
-	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
 		return
 	}
 

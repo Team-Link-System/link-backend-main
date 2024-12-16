@@ -51,6 +51,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		filter["is_read"] = parsedIsRead
 	}
 
+	var pipeline []bson.M
+
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 		if createdAt, exists := cursor["created_at"].(string); exists && createdAt != "" {
 			parsedTime, err := time.Parse(time.RFC3339Nano, createdAt)
@@ -62,16 +64,29 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 			}
 			if strings.ToLower(direction) == "prev" {
 				filter["created_at"] = bson.M{"$gt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
+				pipeline = []bson.M{
+					{"$match": filter},
+					{"$sort": bson.M{"created_at": 1}},
+					{"$limit": int64(limit)},
+					{"$sort": bson.M{"created_at": -1}},
+				}
 			} else if strings.ToLower(direction) == "next" {
 				filter["created_at"] = bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
+				pipeline = []bson.M{
+					{"$match": filter},
+					{"$sort": bson.M{"created_at": -1}},
+					{"$limit": int64(limit)},
+				}
 			}
 		}
 	}
 
-	pipeline := []bson.M{
-		{"$match": filter},
-		{"$sort": bson.M{"created_at": -1}},
-		{"$limit": int64(limit + 1)},
+	if pipeline == nil {
+		pipeline = []bson.M{
+			{"$match": filter},
+			{"$sort": bson.M{"created_at": -1}},
+			{"$limit": int64(limit)},
+		}
 	}
 
 	// MongoDB Aggregation 실행
@@ -85,6 +100,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 	if err = cursor.All(context.Background(), &notifications); err != nil {
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
+
+	fmt.Println("notifications", notifications)
 
 	// 데이터가 없으면 빈 결과 반환
 	if len(notifications) == 0 {
@@ -126,30 +143,11 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		}
 	}
 
-	// 추가 데이터 확인 및 hasMore 계산
-	hasMore := false
-	if len(notificationsEntity) == limit+1 {
-		notificationsEntity = notificationsEntity[:limit]
-		hasMore = true
-	}
-
-	// PrevCursor와 NextCursor 계산
-	// PrevPage 설정
-	prevPage, nextPage := 0, 0
-	if page > 1 {
-		prevPage = page - 1
-	}
-	if hasMore {
-		nextPage = page + 1
-	}
-
 	// PrevCursor와 NextCursor 계산
 	prevCursor := ""
 	nextCursor := ""
-	if page > 1 && len(notificationsEntity) > 0 {
+	if len(notificationsEntity) > 0 {
 		prevCursor = notificationsEntity[0].CreatedAt.Format(time.RFC3339Nano)
-	}
-	if hasMore && len(notificationsEntity) > 0 {
 		nextCursor = notificationsEntity[len(notificationsEntity)-1].CreatedAt.Format(time.RFC3339Nano)
 	}
 
@@ -158,6 +156,29 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
+	}
+
+	hasMore := len(notificationsEntity) == limit
+
+	prevPage := 0
+	nextPage := 0
+	if page > 1 {
+		prevPage = page - 1
+	}
+	if hasMore {
+		nextPage = page + 1
+	}
+
+	// 첫 페이지 처리
+	if page == 1 {
+		prevPage = 0
+		prevCursor = ""
+	}
+
+	// 마지막 페이지 처리
+	if !hasMore {
+		nextPage = 0
+		nextCursor = ""
 	}
 
 	totalPages := (int(totalCount) + limit - 1) / limit
