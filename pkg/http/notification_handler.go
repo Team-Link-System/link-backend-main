@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -97,7 +98,16 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 
 	//읽음 여부 조회
 	IsRead := c.Query("is_read")
-	direction := c.Query("direction")
+	if IsRead == "" && IsRead != "true" && IsRead != "false" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 읽음 여부 값입니다.", nil))
+		return
+	}
+
+	direction := c.DefaultQuery("direction", "next")
+	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
+		return
+	}
 
 	cursorParam := c.Query("cursor")
 	var cursor *req.NotificationCursor
