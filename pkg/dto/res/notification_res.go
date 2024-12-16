@@ -55,6 +55,7 @@ type UpdateNotificationStatusResponseMessage struct {
 
 type NotificationMeta struct {
 	NextCursor string `json:"next_cursor,omitempty"`
+	PrevCursor string `json:"prev_cursor,omitempty"`
 	HasMore    *bool  `json:"has_more,omitempty"`
 	TotalCount int    `json:"total_count"`
 	TotalPages int    `json:"total_pages"`

@@ -33,6 +33,7 @@ type NotificationMeta struct {
 	TotalPages int    `json:"total_pages"`
 	PageSize   int    `json:"page_size"`
 	NextCursor string `json:"next_cursor,omitempty"`
+	PrevCursor string `json:"prev_cursor,omitempty"`
 	HasMore    *bool  `json:"has_more"`
 	PrevPage   int    `json:"prev_page"`
 	NextPage   int    `json:"next_page"`

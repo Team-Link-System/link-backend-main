@@ -38,18 +38,18 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		page = 1
 	}
 
-	fmt.Println("queryOptions", queryOptions)
+	direction, ok := queryOptions["direction"].(string)
+	if !ok || direction != "prev" && direction != "next" {
+		direction = "next"
+	}
 
-	isRead, _ := queryOptions["is_read"].(string)
-	if isRead != "" {
+	if isRead, _ := queryOptions["is_read"].(string); isRead != "" {
 		parsedIsRead, err := strconv.ParseBool(isRead)
 		if err != nil {
 			return nil, nil, fmt.Errorf("유효하지 않은 is_read 값: %s", isRead)
 		}
 		filter["is_read"] = parsedIsRead
 	}
-
-	var notifications []model.Notification
 
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 		if createdAt, exists := cursor["created_at"].(string); exists && createdAt != "" {
@@ -60,29 +60,42 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 					return nil, nil, fmt.Errorf("cursor 시간 파싱 실패: %w", err)
 				}
 			}
-			filter["created_at"] = bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
+			if strings.ToLower(direction) == "prev" {
+				filter["created_at"] = bson.M{"$gt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
+			} else if strings.ToLower(direction) == "next" {
+				filter["created_at"] = bson.M{"$lt": primitive.NewDateTimeFromTime(parsedTime.UTC())}
+			}
 		}
 	}
 
 	pipeline := []bson.M{
 		{"$match": filter},
 		{"$sort": bson.M{"created_at": -1}},
-		{"$limit": int64(limit)},
+		{"$limit": int64(limit + 1)},
 	}
 
+	// MongoDB Aggregation 실행
 	cursor, err := collection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return nil, nil, fmt.Errorf("MongoDB 조회 오류: %w", err)
 	}
 	defer cursor.Close(context.Background())
 
+	var notifications []model.Notification
 	if err = cursor.All(context.Background(), &notifications); err != nil {
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
 
-	totalCount, err := collection.CountDocuments(context.Background(), filter)
-	if err != nil {
-		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
+	// 데이터가 없으면 빈 결과 반환
+	if len(notifications) == 0 {
+		return &entity.NotificationMeta{
+			TotalCount: 0,
+			TotalPages: 0,
+			PageSize:   limit,
+			PrevCursor: "",
+			NextCursor: "",
+			HasMore:    new(bool),
+		}, nil, nil
 	}
 
 	notificationsEntity := make([]*entity.Notification, len(notifications))
@@ -113,10 +126,38 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		}
 	}
 
-	hasMore := len(notificationsEntity) == limit
-	nextCursor := ""
+	// 추가 데이터 확인 및 hasMore 계산
+	hasMore := false
+	if len(notificationsEntity) == limit+1 {
+		notificationsEntity = notificationsEntity[:limit]
+		hasMore = true
+	}
+
+	// PrevCursor와 NextCursor 계산
+	// PrevPage 설정
+	prevPage, nextPage := 0, 0
+	if page > 1 {
+		prevPage = page - 1
+	}
 	if hasMore {
+		nextPage = page + 1
+	}
+
+	// PrevCursor와 NextCursor 계산
+	prevCursor := ""
+	nextCursor := ""
+	if page > 1 && len(notificationsEntity) > 0 {
+		prevCursor = notificationsEntity[0].CreatedAt.Format(time.RFC3339Nano)
+	}
+	if hasMore && len(notificationsEntity) > 0 {
 		nextCursor = notificationsEntity[len(notificationsEntity)-1].CreatedAt.Format(time.RFC3339Nano)
+	}
+
+	totalCount, err := collection.CountDocuments(context.Background(), bson.M{
+		"receiver_id": receiverId,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
 	}
 
 	totalPages := (int(totalCount) + limit - 1) / limit
@@ -125,10 +166,11 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		TotalCount: int(totalCount),
 		TotalPages: totalPages,
 		PageSize:   limit,
+		PrevCursor: prevCursor,
 		NextCursor: nextCursor,
 		HasMore:    &hasMore,
-		PrevPage:   page - 1,
-		NextPage:   page + 1,
+		PrevPage:   prevPage, //첫페이지일때는 사용 x
+		NextPage:   nextPage, //hasmore가 true일 때만 사용
 	}, notificationsEntity, nil
 }
 
@@ -148,7 +190,6 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
 	}
 
-	fmt.Println("notification", notification)
 	notificationEntity := &entity.Notification{
 		ID:             notification.ID,
 		DocID:          notification.DocID,
