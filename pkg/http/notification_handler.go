@@ -97,7 +97,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	}
 
 	//읽음 여부 조회
-	IsRead := c.Query("is_read")
+	IsRead := c.DefaultQuery("is_read", "false")
 	if IsRead == "" && IsRead != "true" && IsRead != "false" {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 읽음 여부 값입니다.", nil))
 		return

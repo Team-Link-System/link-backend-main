@@ -71,7 +71,7 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 	pipeline := []bson.M{
 		{"$match": filter},
 		{"$sort": bson.M{"created_at": -1}},
-		{"$limit": int64(limit)},
+		{"$limit": int64(limit + 1)},
 	}
 
 	// MongoDB Aggregation 실행
@@ -86,11 +86,16 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
 
-	totalCount, err := collection.CountDocuments(context.Background(), bson.M{
-		"receiver_id": receiverId,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
+	// 데이터가 없으면 빈 결과 반환
+	if len(notifications) == 0 {
+		return &entity.NotificationMeta{
+			TotalCount: 0,
+			TotalPages: 0,
+			PageSize:   limit,
+			PrevCursor: "",
+			NextCursor: "",
+			HasMore:    new(bool),
+		}, nil, nil
 	}
 
 	notificationsEntity := make([]*entity.Notification, len(notifications))
@@ -121,15 +126,38 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		}
 	}
 
-	hasMore := len(notificationsEntity) == limit
-	nextCursor := ""
+	// 추가 데이터 확인 및 hasMore 계산
+	hasMore := false
+	if len(notificationsEntity) == limit+1 {
+		notificationsEntity = notificationsEntity[:limit]
+		hasMore = true
+	}
+
+	// PrevCursor와 NextCursor 계산
+	// PrevPage 설정
+	prevPage, nextPage := 0, 0
+	if page > 1 {
+		prevPage = page - 1
+	}
 	if hasMore {
+		nextPage = page + 1
+	}
+
+	// PrevCursor와 NextCursor 계산
+	prevCursor := ""
+	nextCursor := ""
+	if page > 1 && len(notificationsEntity) > 0 {
+		prevCursor = notificationsEntity[0].CreatedAt.Format(time.RFC3339Nano)
+	}
+	if hasMore && len(notificationsEntity) > 0 {
 		nextCursor = notificationsEntity[len(notificationsEntity)-1].CreatedAt.Format(time.RFC3339Nano)
 	}
 
-	prevCursor := ""
-	if page > 1 {
-		prevCursor = notificationsEntity[0].CreatedAt.Format(time.RFC3339Nano)
+	totalCount, err := collection.CountDocuments(context.Background(), bson.M{
+		"receiver_id": receiverId,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("총 문서 수 조회 오류: %w", err)
 	}
 
 	totalPages := (int(totalCount) + limit - 1) / limit
@@ -141,8 +169,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		PrevCursor: prevCursor,
 		NextCursor: nextCursor,
 		HasMore:    &hasMore,
-		PrevPage:   page - 1, //첫페이지일때는 사용 x
-		NextPage:   page + 1, //hasmore가 true일 때만 사용
+		PrevPage:   prevPage, //첫페이지일때는 사용 x
+		NextPage:   nextPage, //hasmore가 true일 때만 사용
 	}, notificationsEntity, nil
 }
 
