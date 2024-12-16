@@ -97,7 +97,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 
 	//읽음 여부 조회
 	IsRead := c.Query("is_read")
-	//TODO isRead는 옵션값임 - 기본값 필요 x
+	direction := c.Query("direction")
 
 	cursorParam := c.Query("cursor")
 	var cursor *req.NotificationCursor
@@ -113,10 +113,11 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	}
 
 	queryParams := &req.GetNotificationsQueryParams{
-		IsRead: IsRead,
-		Page:   page,
-		Limit:  limit,
-		Cursor: cursor,
+		IsRead:    IsRead,
+		Page:      page,
+		Limit:     limit,
+		Cursor:    cursor,
+		Direction: direction,
 	}
 
 	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint), queryParams)

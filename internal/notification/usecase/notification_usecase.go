@@ -465,10 +465,11 @@ func (n *notificationUsecase) GetNotifications(userId uint, queryParams *req.Get
 	}
 
 	queryOptions := map[string]interface{}{
-		"is_read": queryParams.IsRead,
-		"page":    queryParams.Page,
-		"limit":   queryParams.Limit,
-		"cursor":  map[string]interface{}{},
+		"is_read":   queryParams.IsRead,
+		"page":      queryParams.Page,
+		"limit":     queryParams.Limit,
+		"direction": strings.ToLower(queryParams.Direction),
+		"cursor":    map[string]interface{}{},
 	}
 
 	if queryParams.Cursor != nil {
@@ -509,6 +510,7 @@ func (n *notificationUsecase) GetNotifications(userId uint, queryParams *req.Get
 		Notifications: notificationsResponse,
 		Meta: &res.NotificationMeta{
 			NextCursor: notificationMeta.NextCursor,
+			PrevCursor: notificationMeta.PrevCursor,
 			HasMore:    notificationMeta.HasMore,
 			TotalCount: notificationMeta.TotalCount,
 			TotalPages: notificationMeta.TotalPages,
