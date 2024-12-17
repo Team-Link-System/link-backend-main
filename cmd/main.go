@@ -166,6 +166,10 @@ func startServer() {
 				//TODO 회사 조직도 조회
 				company.GET("/organization", companyHandler.GetOrganizationByCompany)
 
+				//TODO 회사 직책 관련 핸들러
+				company.GET("/position/list", companyHandler.GetCompanyPositionList)
+				company.POST("/position", companyHandler.CreateCompanyPosition)
+				company.DELETE("/position/:positionid", companyHandler.DeleteCompanyPosition)
 			}
 			department := protectedRoute.Group("department")
 			{

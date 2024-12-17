@@ -208,3 +208,58 @@ func (r *companyPersistence) SearchCompany(companyName string) ([]entity.Company
 
 	return companiesEntities, nil
 }
+
+func (r *companyPersistence) GetCompanyPositionByID(positionID uint) (*entity.Position, error) {
+	var position model.Position
+	err := r.db.Where("id = ?", positionID).First(&position).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 직책 조회 중 오류 발생: %w", err)
+	}
+	return &entity.Position{ID: position.ID, Name: position.Name, CompanyID: position.CompanyID, CreatedAt: position.CreatedAt, UpdatedAt: position.UpdatedAt}, nil
+}
+
+func (r *companyPersistence) GetCompanyPositionList(companyID uint) ([]entity.Position, error) {
+	var positions []model.Position
+	err := r.db.Where("company_id = ?", companyID).Find(&positions).Error
+	if err != nil {
+		return nil, fmt.Errorf("회사 직책 리스트 조회 중 오류 발생: %w", err)
+	}
+
+	positionsEntities := make([]entity.Position, len(positions))
+	for i, position := range positions {
+		positionsEntities[i] = entity.Position{
+			ID:        position.ID,
+			Name:      position.Name,
+			CompanyID: position.CompanyID,
+			CreatedAt: position.CreatedAt,
+			UpdatedAt: position.UpdatedAt,
+		}
+	}
+
+	return positionsEntities, nil
+}
+
+// TODO 회사 직책 생성
+func (r *companyPersistence) CreateCompanyPosition(position *entity.Position) error {
+	modelPosition := &model.Position{
+		Name:      position.Name,
+		CompanyID: position.CompanyID,
+	}
+
+	err := r.db.Create(modelPosition).Error
+	if err != nil {
+		return fmt.Errorf("회사 직책 생성 중 오류 발생: %w", err)
+	}
+
+	return nil
+}
+
+// TODO 회사 직책 삭제
+func (r *companyPersistence) DeleteCompanyPosition(positionID uint) error {
+	modelPosition := &model.Position{ID: positionID}
+	err := r.db.Delete(modelPosition).Error
+	if err != nil {
+		return fmt.Errorf("회사 직책 삭제 중 오류 발생: %w", err)
+	}
+	return nil
+}

@@ -60,8 +60,8 @@ type NotificationMeta struct {
 	TotalCount int    `json:"total_count"`
 	TotalPages int    `json:"total_pages"`
 	PageSize   int    `json:"page_size"`
-	PrevPage   int    `json:"prev_page"`
-	NextPage   int    `json:"next_page"`
+	PrevPage   int    `json:"prev_page,omitempty"`
+	NextPage   int    `json:"next_page,omitempty"`
 }
 
 type NotificationResponse struct {
