@@ -36,7 +36,7 @@ type UserUsecase interface {
 	// GetOrganizationByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
 
 	//TODO 통계 관련
-	GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrentOnlineUsersResponse, error)
+
 }
 
 type userUsecase struct {
@@ -437,45 +437,4 @@ func (u *userUsecase) GetUsersByDepartment(departmentId uint) ([]entity.User, er
 		return nil, common.NewError(http.StatusInternalServerError, "부서 사용자 조회에 실패했습니다", err)
 	}
 	return users, nil
-}
-
-//! stat관련
-
-// TODO 현재 접속중인 사용자 수
-func (u *userUsecase) GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrentOnlineUsersResponse, error) {
-
-	user, err := u.userRepo.GetUserByID(requestUserId)
-	if err != nil {
-		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusBadRequest, "사용자 조회에 실패했습니다", err)
-	}
-
-	//TODO 회사 사용자 수 조회
-	userIds, err := u.userRepo.GetUsersIdsByCompany(*user.UserProfile.CompanyID)
-	if err != nil {
-		fmt.Printf("회사 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다", err)
-	}
-
-	onlineStatusMap, err := u.userRepo.GetCacheUsers(userIds, []string{"is_online"})
-	if err != nil {
-		fmt.Printf("온라인 상태 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다", err)
-	}
-
-	onlineCount := 0
-	for _, user := range onlineStatusMap {
-		if status, exists := user["is_online"]; exists {
-			if strStatus, ok := status.(string); ok {
-				if boolStatus, err := strconv.ParseBool(strStatus); err == nil && boolStatus {
-					onlineCount++
-				}
-			}
-		}
-	}
-
-	return &res.GetCurrentOnlineUsersResponse{
-		OnlineUsers:      onlineCount,
-		TotalCompanyUser: len(userIds),
-	}, nil
 }
