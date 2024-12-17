@@ -92,7 +92,7 @@ func startServer() {
 		commentHandler *handlerHttp.CommentHandler,
 		likeHandler *handlerHttp.LikeHandler,
 		adminHandler *handlerHttp.AdminHandler,
-
+		statHandler *handlerHttp.StatHandler,
 		params struct {
 			dig.In
 			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
@@ -154,7 +154,6 @@ func startServer() {
 				user.DELETE("/:id", userHandler.DeleteUser)
 				user.GET("/company/list", userHandler.GetUserByCompany) //TODO 같은 회사 사용자 조회
 				user.GET("/department/:departmentid", userHandler.GetUsersByDepartment)
-
 				// user.GET("/company/organization/:companyid", userHandler.GetOrganizationByCompany)
 			}
 
@@ -242,6 +241,11 @@ func startServer() {
 				like.DELETE("/post/:postid/:emojiid", likeHandler.DeletePostLike) //! 게시글 이모지 좋아요 취소
 				like.POST("/comment/:commentid", likeHandler.CreateCommentLike)   //! 댓글 대댓글 좋아요 생성
 				like.DELETE("/comment/:commentid", likeHandler.DeleteCommentLike) //! 댓글 대댓글 좋아요 취소
+			}
+
+			stat := protectedRoute.Group("stat")
+			{
+				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
 			}
 		}
 	})

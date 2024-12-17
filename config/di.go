@@ -96,6 +96,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(http.NewAdminHandler)
 	container.Provide(http.NewLikeHandler)
 	container.Provide(ws.NewWebSocketHub)
+	container.Provide(http.NewStatHandler)
 
 	return container
 }
