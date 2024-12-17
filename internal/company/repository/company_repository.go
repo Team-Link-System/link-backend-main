@@ -11,4 +11,10 @@ type CompanyRepository interface {
 	GetCompanyByID(companyID uint) (*entity.Company, error)
 	GetAllCompanies() ([]entity.Company, error)
 	SearchCompany(companyName string) ([]entity.Company, error)
+
+	//TODO 회사 직책 관련
+	CreateCompanyPosition(position *entity.Position) error
+	DeleteCompanyPosition(positionID uint) error
+	GetCompanyPositionByID(positionID uint) (*entity.Position, error)
+	GetCompanyPositionList(companyID uint) ([]entity.Position, error)
 }

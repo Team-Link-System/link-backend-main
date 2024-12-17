@@ -22,3 +22,11 @@ type OrganizationDepartmentInfoResponse struct {
 	DepartmentName string                            `json:"department_name"`
 	Users          []GetOrganizationUserInfoResponse `json:"users"`
 }
+
+type GetCompanyPositionResponse struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	CompanyID uint   `json:"company_id"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
