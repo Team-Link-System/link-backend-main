@@ -7,3 +7,7 @@ type SearchCompanyRequest struct {
 type CompanyPositionRequest struct {
 	Name string `json:"name"`
 }
+
+type UpdateCompanyPositionRequest struct {
+	Name string `json:"name"`
+}
