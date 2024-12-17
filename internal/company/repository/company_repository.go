@@ -15,6 +15,7 @@ type CompanyRepository interface {
 	//TODO 회사 직책 관련
 	CreateCompanyPosition(position *entity.Position) error
 	DeleteCompanyPosition(positionID uint) error
+	UpdateCompanyPosition(positionID uint, position map[string]interface{}) error
 	GetCompanyPositionByID(positionID uint) (*entity.Position, error)
 	GetCompanyPositionList(companyID uint) ([]entity.Position, error)
 }

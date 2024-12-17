@@ -168,8 +168,10 @@ func startServer() {
 
 				//TODO 회사 직책 관련 핸들러
 				company.GET("/position/list", companyHandler.GetCompanyPositionList)
+				company.GET("/position/:positionid", companyHandler.GetCompanyPositionDetail)
 				company.POST("/position", companyHandler.CreateCompanyPosition)
 				company.DELETE("/position/:positionid", companyHandler.DeleteCompanyPosition)
+				company.PUT("/position/:positionid", companyHandler.UpdateCompanyPosition)
 			}
 			department := protectedRoute.Group("department")
 			{

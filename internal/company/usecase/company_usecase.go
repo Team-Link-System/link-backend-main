@@ -27,7 +27,9 @@ type CompanyUsecase interface {
 
 	CreateCompanyPosition(requestUserId uint, request req.CompanyPositionRequest) error
 	GetCompanyPositionList(requestUserId uint) ([]res.GetCompanyPositionResponse, error)
+	GetCompanyPositionDetail(requestUserId uint, positionId uint) (*res.GetCompanyPositionResponse, error)
 	DeleteCompanyPosition(requestUserId uint, positionId uint) error
+	UpdateCompanyPosition(requestUserId uint, positionId uint, request req.UpdateCompanyPositionRequest) error
 }
 
 type companyUsecase struct {
@@ -324,6 +326,31 @@ func (u *companyUsecase) GetCompanyPositionList(requestUserId uint) ([]res.GetCo
 
 }
 
+// TODO 회사 직책 상세 보기
+func (u *companyUsecase) GetCompanyPositionDetail(requestUserId uint, positionId uint) (*res.GetCompanyPositionResponse, error) {
+	user, err := u.userRepository.GetUserByID(requestUserId)
+	if err != nil {
+		return nil, common.NewError(http.StatusBadRequest, "존재 하지 않는 사용자 입니다", err)
+	}
+
+	companyPosition, err := u.companyRepository.GetCompanyPositionByID(positionId)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "서버 에러", err)
+	}
+
+	if companyPosition.CompanyID != *user.UserProfile.CompanyID {
+		return nil, common.NewError(http.StatusForbidden, "본인 회사 직책이 아닙니다", nil)
+	}
+
+	return &res.GetCompanyPositionResponse{
+		ID:        companyPosition.ID,
+		Name:      companyPosition.Name,
+		CompanyID: companyPosition.CompanyID,
+		CreatedAt: _util.ParseKst(companyPosition.CreatedAt).Format(time.DateTime),
+		UpdatedAt: _util.ParseKst(companyPosition.UpdatedAt).Format(time.DateTime),
+	}, nil
+}
+
 // TODO 직책 삭제
 func (u *companyUsecase) DeleteCompanyPosition(requestUserId uint, positionId uint) error {
 	requestUser, err := u.userRepository.GetUserByID(requestUserId)
@@ -345,6 +372,38 @@ func (u *companyUsecase) DeleteCompanyPosition(requestUserId uint, positionId ui
 	}
 
 	err = u.companyRepository.DeleteCompanyPosition(positionId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
+	}
+
+	return nil
+}
+
+// TODO 회사 직책 수정
+func (u *companyUsecase) UpdateCompanyPosition(requestUserId uint, positionId uint, request req.UpdateCompanyPositionRequest) error {
+	requestUser, err := u.userRepository.GetUserByID(requestUserId)
+	if err != nil {
+		return common.NewError(http.StatusBadRequest, "존재 하지 않는 사용자 입니다", err)
+	}
+
+	if requestUser.Role > _userEntity.RoleCompanySubManager {
+		return common.NewError(http.StatusForbidden, "관리자 권한이 없습니다", nil)
+	}
+
+	companyPosition, err := u.companyRepository.GetCompanyPositionByID(positionId)
+	if err != nil {
+		return common.NewError(http.StatusNotFound, "직책이 존재하지 않습니다", err)
+	}
+
+	if companyPosition.CompanyID != *requestUser.UserProfile.CompanyID {
+		return common.NewError(http.StatusForbidden, "본인 회사 직책이 아닙니다", nil)
+	}
+
+	updatedPosition := map[string]interface{}{
+		"name": request.Name,
+	}
+
+	err = u.companyRepository.UpdateCompanyPosition(positionId, updatedPosition)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}

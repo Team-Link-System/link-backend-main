@@ -263,3 +263,12 @@ func (r *companyPersistence) DeleteCompanyPosition(positionID uint) error {
 	}
 	return nil
 }
+
+// TODO 회사 직책 수정
+func (r *companyPersistence) UpdateCompanyPosition(positionID uint, position map[string]interface{}) error {
+	err := r.db.Model(&model.Position{ID: positionID}).Updates(position).Error
+	if err != nil {
+		return fmt.Errorf("회사 직책 수정 중 오류 발생: %w", err)
+	}
+	return nil
+}
