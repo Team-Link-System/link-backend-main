@@ -46,13 +46,13 @@ func (u *statUsecase) GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrent
 	userIds, err := u.userRepo.GetUsersIdsByCompany(*user.UserProfile.CompanyID)
 	if err != nil {
 		fmt.Printf("회사 사용자 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "회사 사용자 조회에 실패했습니다", err)
+		return nil, common.NewError(http.StatusNotFound, "회사 사용자 조회에 실패했습니다", err)
 	}
 
 	onlineStatusMap, err := u.userRepo.GetCacheUsers(userIds, []string{"is_online"})
 	if err != nil {
 		fmt.Printf("온라인 상태 조회에 실패했습니다: %v", err)
-		return nil, common.NewError(http.StatusInternalServerError, "온라인 상태 조회에 실패했습니다", err)
+		return nil, common.NewError(http.StatusNotFound, "온라인 상태 조회에 실패했습니다", err)
 	}
 
 	onlineCount := 0
