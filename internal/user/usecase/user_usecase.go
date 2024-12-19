@@ -34,6 +34,9 @@ type UserUsecase interface {
 	GetUsersByCompany(requestUserId uint, query *req.UserQuery) ([]res.GetUserByIdResponse, error)
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)
 	// GetOrganizationByCompany(requestUserId uint) ([]res.GetUserByIdResponse, error)
+
+	//TODO 통계 관련
+
 }
 
 type userUsecase struct {

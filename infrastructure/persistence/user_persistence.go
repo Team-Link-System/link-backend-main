@@ -690,6 +690,15 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 	return users, nil
 }
 
+// TODO 회사 사용자 ID 조회
+func (r *userPersistence) GetUsersIdsByCompany(companyId uint) ([]uint, error) {
+	var users []uint
+	if err := r.db.Model(&model.UserProfile{}).Select("user_id").Where("company_id = ?", companyId).Pluck("user_id", &users).Error; err != nil {
+		return nil, fmt.Errorf("회사 사용자 ID 조회 중 DB 오류: %w", err)
+	}
+	return users, nil
+}
+
 // // TODO 회사 조직도 조회
 // func (r *userPersistence) GetOrganizationByCompany(companyId uint) ([]entity.User, error) {
 // 	//TODO 회사 안에 여러 부서가 있고, 부서안의 사용자 정보 리스트

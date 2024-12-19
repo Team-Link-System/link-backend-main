@@ -89,7 +89,6 @@ func (h *WsHandler) subscribeToChat() {
 	})
 }
 
-// TODO 좋아요는 고민-> 너무 많은 로그는 필요 없을 거 같아서
 func (h *WsHandler) subscribeToLikes() {
 	// 게시글 좋아요
 	h.natsSubscriber.SubscribeEvent("like.post.created", func(msg *nats.Msg) {
@@ -431,7 +430,7 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 	}
 }
 
-// TODO 유저 웹소켓 연결 핸들러 - 이게 전송도 되고 수신도 되는거아냐?
+// TODO 유저 웹소켓 연결 핸들러
 func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	// 쿼리 스트링에서 token과 userId 가져오기
 	token := c.Query("token")
