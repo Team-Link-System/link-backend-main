@@ -93,13 +93,14 @@ func (uc *statUsecase) GetTodayPostStat(requestUserId uint) (*res.GetTodayPostSt
 
 	// Response 구조체에 데이터 매핑
 	response := &res.GetTodayPostStatResponse{
-		CompanyPostCount:    postsStat.TotalCompanyPostCount,
-		DepartmentPostCount: postsStat.DepartmentPostCount,
-		DepartmentPost:      []res.DepartmentPostStat{},
+		TotalCompanyPostCount:    postsStat.TotalCompanyPostCount,
+		TotalDepartmentPostCount: postsStat.TotalDepartmentPostCount,
+		DepartmentPost:           []res.DepartmentPostStat{},
 	}
 
-	for _, department := range postsStat.DepartmentPost {
+	for _, department := range postsStat.DepartmentStats {
 		response.DepartmentPost = append(response.DepartmentPost, res.DepartmentPostStat{
+			DepartmentId:   department.DepartmentId,
 			DepartmentName: department.DepartmentName,
 			PostCount:      department.PostCount,
 		})
