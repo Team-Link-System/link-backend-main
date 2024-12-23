@@ -604,7 +604,6 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 		return
 	}
 
-	// nats 에서 받은 메시지를 회사 클라이언트에게 웹소켓 전송
 	// 회사 클라이언트 등록
 	h.hub.RegisterCompanyClient(conn, uint(companyIdUint))
 
