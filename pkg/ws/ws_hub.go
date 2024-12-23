@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
@@ -12,11 +13,12 @@ import (
 
 // WebSocketHub는 클라이언트와 채팅방을 관리하고, 클라이언트의 온라인 상태 및 알림을 관리합니다.
 type WebSocketHub struct {
-	Clients       sync.Map // 전체 유저의 WebSocket 연결을 관리 (key: userId, value: WebSocket connection)
-	ChatRooms     sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
-	Register      chan ClientRegistration
-	Unregister    chan *websocket.Conn
-	OnlineClients sync.Map // 전체 온라인 유저 (key: userId, value: true/false)
+	Clients        sync.Map // 전체 유저의 WebSocket 연결을 관리 (key: userId, value: WebSocket connection)
+	ChatRooms      sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
+	CompanyClients sync.Map // 회사 ID에 따라 유저를 관리 (key: companyId, value: WebSocket connection)
+	Register       chan ClientRegistration
+	Unregister     chan *websocket.Conn
+	OnlineClients  sync.Map // 전체 온라인 유저 (key: userId, value: true/false)
 }
 
 // ClientRegistration는 클라이언트와 관련된 정보를 담는 구조체입니다.
@@ -156,14 +158,6 @@ func (hub *WebSocketHub) SendMessageToUser(userID uint, message res.JsonResponse
 	}
 }
 
-// 특정 회사에게 메시지 전송
-func (hub *WebSocketHub) SendMessageToCompany(companyID uint, message res.JsonResponse) {
-	if conn, ok := hub.Clients.Load(companyID); ok {
-		client := conn.(*websocket.Conn)
-		hub.sendMessageToClient(client, message)
-	}
-}
-
 // 개별 클라이언트에 메시지 전송
 func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message interface{}) {
 	fmt.Printf("메시지를 클라이언트에게 전송 시도 중: %v\n", message)
@@ -173,9 +167,46 @@ func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message int
 	}
 }
 
-// 전체 온라인 상태를 체크하여 모든 유저의 상태를 업데이트
-// BroadcastOnlineStatus 함수
-// 상태가 변경되었을 때만 전체 브로드캐스트
+// 회사 클라이언트 등록
+func (hub *WebSocketHub) RegisterCompanyClient(conn *websocket.Conn, companyID uint) {
+	clients, _ := hub.CompanyClients.LoadOrStore(companyID, make(map[*websocket.Conn]bool))
+	clientMap := clients.(map[*websocket.Conn]bool)
+	clientMap[conn] = true
+	hub.CompanyClients.Store(companyID, clientMap)
+
+	conn.WriteJSON(res.JsonResponse{
+		Success: true,
+		Message: fmt.Sprintf("Company %d 연결 성공", companyID),
+		Type:    "company_connection",
+	})
+}
+
+// 회사 클라이언트 해제
+func (hub *WebSocketHub) UnregisterCompanyClient(conn *websocket.Conn, companyID uint) {
+	if clients, ok := hub.CompanyClients.Load(companyID); ok {
+		clientMap := clients.(map[*websocket.Conn]bool)
+		delete(clientMap, conn)
+		if len(clientMap) == 0 {
+			hub.CompanyClients.Delete(companyID)
+		} else {
+			hub.CompanyClients.Store(companyID, clientMap)
+		}
+	}
+	conn.Close()
+}
+
+// 회사 클라이언트에게 메시지 전송
+func (h *WebSocketHub) SendMessageToCompany(companyId uint, msg res.JsonResponse) {
+	if clients, ok := h.CompanyClients.Load(companyId); ok {
+		connMap := clients.(map[*websocket.Conn]bool)
+		for client := range connMap {
+			if err := client.WriteJSON(msg); err != nil {
+				log.Printf("웹소켓 메시지 전송 실패: %v", err)
+			}
+		}
+	}
+}
+
 // 온라인 상태 변경할 때
 func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 	statusMessage := res.JsonResponse{

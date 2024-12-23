@@ -64,7 +64,6 @@ func (h *WsHandler) setUpNatsSubscriber() {
 	// 알림 관련
 	h.subscribeToNotifications()
 	// 이벤트 관련
-	h.subscribeToAuditEvent()
 }
 
 func (h *WsHandler) subscribeToChat() {
@@ -110,29 +109,6 @@ func (h *WsHandler) subscribeToLikes() {
 			Success: true,
 			Type:    "notification",
 			Payload: notification,
-		})
-	})
-}
-
-// TODO 이벤트 토픽 구독 처리 - audit 이벤트 처리
-func (h *WsHandler) subscribeToAuditEvent() {
-	h.natsSubscriber.SubscribeEvent("link.event.>audit", func(msg *nats.Msg) {
-		var audit map[string]interface{}
-		//msg를 변환
-		if err := json.Unmarshal(msg.Data, &audit); err != nil {
-			log.Printf("감사 이벤트 파싱 오류: %v", err)
-			return
-		}
-		companyId := uint(audit["company_id"].(float64))
-		h.hub.SendMessageToCompany(companyId, res.JsonResponse{
-			Success: true,
-			Type:    "event",
-			Payload: res.EventPayload{
-				Topic:     audit["topic"].(string),
-				Message:   audit["message"].(string),
-				Action:    audit["action"].(string),
-				CreatedAt: audit["created_at"].(string),
-			},
 		})
 	})
 }
@@ -612,46 +588,71 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 	}
 
 	defer func() {
-		h.hub.UnregisterClient(conn, uint(companyIdUint), 0)
+		h.hub.UnregisterCompanyClient(conn, uint(companyIdUint))
 		conn.Close()
 	}()
 
-	_, exists := h.hub.Clients.Load(uint(companyIdUint))
-	if !exists {
-		_, err := h.companyUsecase.GetCompanyInfo(uint(companyIdUint))
-		if err != nil {
-			log.Printf("회사 조회 실패: %v", err)
-			conn.WriteJSON(res.JsonResponse{
-				Success: false,
-				Message: "회사 조회 실패",
-				Type:    "error",
-			})
-			return
-		}
-
+	// 회사 존재 여부 확인
+	_, err = h.companyUsecase.GetCompanyInfo(uint(companyIdUint))
+	if err != nil {
+		log.Printf("회사 조회 실패: %v", err)
+		conn.WriteJSON(res.JsonResponse{
+			Success: false,
+			Message: "회사 조회 실패",
+			Type:    "error",
+		})
+		return
 	}
 
 	// nats 에서 받은 메시지를 회사 클라이언트에게 웹소켓 전송
+	// 회사 클라이언트 등록
+	h.hub.RegisterCompanyClient(conn, uint(companyIdUint))
 
-	// subject := "link.event.>.audit"
-	// h.natsSubscriber.SubscribeEvent(subject, func(msg *nats.Msg) {
-	// 	var event map[string]interface{}
-	// 	if err := json.Unmarshal(msg.Data, &event); err != nil {
-	// 		log.Printf("회사 이벤트 파싱 오류: %v", err)
-	// 		return
-	// 	}
+	subject := "audit.>"
+	h.natsSubscriber.SubscribeEvent(subject, func(msg *nats.Msg) {
+		var event map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			log.Printf("회사 이벤트 파싱 오류: %v", err)
+			return
+		}
 
-	// 	// 해당 회사의 모든 클라이언트에게 메시지 전송
-	// 	h.hub.SendMessageToCompany(uint(companyIdUint), res.JsonResponse{
-	// 		Success: true,
-	// 		Type:    "event",
-	// 		Payload: res.EventPayload{
-	// 			Topic:     event["topic"].(string),
-	// 			Message:   event["message"].(string),
-	// 			Action:    event["action"].(string),
-	// 			CreatedAt: event["created_at"].(string),
-	// 		},
-	// 	})
-	// })
+		// 안전한 타입 변환 처리
+		payload, ok := event["payload"].(map[string]interface{})
+		if !ok {
+			log.Printf("payload 변환 오류: %v", event["payload"])
+			return
+		}
 
+		userIdFloat, ok := payload["user_id"].(float64)
+		if !ok {
+			log.Printf("user_id 변환 오류: %v", payload["user_id"])
+			return
+		}
+
+		// 	// 해당 회사의 모든 클라이언트에게 메시지 전송
+		h.hub.SendMessageToCompany(uint(companyIdUint), res.JsonResponse{
+			Success: true,
+			Type:    "event",
+			Payload: res.EventPayload{
+				Topic:     event["topic"].(string),
+				Action:    event["action"].(string),
+				Message:   event["message"].(string),
+				UserId:    uint(userIdFloat),
+				Name:      payload["name"].(string),
+				Email:     payload["email"].(string),
+				Timestamp: payload["timestamp"].(string),
+			},
+		})
+	})
+
+	// 연결 유지를 위한 메시지 읽기 루프
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("웹소켓 에러: %v", err)
+			}
+			break
+		}
+	}
 }
