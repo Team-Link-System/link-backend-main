@@ -124,7 +124,6 @@ func (u *authUsecase) SignOut(userId uint, email string) error {
 // TODO 레디스에서 userId로 리프레시 토큰 가져오기
 func (u *authUsecase) GetRefreshToken(userId uint, email string) (string, error) {
 	userIdStr := strconv.FormatUint(uint64(userId), 10)
-	fmt.Println("userIdStr:", userIdStr)
 	if userIdStr == "" {
 		return "", common.NewError(http.StatusBadRequest, "userId가 유효하지 않습니다", fmt.Errorf("userId가 유효하지 않습니다"))
 	}

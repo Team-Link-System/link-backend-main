@@ -157,6 +157,14 @@ func (hub *WebSocketHub) SendMessageToUser(userID uint, message res.JsonResponse
 	}
 }
 
+// 특정 회사에게 메시지 전송
+func (hub *WebSocketHub) SendMessageToCompany(companyID uint, message res.JsonResponse) {
+	if conn, ok := hub.Clients.Load(companyID); ok {
+		client := conn.(*websocket.Conn)
+		hub.sendMessageToClient(client, message)
+	}
+}
+
 // 개별 클라이언트에 메시지 전송
 func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message interface{}) {
 	fmt.Printf("메시지를 클라이언트에게 전송 시도 중: %v\n", message)
