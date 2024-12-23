@@ -46,6 +46,7 @@ func NewWsHandler(hub *WebSocketHub,
 		chatUsecase:         chatUsecase,
 		notificationUsecase: notificationUsecase,
 		userUsecase:         userUsecase,
+		companyUsecase:      companyUsecase,
 		natsPublisher:       natsPublisher,
 		natsSubscriber:      natsSubscriber,
 	}
@@ -613,12 +614,11 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 	defer func() {
 		h.hub.UnregisterClient(conn, uint(companyIdUint), 0)
 		conn.Close()
-
 	}()
 
 	_, exists := h.hub.Clients.Load(uint(companyIdUint))
 	if !exists {
-		company, err := h.companyUsecase.GetCompanyInfo(uint(companyIdUint))
+		_, err := h.companyUsecase.GetCompanyInfo(uint(companyIdUint))
 		if err != nil {
 			log.Printf("회사 조회 실패: %v", err)
 			conn.WriteJSON(res.JsonResponse{
@@ -629,31 +629,29 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 			return
 		}
 
-		h.hub.RegisterClient(conn, company.ID, 0)
 	}
 
 	// nats 에서 받은 메시지를 회사 클라이언트에게 웹소켓 전송
-	h.hub.RegisterClient(conn, uint(companyIdUint), 0)
 
-	subject := "link.event.>audit"
-	h.natsSubscriber.SubscribeEvent(subject, func(msg *nats.Msg) {
-		var event map[string]interface{}
-		if err := json.Unmarshal(msg.Data, &event); err != nil {
-			log.Printf("회사 이벤트 파싱 오류: %v", err)
-			return
-		}
+	// subject := "link.event.>.audit"
+	// h.natsSubscriber.SubscribeEvent(subject, func(msg *nats.Msg) {
+	// 	var event map[string]interface{}
+	// 	if err := json.Unmarshal(msg.Data, &event); err != nil {
+	// 		log.Printf("회사 이벤트 파싱 오류: %v", err)
+	// 		return
+	// 	}
 
-		// 해당 회사의 모든 클라이언트에게 메시지 전송
-		h.hub.SendMessageToCompany(uint(companyIdUint), res.JsonResponse{
-			Success: true,
-			Type:    "event",
-			Payload: res.EventPayload{
-				Topic:     event["topic"].(string),
-				Message:   event["message"].(string),
-				Action:    event["action"].(string),
-				CreatedAt: event["created_at"].(string),
-			},
-		})
-	})
+	// 	// 해당 회사의 모든 클라이언트에게 메시지 전송
+	// 	h.hub.SendMessageToCompany(uint(companyIdUint), res.JsonResponse{
+	// 		Success: true,
+	// 		Type:    "event",
+	// 		Payload: res.EventPayload{
+	// 			Topic:     event["topic"].(string),
+	// 			Message:   event["message"].(string),
+	// 			Action:    event["action"].(string),
+	// 			CreatedAt: event["created_at"].(string),
+	// 		},
+	// 	})
+	// })
 
 }

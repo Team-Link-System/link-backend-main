@@ -63,7 +63,6 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		// 기존 연결 확인
 		_, existingConnection := hub.Clients.Load(userID)
 		if existingConnection {
-			fmt.Println("기존 연결이 있음")
 			conn.WriteJSON(res.JsonResponse{
 				Success: true,
 				Message: fmt.Sprintf("User %d 재연결 성공", userID),
