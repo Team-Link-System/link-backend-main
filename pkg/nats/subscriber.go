@@ -26,5 +26,6 @@ func (s *NatsSubscriber) SubscribeEvent(subject string, handler func(msg *nats.M
 		fmt.Printf("NATS 이벤트 수신 오류[TOPIC: %s]: %v ", subject, err)
 		return common.NewError(500, "NATS 이벤트 수신 오류", err)
 	}
+
 	return nil
 }
