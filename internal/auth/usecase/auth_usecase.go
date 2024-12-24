@@ -75,13 +75,12 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 	}
 
 	natsData := map[string]interface{}{
-		"topic":   "link.event.user.signin",
-		"eventId": "test",
+		"topic": "link.event.user.signin",
 		"payload": map[string]interface{}{
-			"user_id":    *user.ID,
-			"email":      *user.Email,
-			"name":       *user.Name,
-			"company_id": *user.UserProfile.CompanyID,
+			"user_id":    _utils.GetValueOrDefault(user.ID, 0),
+			"email":      _utils.GetValueOrDefault(user.Email, ""),
+			"name":       _utils.GetValueOrDefault(user.Name, ""),
+			"company_id": _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
 			"timestamp":  time.Now(),
 		},
 	}
