@@ -1,0 +1,43 @@
+config:
+  target: "http://localhost:8080"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+  processor: "../timestamp.js"
+
+scenarios:
+  - flow:
+      # 회원가입
+      - function: "getTimestamp"
+      - post:
+          url: "/api/user/signup"
+          json:
+            email: "testuser{{ timestampValue }}{{$randomNumber(1,9999)}}@example.com"
+            name: "testuser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+            password: "password123"
+            nickname: "testuser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+            phone: "010-1234-5678"
+          capture:
+            - json: "$.payload.email"
+              as: "userEmail"
+      - think: 1
+
+      # 로그인
+      - post:
+          url: "/api/auth/signin"
+          json:
+            email: "{{ userEmail }}" # 회원가입에서 저장한 이메일 사용
+            password: "password123"
+          capture:
+            - header: "Authorization" # 로그인 응답 헤더에서 토큰 추출
+              as: "authHeader"
+            - json: "$.payload.id"            # 로그인 응답 본문에서 사용자 ID 추출
+              as: "userId"
+      - think: 1
+
+      # 프로필 조회
+      - get:
+          url: "/api/user/{{ userId }}"  # 로그인에서 저장한 ID 사용
+          headers:
+            Authorization: "{{ authHeader }}" # 토큰 사용
+      - think: 1
