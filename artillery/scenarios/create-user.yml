@@ -3,7 +3,7 @@ config:
   phases:
     - duration: 60
       arrivalRate: 10
-  processor: "../timestamp.js"
+  processor: "../artillery.js"
 
 scenarios:
   - flow:
@@ -20,6 +20,8 @@ scenarios:
           capture:
             - json: "$.payload.email"
               as: "userEmail"
+          expect:
+            - statusCode: 201
       - think: 1
 
       # 로그인
@@ -29,15 +31,19 @@ scenarios:
             email: "{{ userEmail }}" # 회원가입에서 저장한 이메일 사용
             password: "password123"
           capture:
-            - header: "Authorization" # 로그인 응답 헤더에서 토큰 추출
-              as: "authHeader"
             - json: "$.payload.id"            # 로그인 응답 본문에서 사용자 ID 추출
               as: "userId"
+            # - header: "Authorization" # 로그인 응답 헤더에서 토큰 추출
+            #   as: "accessToken"
+          expect:
+            - statusCode: 200
+      - function: "extractAccessToken"
       - think: 1
-
       # 프로필 조회
       - get:
           url: "/api/user/{{ userId }}"  # 로그인에서 저장한 ID 사용
           headers:
-            Authorization: "{{ authHeader }}" # 토큰 사용
+            Authorization: "{{ accessToken }}" # 토큰 사용
+          expect:
+            - statusCode: 200
       - think: 1
