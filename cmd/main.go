@@ -125,6 +125,7 @@ func startServer() {
 			publicRoute.GET("company/list", companyHandler.GetAllCompanies)
 			publicRoute.GET("company/:id", companyHandler.GetCompanyInfo)
 			publicRoute.POST("company/search", companyHandler.SearchCompany)
+
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor())
 		//, tokenInterceptor.RefreshTokenInterceptor() accessToken 재발급 인터셉터 제거 -> accessToken 재발급 기능 따로 구현 (필요해지면 다시 사용)

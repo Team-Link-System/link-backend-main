@@ -1,0 +1,56 @@
+config:
+  target: "http://localhost:8080"
+  phases:
+    - duration: 60
+      arrivalRate: 100
+  processor: "../artillery.js"
+
+scenarios:
+  - flow:
+      # 타임스탬프 및 변수 초기화
+      - function: "getTimestamp"
+
+      # 회원가입
+      - post:
+          url: "/api/user/signup"
+          json:
+            email: "testuser{{ timestampValue }}{{$randomNumber(1,9999)}}@example.com"
+            name: "testuser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+            password: "password123"
+            nickname: "testuser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+            phone: "010-1234-5678"
+          capture:
+            - json: "$.payload.email"
+              as: "userEmail" # 이메일 저장
+          expect:
+            - statusCode: 201
+      - think: 1
+
+      # 로그인
+
+      - post:
+          url: "/api/auth/signin"
+          headers:
+            Content-Type: "application/json"
+          json:
+            email: "{{ userEmail }}"
+            password: "password123"
+          capture:
+            - json: "$.payload.id"
+              as: "userId"
+            - header: "authorization"
+              as: "accessToken"
+            - header: "content-type"
+              as: "contentType"
+          expect:
+            - statusCode: 200
+      - think: 1
+      
+      # 프로필 조회
+      - get:
+          url: "/api/user/{{ userId }}"
+          headers:
+            Authorization: "{{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - think: 1

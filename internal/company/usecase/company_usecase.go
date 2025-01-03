@@ -410,3 +410,5 @@ func (u *companyUsecase) UpdateCompanyPosition(requestUserId uint, positionId ui
 
 	return nil
 }
+
+//TODO 회사 평점 생성 - 리뷰 생성 후 평점 생성
