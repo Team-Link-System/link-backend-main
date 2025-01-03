@@ -2,13 +2,15 @@ config:
   target: "http://localhost:8080"
   phases:
     - duration: 60
-      arrivalRate: 10
+      arrivalRate: 100
   processor: "../artillery.js"
 
 scenarios:
   - flow:
-      # 회원가입
+      # 타임스탬프 및 변수 초기화
       - function: "getTimestamp"
+
+      # 회원가입
       - post:
           url: "/api/user/signup"
           json:
@@ -19,31 +21,36 @@ scenarios:
             phone: "010-1234-5678"
           capture:
             - json: "$.payload.email"
-              as: "userEmail"
+              as: "userEmail" # 이메일 저장
           expect:
             - statusCode: 201
       - think: 1
 
       # 로그인
+
       - post:
           url: "/api/auth/signin"
+          headers:
+            Content-Type: "application/json"
           json:
-            email: "{{ userEmail }}" # 회원가입에서 저장한 이메일 사용
+            email: "{{ userEmail }}"
             password: "password123"
           capture:
-            - json: "$.payload.id"            # 로그인 응답 본문에서 사용자 ID 추출
+            - json: "$.payload.id"
               as: "userId"
-            # - header: "Authorization" # 로그인 응답 헤더에서 토큰 추출
-            #   as: "accessToken"
+            - header: "authorization"
+              as: "accessToken"
+            - header: "content-type"
+              as: "contentType"
           expect:
             - statusCode: 200
-      - function: "extractAccessToken"
       - think: 1
+      
       # 프로필 조회
       - get:
-          url: "/api/user/{{ userId }}"  # 로그인에서 저장한 ID 사용
+          url: "/api/user/{{ userId }}"
           headers:
-            Authorization: "{{ accessToken }}" # 토큰 사용
+            Authorization: "{{ accessToken }}"
           expect:
             - statusCode: 200
       - think: 1
