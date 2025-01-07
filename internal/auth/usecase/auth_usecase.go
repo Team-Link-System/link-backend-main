@@ -74,14 +74,21 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 		return nil, nil, common.NewError(http.StatusInternalServerError, "리프레시 토큰 저장에 실패했습니다", err)
 	}
 
+	departmentIds := make([]uint, len(user.UserProfile.Departments))
+	for i, dept := range user.UserProfile.Departments {
+		departmentIds[i] = (*dept)["id"].(uint)
+	}
+
 	natsData := map[string]interface{}{
 		"topic": "link.event.user.signin",
 		"payload": map[string]interface{}{
-			"user_id":    _utils.GetValueOrDefault(user.ID, 0),
-			"email":      _utils.GetValueOrDefault(user.Email, ""),
-			"name":       _utils.GetValueOrDefault(user.Name, ""),
-			"company_id": _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
-			"timestamp":  time.Now(),
+			"user_id":        _utils.GetValueOrDefault(user.ID, 0),
+			"email":          _utils.GetValueOrDefault(user.Email, ""),
+			"name":           _utils.GetValueOrDefault(user.Name, ""),
+			"company_id":     _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			"role":           _utils.GetValueOrDefault(&user.Role, 5),
+			"department_ids": departmentIds,
+			"timestamp":      time.Now(),
 		},
 	}
 	jsonData, err := json.Marshal(natsData)
@@ -92,12 +99,13 @@ func (u *authUsecase) SignIn(request *req.LoginRequest) (*res.LoginUserResponse,
 	u.natsPublisher.PublishEvent("link.event.user.signin", []byte(jsonData))
 
 	return &res.LoginUserResponse{
-			ID:           _utils.GetValueOrDefault(user.ID, 0),
-			Email:        _utils.GetValueOrDefault(user.Email, ""),
-			Name:         _utils.GetValueOrDefault(user.Name, ""),
-			Role:         uint(_utils.GetValueOrDefault(&user.Role, 4)),
-			CompanyID:    _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
-			ProfileImage: _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+			ID:            _utils.GetValueOrDefault(user.ID, 0),
+			Email:         _utils.GetValueOrDefault(user.Email, ""),
+			Name:          _utils.GetValueOrDefault(user.Name, ""),
+			Role:          uint(_utils.GetValueOrDefault(&user.Role, 4)),
+			CompanyID:     _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			ProfileImage:  _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+			DepartmentIds: departmentIds,
 		}, &entity.Token{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
