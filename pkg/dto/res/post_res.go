@@ -6,7 +6,7 @@ type GetPostResponse struct {
 	Content      string   `json:"content"`
 	Images       []string `json:"images,omitempty"`
 	IsAnonymous  bool     `json:"is_anonymous"`
-	UserId       uint     `json:"user_id"`
+	UserId       uint     `json:"user_id,omitempty"`
 	AuthorName   string   `json:"author_name"`
 	AuthorImage  string   `json:"author_image,omitempty"`
 	Visibility   string   `json:"visibility"`
