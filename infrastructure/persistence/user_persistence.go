@@ -187,7 +187,7 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 	// 	Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.id").
 	// 	Select("users.id", "users.email", "users.nickname", "users.name", "users.role", "users.password", "user_profiles.company_id").
 	// 	Where("users.email = ?", email).First(&user).Error
-	err := r.db.Preload("UserProfile").Where("email = ?", email).First(&user).Error
+	err := r.db.Preload("UserProfile").Preload("UserProfile.Departments").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %s", email)
@@ -196,6 +196,13 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 	}
 
 	// UserProfile이 nil일 경우 기본값 설정
+	departments := make([]*map[string]interface{}, len(user.UserProfile.Departments))
+	for i, dept := range user.UserProfile.Departments {
+		departments[i] = &map[string]interface{}{
+			"id":   dept.ID,
+			"name": dept.Name,
+		}
+	}
 
 	entityUser := &entity.User{
 		ID:       &user.ID,
@@ -205,8 +212,9 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		Role:     entity.UserRole(user.Role),
 		Password: &user.Password,
 		UserProfile: &entity.UserProfile{
-			CompanyID: user.UserProfile.CompanyID,
-			Image:     user.UserProfile.Image,
+			CompanyID:   user.UserProfile.CompanyID,
+			Image:       user.UserProfile.Image,
+			Departments: departments,
 		},
 	}
 
