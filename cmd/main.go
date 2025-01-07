@@ -233,6 +233,9 @@ func startServer() {
 				admin.DELETE("/department/:companyid/:departmentid", adminHandler.AdminDeleteDepartment)
 				admin.GET("/department/list/:companyid", adminHandler.GetDepartments)
 				// admin.GET("/department/:departmentid", adminHandler.GetDepartment)
+
+				//TODO 리포트 관련 핸들러
+				// admin.GET("/report/user", adminHandler.AdminGetReports)
 			}
 
 			//TODO 좋아요 관련 핸들러

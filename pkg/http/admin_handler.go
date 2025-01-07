@@ -585,3 +585,27 @@ func (h *AdminHandler) AdminDeleteDepartment(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "부서 삭제에 성공하였습니다.", nil))
 
 }
+
+// TODO 사용자 리포트 조회
+// func (h *AdminHandler) AdminGetReports(c *gin.Context) {
+// 	adminUserId, exists := c.Get("userId")
+// 	if !exists {
+// 		fmt.Printf("인증되지 않은 요청입니다")
+// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+// 		return
+// 	}
+
+// 	reports, err := h.adminUsecase.AdminGetReports(adminUserId.(uint))
+// 	if err != nil {
+// 		if appError, ok := err.(*common.AppError); ok {
+// 			fmt.Printf("리포트 조회 오류: %v", appError.Err)
+// 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+// 		} else {
+// 			fmt.Printf("리포트 조회 오류: %v", err)
+// 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+// 		}
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "리포트 조회에 성공하였습니다.", reports))
+// }
