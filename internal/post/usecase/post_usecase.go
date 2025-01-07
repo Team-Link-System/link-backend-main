@@ -207,6 +207,10 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			companyId = *post.CompanyID
 		}
 
+		if post.IsAnonymous {
+			post.UserID = 0
+		}
+
 		postResponses[i] = &res.GetPostResponse{
 			PostId:       post.ID,
 			Title:        post.Title,

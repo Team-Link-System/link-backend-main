@@ -139,26 +139,35 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		entryDate = targetUser.UserProfile.EntryDate
 	}
 
+	departments := make([]map[string]interface{}, len(targetUser.UserProfile.Departments))
+	for i, dept := range targetUser.UserProfile.Departments {
+		departments[i] = map[string]interface{}{
+			"id":   (*dept)["id"].(uint),
+			"name": (*dept)["name"].(string),
+		}
+	}
+
 	response := res.GetUserByIdResponse{
-		ID:              _utils.GetValueOrDefault(targetUser.ID, 0),
-		Email:           _utils.GetValueOrDefault(targetUser.Email, ""),
-		Name:            _utils.GetValueOrDefault(targetUser.Name, ""),
-		Phone:           _utils.GetValueOrDefault(targetUser.Phone, ""),
-		Nickname:        _utils.GetValueOrDefault(targetUser.Nickname, ""),
-		Role:            uint(_utils.GetValueOrDefault(&targetUser.Role, entity.RoleUser)),
-		Image:           _utils.GetValueOrDefault(targetUser.UserProfile.Image, ""),
-		Birthday:        _utils.GetValueOrDefault(&targetUser.UserProfile.Birthday, ""),
-		IsOnline:        _utils.GetValueOrDefault(targetUser.IsOnline, false),
-		IsSubscribed:    _utils.GetValueOrDefault(&targetUser.UserProfile.IsSubscribed, false),
-		CompanyID:       _utils.GetValueOrDefault(targetUser.UserProfile.CompanyID, 0),
-		CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Company}, "name"), ""),
-		DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](targetUser.UserProfile.Departments, "id"),
-		DepartmentNames: _utils.ExtractValuesFromMapSlice[string](targetUser.UserProfile.Departments, "name"),
-		PositionId:      _utils.GetValueOrDefault(targetUser.UserProfile.PositionId, 0),
-		PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Position}, "name"), ""),
-		EntryDate:       entryDate,
-		CreatedAt:       _utils.GetValueOrDefault(targetUser.CreatedAt, time.Time{}), //TODO
-		UpdatedAt:       _utils.GetValueOrDefault(targetUser.UpdatedAt, time.Time{}),
+		ID:           _utils.GetValueOrDefault(targetUser.ID, 0),
+		Email:        _utils.GetValueOrDefault(targetUser.Email, ""),
+		Name:         _utils.GetValueOrDefault(targetUser.Name, ""),
+		Phone:        _utils.GetValueOrDefault(targetUser.Phone, ""),
+		Nickname:     _utils.GetValueOrDefault(targetUser.Nickname, ""),
+		Role:         uint(_utils.GetValueOrDefault(&targetUser.Role, entity.RoleUser)),
+		Image:        _utils.GetValueOrDefault(targetUser.UserProfile.Image, ""),
+		Birthday:     _utils.GetValueOrDefault(&targetUser.UserProfile.Birthday, ""),
+		IsOnline:     _utils.GetValueOrDefault(targetUser.IsOnline, false),
+		IsSubscribed: _utils.GetValueOrDefault(&targetUser.UserProfile.IsSubscribed, false),
+		CompanyID:    _utils.GetValueOrDefault(targetUser.UserProfile.CompanyID, 0),
+		CompanyName:  _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Company}, "name"), ""),
+		// DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](targetUser.UserProfile.Departments, "id"),
+		// DepartmentNames: _utils.ExtractValuesFromMapSlice[string](targetUser.UserProfile.Departments, "name"),
+		Departments:  departments,
+		PositionId:   _utils.GetValueOrDefault(targetUser.UserProfile.PositionId, 0),
+		PositionName: _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{targetUser.UserProfile.Position}, "name"), ""),
+		EntryDate:    entryDate,
+		CreatedAt:    _utils.GetValueOrDefault(targetUser.CreatedAt, time.Time{}), //TODO
+		UpdatedAt:    _utils.GetValueOrDefault(targetUser.UpdatedAt, time.Time{}),
 	}
 
 	return &response, nil
