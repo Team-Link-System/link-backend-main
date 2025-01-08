@@ -823,6 +823,7 @@ func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint
 			Content:     report.Content,
 			ReportType:  report.ReportType,
 			ReportFiles: report.ReportFiles,
+			Timestamp:   report.Timestamp.Format(time.DateTime),
 			CreatedAt:   report.CreatedAt.Format(time.DateTime),
 			UpdatedAt:   report.UpdatedAt.Format(time.DateTime),
 		}

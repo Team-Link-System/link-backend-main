@@ -123,6 +123,7 @@ func (u *reportUsecase) GetReports(userId uint, queryParams *req.GetReportsQuery
 			Content:     report.Content,
 			ReportType:  report.ReportType,
 			ReportFiles: report.ReportFiles,
+			Timestamp:   report.Timestamp.Format(time.DateTime),
 			CreatedAt:   report.CreatedAt.Format(time.DateTime),
 			UpdatedAt:   report.UpdatedAt.Format(time.DateTime),
 		}
