@@ -93,6 +93,7 @@ func startServer() {
 		likeHandler *handlerHttp.LikeHandler,
 		adminHandler *handlerHttp.AdminHandler,
 		statHandler *handlerHttp.StatHandler,
+		reportHandler *handlerHttp.ReportHandler,
 		params struct {
 			dig.In
 			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
@@ -252,6 +253,11 @@ func startServer() {
 			{
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
 				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
+			}
+
+			report := protectedRoute.Group("report")
+			{
+				report.POST("", reportHandler.CreateReport)
 			}
 		}
 	})

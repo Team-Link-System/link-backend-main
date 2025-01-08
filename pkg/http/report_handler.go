@@ -21,7 +21,7 @@ func NewReportHandler(reportUsecase usecase.ReportUsecase) *ReportHandler {
 }
 
 func (h *ReportHandler) CreateReport(c *gin.Context) {
-	_, exists := c.Get("userId")
+	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
@@ -32,6 +32,12 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 	if err := c.ShouldBind(&request); err != nil {
 		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	if request.ReporterID != userId {
+		fmt.Printf("신고자가 동일하지 않습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "신고자가 동일하지 않습니다.", nil))
 		return
 	}
 

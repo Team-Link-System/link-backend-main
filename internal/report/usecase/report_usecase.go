@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"encoding/json"
-	_reportRepo "link/internal/report/repository"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -18,21 +17,19 @@ type ReportUsecase interface {
 }
 
 type reportUsecase struct {
-	reportRepository _reportRepo.ReportRepository
-	userRepo         _userRepo.UserRepository
-	natsPublisher    *_nats.NatsPublisher
+	userRepo      _userRepo.UserRepository
+	natsPublisher *_nats.NatsPublisher
 }
 
-func NewReportUsecase(reportRepository _reportRepo.ReportRepository, userRepo _userRepo.UserRepository, natsPublisher *_nats.NatsPublisher) ReportUsecase {
+func NewReportUsecase(userRepo _userRepo.UserRepository, natsPublisher *_nats.NatsPublisher) ReportUsecase {
 	return &reportUsecase{
-		reportRepository: reportRepository,
-		userRepo:         userRepo,
-		natsPublisher:    natsPublisher,
+
+		userRepo:      userRepo,
+		natsPublisher: natsPublisher,
 	}
 }
 
 func (u *reportUsecase) CreateReport(req req.CreateReportRequest) error {
-
 	reporter, err := u.userRepo.GetUserByID(req.ReporterID)
 	if err != nil {
 		log.Printf("사용자 조회 오류: %v", err)
@@ -45,7 +42,7 @@ func (u *reportUsecase) CreateReport(req req.CreateReportRequest) error {
 		return common.NewError(http.StatusNotFound, "신고 대상자가 존재하지 않습니다", err)
 	}
 
-	if reporter.ID == targetUser.ID {
+	if req.ReporterID == req.TargetID {
 		return common.NewError(http.StatusBadRequest, "신고자와 신고 대상자가 동일합니다", nil)
 	}
 
