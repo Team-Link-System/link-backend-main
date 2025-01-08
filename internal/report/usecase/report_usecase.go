@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"encoding/json"
+	_reportRepo "link/internal/report/repository"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
 	_nats "link/pkg/nats"
 	"log"
 	"net/http"
@@ -14,17 +16,19 @@ import (
 type ReportUsecase interface {
 	//TODO 리포트 생성
 	CreateReport(req req.CreateReportRequest) error
+	GetReports(userId uint) ([]res.GetReportsResponse, error)
 }
 
 type reportUsecase struct {
 	userRepo      _userRepo.UserRepository
+	reportRepo    _reportRepo.ReportRepository
 	natsPublisher *_nats.NatsPublisher
 }
 
-func NewReportUsecase(userRepo _userRepo.UserRepository, natsPublisher *_nats.NatsPublisher) ReportUsecase {
+func NewReportUsecase(userRepo _userRepo.UserRepository, reportRepo _reportRepo.ReportRepository, natsPublisher *_nats.NatsPublisher) ReportUsecase {
 	return &reportUsecase{
-
 		userRepo:      userRepo,
+		reportRepo:    reportRepo,
 		natsPublisher: natsPublisher,
 	}
 }
@@ -81,4 +85,15 @@ func (u *reportUsecase) CreateReport(req req.CreateReportRequest) error {
 	}()
 
 	return nil
+}
+
+func (u *reportUsecase) GetReports(userId uint) ([]res.GetReportsResponse, error) {
+
+	reports, err := u.reportRepo.GetReports(userId)
+	if err != nil {
+		log.Printf("신고 조회 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "신고 조회에 실패하였습니다", err)
+	}
+
+	return reports, nil
 }

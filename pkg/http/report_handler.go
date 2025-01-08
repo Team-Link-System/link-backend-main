@@ -69,3 +69,39 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusCreated, "신고 생성에 성공하였습니다.", nil))
 }
+
+// 신고 상세 조회 - 본인
+func (h *ReportHandler) GetReports(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	reports, err := h.reportUsecase.GetReports(userId.(uint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("신고 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("신고 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "신고 조회에 성공하였습니다.", reports))
+}
+
+// 신고 삭제
+func (h *ReportHandler) DeleteReport(c *gin.Context) {
+
+}
+
+// 신고 수정
+func (h *ReportHandler) UpdateReport(c *gin.Context) {
+
+}
+
+//
