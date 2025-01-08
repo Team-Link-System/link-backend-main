@@ -73,3 +73,12 @@ type AdminGetUserByIdResponse struct {
 	UpdatedAt    time.Time                    `json:"updated_at,omitempty"`
 	Role         uint                         `json:"role,omitempty"`
 }
+
+type AdminGetReportsResponse struct {
+	ID        uint      `json:"id,omitempty"`
+	AuthorID  uint      `json:"author_id,omitempty"`
+	Author    string    `json:"author,omitempty"`
+	Content   string    `json:"content,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+}

@@ -101,8 +101,6 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		return nil, nil, fmt.Errorf("MongoDB 커서 처리 오류: %w", err)
 	}
 
-	fmt.Println("notifications", notifications)
-
 	// 데이터가 없으면 빈 결과 반환
 	if len(notifications) == 0 {
 		return &entity.NotificationMeta{

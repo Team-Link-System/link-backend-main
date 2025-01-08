@@ -10,6 +10,7 @@ import (
 	_departmentEntity "link/internal/department/entity"
 	_departmentRepo "link/internal/department/repository"
 
+	_reportRepo "link/internal/report/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
@@ -41,21 +42,27 @@ type AdminUsecase interface {
 	AdminGetAllDepartments(adminUserId uint, companyId uint) ([]res.AdminGetDepartmentResponse, error)
 	AdminDeleteDepartment(adminUserId uint, companyID uint, departmentID uint) error
 	AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error
+
+	//리포트 관련
+	AdminGetReportsByUser(adminUserId uint, targetUserId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error)
 }
 
 type adminUsecase struct {
 	companyRepository    _companyRepo.CompanyRepository
 	userRepository       _userRepo.UserRepository
 	departmentRepository _departmentRepo.DepartmentRepository
+	reportRepository     _reportRepo.ReportRepository
 }
 
 func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository,
 	userRepository _userRepo.UserRepository,
-	departmentRepository _departmentRepo.DepartmentRepository) AdminUsecase {
+	departmentRepository _departmentRepo.DepartmentRepository,
+	reportRepository _reportRepo.ReportRepository) AdminUsecase {
 	return &adminUsecase{
 		companyRepository:    companyRepository,
 		userRepository:       userRepository,
 		departmentRepository: departmentRepository,
+		reportRepository:     reportRepository,
 	}
 }
 
@@ -773,89 +780,62 @@ func (u *adminUsecase) AdminDeleteDepartment(adminUserId uint, companyID uint, d
 	return nil
 }
 
-// TODO 관리자 해당 사용자 부서 추가
+// TODO 사용자 리포트 조회
+func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error) {
 
-// // ----------------
-// // ! 회사 관리자가 사용하는 usecase는 아래
-// func (u *adminUsecase) CompanyManagerAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error {
-// 	adminUser, err := u.userRepository.GetUserByID(adminUserId)
-// 	if err != nil {
-// 		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
-// 	}
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
 
-// 	if adminUser.Role != _userEntity.RoleCompanyManager && adminUser.Role != _userEntity.RoleCompanySubManager {
-// 		log.Printf("회사 관리자 권한이 없습니다: 요청자 ID %d", adminUserId)
-// 		return common.NewError(http.StatusForbidden, "회사 관리자 권한이 없습니다", err)
-// 	}
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 리포트를 조회하려 했습니다: 요청자 ID %d", adminUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
 
-// 	targetUser, err := u.userRepository.GetUserByID(targetUserId)
-// 	if err != nil {
-// 		log.Printf("존재하지 않는 사용자입니다: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "존재하지 않는 사용자입니다", err)
-// 	}
+	_, err = u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("해당 사용자는 존재하지 않습니다: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "해당 사용자는 존재하지 않습니다", err)
+	}
 
-// 	if targetUser.UserProfile.CompanyID != nil {
-// 		log.Printf("이미 회사에 소속된 사용자입니다: 사용자 ID %d", targetUserId)
-// 		return common.NewError(http.StatusBadRequest, "이미 회사에 소속된 사용자입니다", err)
-// 	}
+	queryOptions := map[string]interface{}{
+		"page":      queryParams.Page,
+		"limit":     queryParams.Limit,
+		"direction": queryParams.Direction,
+		"cursor":    map[string]interface{}{},
+	}
 
-// 	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{}, map[string]interface{}{
-// 		"company_id": companyID,
-// 		"entry_date": time.Now(),
-// 	})
+	reportMeta, reports, err := u.reportRepository.GetReports(targetUserId, queryOptions)
+	if err != nil {
+		log.Printf("리포트 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "리포트 조회 중 오류 발생", err)
+	}
 
-// 	if err != nil {
-// 		log.Printf("사용자 업데이트 중 오류 발생: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "사용자 업데이트 중 오류 발생", err)
-// 	}
+	reportsResponse := make([]*res.GetReportResponse, len(reports))
+	for i, report := range reports {
+		reportsResponse[i] = &res.GetReportResponse{
+			ReportId:    report.ID,
+			Title:       report.Title,
+			Content:     report.Content,
+			ReportType:  report.ReportType,
+			ReportFiles: report.ReportFiles,
+			CreatedAt:   report.CreatedAt.Format(time.DateTime),
+			UpdatedAt:   report.UpdatedAt.Format(time.DateTime),
+		}
+	}
 
-// 	return nil
-// }
-
-// // TODO 회사 관리자가 일반 사용자 퇴출
-// func (u *adminUsecase) CompanyManagerRemoveUserFromCompany(adminUserId uint, targetUserId uint) error {
-// 	adminUser, err := u.userRepository.GetUserByID(adminUserId)
-// 	if err != nil {
-// 		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
-// 	}
-
-// 	targetUser, err := u.userRepository.GetUserByID(targetUserId)
-// 	if err != nil {
-// 		log.Printf("존재하지 않는 사용자입니다: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "존재하지 않는 사용자입니다", err)
-// 	}
-
-// 	if adminUser.UserProfile.CompanyID == nil {
-// 		log.Printf("요청자가 회사에 소속되어 있지 않습니다: 요청자 ID %d", adminUserId)
-// 		return common.NewError(http.StatusBadRequest, "요청자가 회사에 소속되어 있지 않습니다", err)
-// 	}
-
-// 	if adminUser.UserProfile.CompanyID != targetUser.UserProfile.CompanyID {
-// 		log.Printf("본인 회사가 아닌 사람은 퇴출할 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
-// 		return common.NewError(http.StatusBadRequest, "본인 회사가 아닌 사람은 퇴출할 수 없습니다", err)
-// 	}
-
-// 	if targetUser.UserProfile.CompanyID == nil {
-// 		log.Printf("회사에 소속되어 있지 않은 사람은 퇴출할 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
-// 		return common.NewError(http.StatusBadRequest, "회사에 소속되어 있지 않은 사람은 퇴출할 수 없습니다", err)
-// 	}
-
-// 	if adminUser.Role != _userEntity.RoleCompanyManager && adminUser.Role != _userEntity.RoleCompanySubManager {
-// 		log.Printf("회사 관리자 권한이 없습니다: 요청자 ID %d", adminUserId)
-// 		return common.NewError(http.StatusForbidden, "회사 관리자 권한이 없습니다", err)
-// 	}
-
-// 	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{}, map[string]interface{}{
-// 		"company_id": nil,
-// 		"entry_date": nil,
-// 	})
-
-// 	if err != nil {
-// 		log.Printf("사용자 회사 퇴출 중 오류 발생: %v", err)
-// 		return common.NewError(http.StatusInternalServerError, "사용자 회사 퇴출 중 오류 발생", err)
-// 	}
-
-// 	return nil
-// }
+	return &res.GetReportsResponse{
+		Reports: reportsResponse,
+		Meta: &res.ReportPaginationMeta{
+			TotalCount: reportMeta.TotalCount,
+			TotalPages: reportMeta.TotalPages,
+			PageSize:   reportMeta.PageSize,
+			NextCursor: reportMeta.NextCursor,
+			HasMore:    reportMeta.HasMore,
+			PrevPage:   reportMeta.PrevPage,
+			NextPage:   reportMeta.NextPage,
+		},
+	}, nil
+}

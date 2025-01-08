@@ -93,6 +93,7 @@ func startServer() {
 		likeHandler *handlerHttp.LikeHandler,
 		adminHandler *handlerHttp.AdminHandler,
 		statHandler *handlerHttp.StatHandler,
+		reportHandler *handlerHttp.ReportHandler,
 		params struct {
 			dig.In
 			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
@@ -233,6 +234,15 @@ func startServer() {
 				admin.DELETE("/department/:companyid/:departmentid", adminHandler.AdminDeleteDepartment)
 				admin.GET("/department/list/:companyid", adminHandler.GetDepartments)
 				// admin.GET("/department/:departmentid", adminHandler.GetDepartment)
+
+				//TODO 리포트 관련 핸들러
+				// admin.GET("/report/user", adminHandler.AdminGetReports) //TODO 사용자별 신고 리스트 조회
+				//TODO 신고 상세 보기
+
+				//TODO 사용자별 신고 리스트 조회
+				admin.GET("/report/user/:userid", adminHandler.AdminGetReportsByUser)
+				//TODO 유저 제재 처리
+
 			}
 
 			//TODO 좋아요 관련 핸들러
@@ -249,6 +259,12 @@ func startServer() {
 			{
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
 				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
+			}
+
+			report := protectedRoute.Group("report")
+			{
+				report.POST("", reportHandler.CreateReport)
+				report.GET("/list", reportHandler.GetReports)
 			}
 		}
 	})
