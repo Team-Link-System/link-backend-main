@@ -1,9 +1,11 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type Report struct {
-	ID          uint      `json:"id,omitempty"`
+	ID          string    `json:"id,omitempty"`
 	TargetID    uint      `json:"target_id,omitempty"`
 	ReporterID  uint      `json:"reporter_id,omitempty"`
 	Title       string    `json:"title,omitempty"`

@@ -6,7 +6,7 @@ type GetReportsResponse struct {
 }
 
 type GetReportResponse struct {
-	ReportId    uint     `json:"report_id"`
+	ID          string   `json:"id"`
 	Title       string   `json:"title"`
 	Content     string   `json:"content"`
 	ReportType  string   `json:"report_type"`

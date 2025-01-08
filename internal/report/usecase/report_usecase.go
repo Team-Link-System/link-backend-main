@@ -116,7 +116,7 @@ func (u *reportUsecase) GetReports(userId uint, queryParams *req.GetReportsQuery
 	reportsResponse := make([]*res.GetReportResponse, len(reports))
 	for i, report := range reports {
 		reportsResponse[i] = &res.GetReportResponse{
-			ReportId:    report.ID,
+			ID:          report.ID,
 			Title:       report.Title,
 			Content:     report.Content,
 			ReportType:  report.ReportType,

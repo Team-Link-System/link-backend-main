@@ -5,5 +5,5 @@ import (
 )
 
 type ReportRepository interface {
-	GetReports(userId uint, queryOptions map[string]interface{}) (*entity.ReportMeta, []entity.Report, error)
+	GetReports(userId uint, queryOptions map[string]interface{}) (*entity.ReportMeta, []*entity.Report, error)
 }
