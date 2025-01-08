@@ -12,6 +12,7 @@ type Report struct {
 	Content     string    `json:"content,omitempty"`
 	ReportType  string    `json:"report_type,omitempty"`
 	ReportFiles []string  `json:"report_files,omitempty"`
+	Timestamp   time.Time `json:"timestamp,omitempty"`
 	CreatedAt   time.Time `json:"created_at,omitempty"`
 	UpdatedAt   time.Time `json:"updated_at,omitempty"`
 }

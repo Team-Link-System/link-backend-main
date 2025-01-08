@@ -7,10 +7,13 @@ type GetReportsResponse struct {
 
 type GetReportResponse struct {
 	ID          string   `json:"id"`
+	TargetID    uint     `json:"target_id"`
+	ReporterID  uint     `json:"reporter_id"`
 	Title       string   `json:"title"`
 	Content     string   `json:"content"`
 	ReportType  string   `json:"report_type"`
 	ReportFiles []string `json:"report_files"`
+	Timestamp   string   `json:"timestamp"`
 	CreatedAt   string   `json:"created_at"`
 	UpdatedAt   string   `json:"updated_at"`
 }

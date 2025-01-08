@@ -817,6 +817,8 @@ func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint
 	for i, report := range reports {
 		reportsResponse[i] = &res.GetReportResponse{
 			ID:          report.ID,
+			TargetID:    report.TargetID,
+			ReporterID:  report.ReporterID,
 			Title:       report.Title,
 			Content:     report.Content,
 			ReportType:  report.ReportType,

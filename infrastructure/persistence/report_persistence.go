@@ -118,6 +118,7 @@ func (r *reportPersistence) GetReports(userId uint, queryOptions map[string]inte
 			Title:       report.Title,
 			Content:     report.Content,
 			ReportFiles: reportFiles,
+			Timestamp:   report.Timestamp,
 			CreatedAt:   report.CreatedAt,
 			UpdatedAt:   report.UpdatedAt,
 		}
