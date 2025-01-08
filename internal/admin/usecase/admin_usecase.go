@@ -842,3 +842,8 @@ func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint
 		},
 	}, nil
 }
+
+// TODO 사용자 제재
+// func (u *adminUsecase) AdminBanUser(adminUserId uint, targetUserId uint) error {
+
+// }
