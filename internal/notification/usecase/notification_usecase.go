@@ -475,7 +475,6 @@ func (n *notificationUsecase) GetNotifications(userId uint, queryParams *req.Get
 	if queryParams.Cursor != nil {
 		if queryParams.Cursor.CreatedAt != "" {
 			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
-			fmt.Println("created_at: ", queryParams.Cursor.CreatedAt)
 		}
 	}
 

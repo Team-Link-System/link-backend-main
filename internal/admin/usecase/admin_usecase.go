@@ -10,6 +10,7 @@ import (
 	_departmentEntity "link/internal/department/entity"
 	_departmentRepo "link/internal/department/repository"
 
+	_reportRepo "link/internal/report/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
@@ -43,22 +44,25 @@ type AdminUsecase interface {
 	AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error
 
 	//리포트 관련
-	// AdminGetReports(adminUserId uint) ([]res.AdminGetReportsResponse, error)
+	AdminGetReportsByUser(adminUserId uint, targetUserId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error)
 }
 
 type adminUsecase struct {
 	companyRepository    _companyRepo.CompanyRepository
 	userRepository       _userRepo.UserRepository
 	departmentRepository _departmentRepo.DepartmentRepository
+	reportRepository     _reportRepo.ReportRepository
 }
 
 func NewAdminUsecase(companyRepository _companyRepo.CompanyRepository,
 	userRepository _userRepo.UserRepository,
-	departmentRepository _departmentRepo.DepartmentRepository) AdminUsecase {
+	departmentRepository _departmentRepo.DepartmentRepository,
+	reportRepository _reportRepo.ReportRepository) AdminUsecase {
 	return &adminUsecase{
 		companyRepository:    companyRepository,
 		userRepository:       userRepository,
 		departmentRepository: departmentRepository,
+		reportRepository:     reportRepository,
 	}
 }
 
@@ -776,33 +780,62 @@ func (u *adminUsecase) AdminDeleteDepartment(adminUserId uint, companyID uint, d
 	return nil
 }
 
-// // TODO 사용자 리포트 조회
-// func (u *adminUsecase) AdminGetReports(adminUserId uint) ([]res.AdminGetReportsResponse, error) {
-// 	adminUser, err := u.userRepository.GetUserByID(adminUserId)
-// 	if err != nil {
-// 		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
-// 		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
-// 	}
+// TODO 사용자 리포트 조회
+func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error) {
 
-// 	if adminUser.Role > _userEntity.RoleSubAdmin {
-// 		log.Printf("권한이 없는 사용자가 리포트를 조회하려 했습니다: 요청자 ID %d", adminUserId)
-// 		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
-// 	}
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
 
-// 	reports, err := u.reportRepository.GetReports()
-// 	if err != nil {
-// 		log.Printf("리포트 조회 중 오류 발생: %v", err)
-// 		return nil, common.NewError(http.StatusInternalServerError, "리포트 조회 중 오류 발생", err)
-// 	}
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 리포트를 조회하려 했습니다: 요청자 ID %d", adminUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
 
-// 	response := make([]res.AdminGetReportsResponse, 0, len(reports))
-// 	for _, report := range reports {
-// 		response = append(response, res.AdminGetReportsResponse{
-// 			ID:        report.ID,
-// 			CreatedAt: report.CreatedAt,
-// 			UpdatedAt: report.UpdatedAt,
-// 		})
-// 	}
+	_, err = u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("해당 사용자는 존재하지 않습니다: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "해당 사용자는 존재하지 않습니다", err)
+	}
 
-// 	return response, nil
-// }
+	queryOptions := map[string]interface{}{
+		"page":      queryParams.Page,
+		"limit":     queryParams.Limit,
+		"direction": queryParams.Direction,
+		"cursor":    map[string]interface{}{},
+	}
+
+	reportMeta, reports, err := u.reportRepository.GetReports(targetUserId, queryOptions)
+	if err != nil {
+		log.Printf("리포트 조회 중 오류 발생: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "리포트 조회 중 오류 발생", err)
+	}
+
+	reportsResponse := make([]*res.GetReportResponse, len(reports))
+	for i, report := range reports {
+		reportsResponse[i] = &res.GetReportResponse{
+			ReportId:    report.ID,
+			Title:       report.Title,
+			Content:     report.Content,
+			ReportType:  report.ReportType,
+			ReportFiles: report.ReportFiles,
+			CreatedAt:   report.CreatedAt.Format(time.DateTime),
+			UpdatedAt:   report.UpdatedAt.Format(time.DateTime),
+		}
+	}
+
+	return &res.GetReportsResponse{
+		Reports: reportsResponse,
+		Meta: &res.ReportPaginationMeta{
+			TotalCount: reportMeta.TotalCount,
+			TotalPages: reportMeta.TotalPages,
+			PageSize:   reportMeta.PageSize,
+			NextCursor: reportMeta.NextCursor,
+			HasMore:    reportMeta.HasMore,
+			PrevPage:   reportMeta.PrevPage,
+			NextPage:   reportMeta.NextPage,
+		},
+	}, nil
+}

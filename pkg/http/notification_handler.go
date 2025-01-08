@@ -96,7 +96,6 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		limit = 10
 	}
 	direction := c.DefaultQuery("direction", "next")
-	fmt.Println("Direction: ", direction)
 	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
 		return

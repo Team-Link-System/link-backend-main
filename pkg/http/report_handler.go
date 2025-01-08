@@ -1,11 +1,14 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"link/internal/report/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,7 +82,42 @@ func (h *ReportHandler) GetReports(c *gin.Context) {
 		return
 	}
 
-	reports, err := h.reportUsecase.GetReports(userId.(uint))
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	direction := c.DefaultQuery("direction", "next")
+	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
+		return
+	}
+
+	cursorParam := c.Query("cursor")
+	var cursor *req.ReportCursor
+
+	if cursorParam == "" {
+		cursor = nil
+	} else {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+		}
+	}
+
+	queryParams := &req.GetReportsQueryParams{
+		Page:      page,
+		Limit:     limit,
+		Direction: direction,
+		Cursor:    cursor,
+	}
+
+	reports, err := h.reportUsecase.GetReports(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("신고 조회 오류: %v", appError.Err)
@@ -94,14 +132,14 @@ func (h *ReportHandler) GetReports(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "신고 조회에 성공하였습니다.", reports))
 }
 
-// 신고 삭제
-func (h *ReportHandler) DeleteReport(c *gin.Context) {
+// // 신고 삭제
+// func (h *ReportHandler) DeleteReport(c *gin.Context) {
 
-}
+// }
 
-// 신고 수정
-func (h *ReportHandler) UpdateReport(c *gin.Context) {
+// // 신고 수정
+// func (h *ReportHandler) UpdateReport(c *gin.Context) {
 
-}
+// }
 
 //

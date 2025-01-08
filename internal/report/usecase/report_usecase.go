@@ -16,7 +16,7 @@ import (
 type ReportUsecase interface {
 	//TODO 리포트 생성
 	CreateReport(req req.CreateReportRequest) error
-	GetReports(userId uint) ([]res.GetReportsResponse, error)
+	GetReports(userId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error)
 }
 
 type reportUsecase struct {
@@ -87,13 +87,55 @@ func (u *reportUsecase) CreateReport(req req.CreateReportRequest) error {
 	return nil
 }
 
-func (u *reportUsecase) GetReports(userId uint) ([]res.GetReportsResponse, error) {
+func (u *reportUsecase) GetReports(userId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error) {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		log.Printf("사용자 조회 오류: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회에 실패하였습니다", err)
+	}
 
-	reports, err := u.reportRepo.GetReports(userId)
+	queryOptions := map[string]interface{}{
+		"page":      queryParams.Page,
+		"limit":     queryParams.Limit,
+		"direction": queryParams.Direction,
+		"cursor":    map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		}
+	}
+
+	reportsMeta, reports, err := u.reportRepo.GetReports(userId, queryOptions)
 	if err != nil {
 		log.Printf("신고 조회 오류: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "신고 조회에 실패하였습니다", err)
 	}
 
-	return reports, nil
+	reportsResponse := make([]*res.GetReportResponse, len(reports))
+	for i, report := range reports {
+		reportsResponse[i] = &res.GetReportResponse{
+			ReportId:    report.ID,
+			Title:       report.Title,
+			Content:     report.Content,
+			ReportType:  report.ReportType,
+			ReportFiles: report.ReportFiles,
+			CreatedAt:   report.CreatedAt.Format(time.DateTime),
+			UpdatedAt:   report.UpdatedAt.Format(time.DateTime),
+		}
+	}
+
+	return &res.GetReportsResponse{
+		Reports: reportsResponse,
+		Meta: &res.ReportPaginationMeta{
+			TotalCount: reportsMeta.TotalCount,
+			TotalPages: reportsMeta.TotalPages,
+			PageSize:   reportsMeta.PageSize,
+			NextCursor: reportsMeta.NextCursor,
+			HasMore:    reportsMeta.HasMore,
+			PrevPage:   reportsMeta.PrevPage,
+			NextPage:   reportsMeta.NextPage,
+		},
+	}, nil
 }

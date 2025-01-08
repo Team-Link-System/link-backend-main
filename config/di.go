@@ -76,6 +76,7 @@ func BuildContainer(db *gorm.DB,
 	container.Provide(persistence.NewCommentPersistence)
 	container.Provide(persistence.NewLikePersistence)
 	container.Provide(persistence.NewStatPersistence)
+	container.Provide(persistence.NewReportPersistence)
 	// Usecase 계층 등록
 	container.Provide(authUsecase.NewAuthUsecase)
 	container.Provide(userUsecase.NewUserUsecase)

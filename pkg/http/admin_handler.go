@@ -1,10 +1,12 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -587,25 +589,66 @@ func (h *AdminHandler) AdminDeleteDepartment(c *gin.Context) {
 }
 
 // TODO 사용자 리포트 조회
-// func (h *AdminHandler) AdminGetReports(c *gin.Context) {
-// 	adminUserId, exists := c.Get("userId")
-// 	if !exists {
-// 		fmt.Printf("인증되지 않은 요청입니다")
-// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
-// 		return
-// 	}
+func (h *AdminHandler) AdminGetReportsByUser(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
 
-// 	reports, err := h.adminUsecase.AdminGetReports(adminUserId.(uint))
-// 	if err != nil {
-// 		if appError, ok := err.(*common.AppError); ok {
-// 			fmt.Printf("리포트 조회 오류: %v", appError.Err)
-// 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
-// 		} else {
-// 			fmt.Printf("리포트 조회 오류: %v", err)
-// 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
-// 		}
-// 		return
-// 	}
+	targetUserId, err := strconv.Atoi(c.Param("userid"))
+	if err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+	}
 
-// 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "리포트 조회에 성공하였습니다.", reports))
-// }
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	direction := c.DefaultQuery("direction", "next")
+	if strings.ToLower(direction) != "next" && strings.ToLower(direction) != "prev" {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 방향 값입니다.", nil))
+		return
+	}
+
+	cursorParam := c.Query("cursor")
+	var cursor *req.ReportCursor
+
+	if cursorParam == "" {
+		cursor = nil
+	} else {
+		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
+			fmt.Printf("커서 파싱 실패: %v", err)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+	}
+
+	queryParams := &req.GetReportsQueryParams{
+		Page:      page,
+		Limit:     limit,
+		Direction: direction,
+		Cursor:    cursor,
+	}
+
+	reports, err := h.adminUsecase.AdminGetReportsByUser(adminUserId.(uint), uint(targetUserId), queryParams)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("리포트 조회 오류: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("리포트 조회 오류: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "리포트 조회에 성공하였습니다.", reports))
+}
