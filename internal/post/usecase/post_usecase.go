@@ -200,15 +200,17 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 					authorImage = *imageStr
 				}
 			}
+		} else {
+			if requestUserId != post.UserID {
+				post.UserID = 0
+				authorName = "익명"
+				authorImage = ""
+			}
 		}
 
 		var companyId uint
 		if post.CompanyID != nil {
 			companyId = *post.CompanyID
-		}
-
-		if post.IsAnonymous {
-			post.UserID = 0
 		}
 
 		postResponses[i] = &res.GetPostResponse{
@@ -223,6 +225,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			UserId:       post.UserID,
 			AuthorName:   authorName,
 			AuthorImage:  authorImage,
+			IsAuthor:     requestUserId == post.UserID,
 			CreatedAt:    _util.ParseKst(post.CreatedAt).Format(time.DateTime),
 			UpdatedAt:    _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 		}
@@ -279,6 +282,10 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 			if imageStr, ok := image.(*string); ok && imageStr != nil {
 				authorImage = *imageStr
 			}
+		}
+	} else {
+		if requestUserId != post.UserID {
+			post.UserID = 0
 		}
 	}
 

@@ -9,6 +9,7 @@ type GetPostResponse struct {
 	UserId       uint     `json:"user_id,omitempty"`
 	AuthorName   string   `json:"author_name"`
 	AuthorImage  string   `json:"author_image,omitempty"`
+	IsAuthor     bool     `json:"is_author" default:"false"` // 본인이 작성한 게시물인지 여부
 	Visibility   string   `json:"visibility"`
 	CompanyId    uint     `json:"company_id,omitempty"`
 	DepartmentId uint     `json:"department_id,omitempty"`
