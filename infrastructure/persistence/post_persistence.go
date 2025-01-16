@@ -112,7 +112,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 	if category, ok := queryOptions["category"].(string); ok {
 		switch strings.ToLower(category) {
 		case "public":
-			query = query.Where("company_id IS NULL")
+			query = query.Where("company_id IS NULL AND visibility = ?", strings.ToLower("public"))
 		case "company":
 			if companyId, exists := queryOptions["company_id"].(uint); exists {
 				query = query.Where("company_id = ? AND visibility = ?", companyId, strings.ToLower("company")) //TODO 회사 소속 게시물만 조회

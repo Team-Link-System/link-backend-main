@@ -348,6 +348,21 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 				return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
 			}
 			companyId = user.UserProfile.CompanyID
+
+			if user.UserProfile.Departments != nil {
+				userDeptIds := make(map[uint]struct{})
+				for _, dept := range user.UserProfile.Departments {
+					userDeptIds[(*dept)["id"].(uint)] = struct{}{}
+				}
+
+				for _, deptId := range post.DepartmentIds {
+					if _, ok := userDeptIds[deptId]; !ok {
+						fmt.Printf("사용자의 부서와 일치하지 않습니다 혹은 부서에 속하지 않은 사용자입니다")
+						return common.NewError(http.StatusBadRequest, "사용자의 부서와 일치하지 않습니다 혹은 부서에 속하지 않은 사용자입니다", nil)
+					}
+				}
+			}
+
 		}
 	}
 
