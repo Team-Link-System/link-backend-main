@@ -90,14 +90,14 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	// 게시물 조회 파라미터 처리
-	category := strings.ToUpper(c.DefaultQuery("category", "PUBLIC"))
-	if category != "PUBLIC" && category != "COMPANY" && category != "DEPARTMENT" {
-		category = "PUBLIC"
+	category := strings.ToLower(c.DefaultQuery("category", "public"))
+	if category != "public" && category != "company" && category != "department" {
+		category = "public"
 	}
 
-	viewType := strings.ToUpper(c.DefaultQuery("view_type", "INFINITE"))
-	if viewType != "INFINITE" && viewType != "PAGINATION" {
-		viewType = "INFINITE"
+	viewType := strings.ToLower(c.DefaultQuery("view_type", "infinite"))
+	if viewType != "infinite" && viewType != "pagination" {
+		viewType = "infinite"
 	}
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -123,10 +123,10 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	cursorParam := c.Query("cursor")
 	var cursor *req.Cursor
 
-	if viewType == "INFINITE" && cursorParam == "" {
+	if strings.ToLower(viewType) == "infinite" && cursorParam == "" {
 		cursor = nil //첫요청
 		page = 1
-	} else if viewType == "INFINITE" {
+	} else if strings.ToLower(viewType) == "infinite" {
 		var tempCursor req.Cursor
 		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
 			fmt.Printf("커서 파싱 실패: %v", err)
@@ -156,7 +156,7 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 
 		cursor = &tempCursor
 
-	} else if viewType == "PAGINATION" && cursorParam != "" {
+	} else if strings.ToLower(viewType) == "pagination" && cursorParam != "" {
 		fmt.Printf("페이지네이션 타입인데 커서가 있습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "페이지네이션 타입인데 커서가 있습니다.", nil))
 		return
@@ -167,20 +167,20 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	companyId = uint(companyIdValue)
 	departmentIdValue, _ := strconv.ParseUint(c.DefaultQuery("department_id", "0"), 10, 32)
 	departmentId = uint(departmentIdValue)
-	if category == "COMPANY" {
+	if strings.ToLower(category) == "company" {
 		if companyId == 0 {
 			fmt.Printf("회사 게시물 조회 시 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 게시물 조회 시 company_id가 필요합니다.", nil))
 			return
 		}
-	} else if category == "DEPARTMENT" {
+	} else if strings.ToLower(category) == "department" {
 
 		if departmentId == 0 || companyId == 0 {
 			fmt.Printf("부서 게시물 조회 시 department_id와 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id와 company_id가 필요합니다.", nil))
 			return
 		}
-	} else if category == "PUBLIC" {
+	} else if strings.ToLower(category) == "public" {
 		if companyId != 0 || departmentId != 0 {
 			fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
@@ -189,12 +189,12 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	}
 
 	queryParams := req.GetPostQueryParams{
-		Category:     category,
+		Category:     strings.ToLower(category),
 		Page:         page,
 		Limit:        limit,
 		Order:        order,
 		Sort:         sort,
-		ViewType:     viewType,
+		ViewType:     strings.ToLower(viewType),
 		Cursor:       cursor,
 		CompanyId:    companyId,
 		DepartmentId: departmentId,
