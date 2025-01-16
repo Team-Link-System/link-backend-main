@@ -58,7 +58,7 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	//TODO 익명 게시물은 punlic이나 company만 가능
 	if post.IsAnonymous {
-		if strings.ToUpper(post.Visibility) != "PUBLIC" && strings.ToUpper(post.Visibility) != "COMPANY" {
+		if strings.ToLower(post.Visibility) != "public" && strings.ToLower(post.Visibility) != "company" {
 			fmt.Printf("익명 게시물은 PUBLIC 또는 COMPANY 공개만 가능합니다")
 			return common.NewError(http.StatusBadRequest, "익명 게시물은 PUBLIC 또는 COMPANY 공개만 가능합니다", err)
 		}
@@ -66,15 +66,15 @@ func (uc *postUsecase) CreatePost(requestUserId uint, post *req.CreatePostReques
 
 	var companyId *uint
 
-	if strings.ToUpper(post.Visibility) == "PUBLIC" {
+	if strings.ToLower(post.Visibility) == "public" {
 		companyId = nil
-	} else if strings.ToUpper(post.Visibility) == "COMPANY" {
+	} else if strings.ToLower(post.Visibility) == "company" {
 		if author.UserProfile.CompanyID == nil {
 			fmt.Printf("사용자의 회사 정보가 없습니다")
 			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 		}
 		companyId = author.UserProfile.CompanyID
-	} else if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+	} else if strings.ToLower(post.Visibility) == "department" {
 		if author.UserProfile.CompanyID == nil {
 			fmt.Printf("사용자의 회사 정보가 없습니다")
 			return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
@@ -219,7 +219,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			Content:      post.Content,
 			Images:       images,
 			IsAnonymous:  post.IsAnonymous,
-			Visibility:   post.Visibility,
+			Visibility:   strings.ToLower(post.Visibility),
 			CompanyId:    companyId,
 			DepartmentId: queryParams.DepartmentId,
 			UserId:       post.UserID,
@@ -300,7 +300,7 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 		Content:     post.Content,
 		Images:      images,
 		IsAnonymous: post.IsAnonymous,
-		Visibility:  post.Visibility,
+		Visibility:  strings.ToLower(post.Visibility),
 		CompanyId:   companyId,
 		// DepartmentIds: departmentIds, //TOdO 해당 게시글에 관련된 부서id 값들이 필요하면 추가(공개범위임 사실상)
 		UserId:      post.UserID,
@@ -334,15 +334,15 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 
 	var companyId *uint
 	if post.Visibility != nil && *post.Visibility != existingPost.Visibility {
-		if strings.ToUpper(*post.Visibility) == "PUBLIC" {
+		if strings.ToLower(*post.Visibility) == "public" {
 			companyId = nil
-		} else if strings.ToUpper(*post.Visibility) == "COMPANY" {
+		} else if strings.ToLower(*post.Visibility) == "company" {
 			if user.UserProfile.CompanyID == nil {
 				fmt.Printf("사용자의 회사 정보가 없습니다")
 				return common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 			}
 			companyId = user.UserProfile.CompanyID
-		} else if strings.ToUpper(*post.Visibility) == "DEPARTMENT" {
+		} else if strings.ToLower(*post.Visibility) == "department" {
 			if len(post.DepartmentIds) == 0 || post.DepartmentIds == nil {
 				fmt.Printf("부서 게시물에 필요한 department IDs가 없습니다")
 				return common.NewError(http.StatusBadRequest, "부서 게시물에 필요한 department IDs가 없습니다", nil)
@@ -356,7 +356,7 @@ func (uc *postUsecase) UpdatePost(requestUserId uint, postId uint, post *req.Upd
 	isAnonymous := existingPost.IsAnonymous // 기본값은 기존 값
 	if post.IsAnonymous != nil {
 		if *post.IsAnonymous {
-			if strings.ToUpper(existingPost.Visibility) != "PUBLIC" && strings.ToUpper(existingPost.Visibility) != "COMPANY" {
+			if strings.ToLower(existingPost.Visibility) != "public" && strings.ToLower(existingPost.Visibility) != "company" {
 				fmt.Printf("익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다")
 				return common.NewError(http.StatusBadRequest, "익명 전환은 PUBLIC 또는 COMPANY 공개만 가능합니다", nil)
 			}

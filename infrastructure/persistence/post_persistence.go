@@ -31,7 +31,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		UserID:      post.UserID,
 		Title:       post.Title,
 		Content:     post.Content,
-		Visibility:  post.Visibility,
+		Visibility:  strings.ToLower(post.Visibility),
 		IsAnonymous: post.IsAnonymous,
 		CompanyID:   post.CompanyID,
 	}
@@ -39,10 +39,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 		tx.Rollback()
 		return fmt.Errorf("게시물 생성 실패: %w", err)
 	}
-
-	// 생성된 게시물 ID 설정
 	post.ID = dbPost.ID
-
 	// 2. 게시물 이미지 저장 (post_images 테이블)
 	if len(post.Images) > 0 {
 		for _, imageURL := range post.Images {
@@ -118,12 +115,12 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			query = query.Where("company_id IS NULL")
 		case "COMPANY":
 			if companyId, exists := queryOptions["company_id"].(uint); exists {
-				query = query.Where("company_id = ?", companyId)
+				query = query.Where("company_id = ? AND visibility = ?", companyId, strings.ToLower("COMPANY")) //TODO 회사 소속 게시물만 조회
 			}
 		case "DEPARTMENT":
 			if departmentId, exists := queryOptions["department_id"].(uint); exists {
 				query = query.Joins("JOIN post_departments ON posts.id = post_departments.post_id").
-					Where("post_departments.department_id = ?", departmentId)
+					Where("post_departments.department_id = ? AND visibility = ?", departmentId, strings.ToLower("DEPARTMENT"))
 			}
 		}
 	}
