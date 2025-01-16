@@ -219,7 +219,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			Content:      post.Content,
 			Images:       images,
 			IsAnonymous:  post.IsAnonymous,
-			Visibility:   post.Visibility,
+			Visibility:   strings.ToLower(post.Visibility),
 			CompanyId:    companyId,
 			DepartmentId: queryParams.DepartmentId,
 			UserId:       post.UserID,
@@ -300,7 +300,7 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 		Content:     post.Content,
 		Images:      images,
 		IsAnonymous: post.IsAnonymous,
-		Visibility:  post.Visibility,
+		Visibility:  strings.ToLower(post.Visibility),
 		CompanyId:   companyId,
 		// DepartmentIds: departmentIds, //TOdO 해당 게시글에 관련된 부서id 값들이 필요하면 추가(공개범위임 사실상)
 		UserId:      post.UserID,
