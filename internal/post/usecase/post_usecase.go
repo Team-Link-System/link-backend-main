@@ -132,7 +132,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 	}
 
 	queryOptions := map[string]interface{}{
-		"category":      queryParams.Category,
+		"category":      strings.ToLower(queryParams.Category),
 		"page":          queryParams.Page,
 		"limit":         queryParams.Limit,
 		"sort":          queryParams.Sort,
@@ -140,7 +140,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		"company_id":    queryParams.CompanyId,
 		"department_id": queryParams.DepartmentId,
 		"cursor":        map[string]interface{}{},
-		"view_type":     queryParams.ViewType,
+		"view_type":     strings.ToLower(queryParams.ViewType),
 	}
 
 	if queryParams.Cursor != nil {
@@ -163,7 +163,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 
 	// NextCursor 계산
 	var nextCursor string
-	if len(posts) > 0 && queryParams.ViewType == "INFINITE" {
+	if len(posts) > 0 && strings.ToLower(queryParams.ViewType) == "infinite" {
 		lastPost := posts[len(posts)-1]
 
 		if queryParams.Sort == "created_at" {
@@ -240,7 +240,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 		NextPage:   meta.NextPage,
 	}
 
-	if queryParams.ViewType == "PAGINATION" {
+	if strings.ToLower(queryParams.ViewType) == "pagination" {
 		postMeta.PrevPage = meta.PrevPage
 		postMeta.TotalPages = meta.TotalPages
 	}

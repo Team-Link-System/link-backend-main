@@ -132,8 +132,8 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 		return nil, nil, fmt.Errorf("게시물 전체 개수 조회 실패: %w", err)
 	}
 
-	switch viewType {
-	case "PAGINATION":
+	switch strings.ToLower(viewType) {
+	case "pagination":
 
 		// 오프셋 기반 페이지네이션 처리
 		if page, ok := queryOptions["page"].(int); ok {
@@ -142,7 +142,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 				query = query.Offset(offset).Limit(limit)
 			}
 		}
-	case "INFINITE":
+	case "infinite":
 
 		if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 			if createdAt := cursor["created_at"]; createdAt != nil {
