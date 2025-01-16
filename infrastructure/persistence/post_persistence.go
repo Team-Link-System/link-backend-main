@@ -55,7 +55,7 @@ func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
 	}
 
 	// 3. 부서 중간 테이블 저장 (post_department 테이블)
-	if strings.ToUpper(post.Visibility) == "DEPARTMENT" {
+	if strings.ToLower(post.Visibility) == "department" {
 		if len(post.DepartmentIds) == 0 {
 			tx.Rollback()
 			return fmt.Errorf("부서 게시물에 필요한 department IDs가 없습니다")
@@ -110,17 +110,17 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 
 	// 카테고리 조건 설정
 	if category, ok := queryOptions["category"].(string); ok {
-		switch category {
-		case "PUBLIC":
-			query = query.Where("company_id IS NULL")
-		case "COMPANY":
+		switch strings.ToLower(category) {
+		case "public":
+			query = query.Where("company_id IS NULL AND visibility = ?", strings.ToLower("public"))
+		case "company":
 			if companyId, exists := queryOptions["company_id"].(uint); exists {
-				query = query.Where("company_id = ? AND visibility = ?", companyId, strings.ToLower("COMPANY")) //TODO 회사 소속 게시물만 조회
+				query = query.Where("company_id = ? AND visibility = ?", companyId, strings.ToLower("company")) //TODO 회사 소속 게시물만 조회
 			}
-		case "DEPARTMENT":
+		case "department":
 			if departmentId, exists := queryOptions["department_id"].(uint); exists {
 				query = query.Joins("JOIN post_departments ON posts.id = post_departments.post_id").
-					Where("post_departments.department_id = ? AND visibility = ?", departmentId, strings.ToLower("DEPARTMENT"))
+					Where("post_departments.department_id = ? AND visibility = ?", departmentId, strings.ToLower("department"))
 			}
 		}
 	}
@@ -132,8 +132,8 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 		return nil, nil, fmt.Errorf("게시물 전체 개수 조회 실패: %w", err)
 	}
 
-	switch viewType {
-	case "PAGINATION":
+	switch strings.ToLower(viewType) {
+	case "pagination":
 
 		// 오프셋 기반 페이지네이션 처리
 		if page, ok := queryOptions["page"].(int); ok {
@@ -142,7 +142,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 				query = query.Offset(offset).Limit(limit)
 			}
 		}
-	case "INFINITE":
+	case "infinite":
 
 		if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 			if createdAt := cursor["created_at"]; createdAt != nil {
@@ -327,8 +327,8 @@ func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *enti
 
 	// Update visibility logic
 	if post.Visibility != "" {
-		switch strings.ToUpper(post.Visibility) {
-		case "PUBLIC":
+		switch strings.ToLower(post.Visibility) {
+		case "public":
 			// Remove associated departments and set `company_id` to NULL
 			if err := tx.Exec("DELETE FROM post_departments WHERE post_id = ?", postId).Error; err != nil {
 				tx.Rollback()
@@ -338,13 +338,13 @@ func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *enti
 				tx.Rollback()
 				return err
 			}
-		case "COMPANY":
+		case "company":
 			// Update `company_id`
 			if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("company_id", post.CompanyID).Error; err != nil {
 				tx.Rollback()
 				return err
 			}
-		case "DEPARTMENT":
+		case "department":
 			// Remove old departments and insert new ones
 			if err := tx.Exec("DELETE FROM post_departments WHERE post_id = ?", postId).Error; err != nil {
 				tx.Rollback()
@@ -359,7 +359,7 @@ func (r *postPersistence) UpdatePost(requestUserId uint, postId uint, post *enti
 		}
 
 		// Update `visibility`
-		if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("visibility", post.Visibility).Error; err != nil {
+		if err := tx.Model(&model.Post{}).Where("id = ?", postId).Update("visibility", strings.ToLower(post.Visibility)).Error; err != nil {
 			tx.Rollback()
 			return err
 		}
