@@ -94,7 +94,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			return db.Select("id, name")
 		}).
 		Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
-			return db.Select("user_id,image")
+			return db.Select("user_id, image")
 		}).
 		Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name, email, nickname")
@@ -267,7 +267,7 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 	}).Preload("Departments", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, name")
 	}).Preload("User.UserProfile", func(db *gorm.DB) *gorm.DB {
-		return db.Select("user_id,image")
+		return db.Select("user_id, image")
 	}).Preload("User", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, name, email, nickname")
 	}).First(post, postId).Error; err != nil {
@@ -292,6 +292,14 @@ func (r *postPersistence) GetPost(requestUserId uint, postId uint) (*entity.Post
 		authorMap["id"] = post.User.ID
 		authorMap["name"] = post.User.Name
 		authorMap["email"] = post.User.Email
+
+		if post.User.Nickname != "" {
+			authorMap["nickname"] = post.User.Nickname
+		}
+
+		if post.User.UserProfile != nil {
+			authorMap["image"] = post.User.UserProfile.Image
+		}
 	}
 
 	return &entity.Post{
