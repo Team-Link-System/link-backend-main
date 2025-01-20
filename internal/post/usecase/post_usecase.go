@@ -286,6 +286,8 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 	} else {
 		if requestUserId != post.UserID {
 			post.UserID = 0
+			authorName = "익명"
+			authorImage = ""
 		}
 	}
 
@@ -306,6 +308,7 @@ func (uc *postUsecase) GetPost(requestUserId uint, postId uint) (*res.GetPostRes
 		UserId:      post.UserID,
 		AuthorName:  authorName,
 		AuthorImage: authorImage,
+		IsAuthor:    requestUserId == post.UserID,
 		CreatedAt:   _util.ParseKst(post.CreatedAt).Format(time.DateTime),
 		UpdatedAt:   _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 	}
