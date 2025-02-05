@@ -307,12 +307,18 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 			}
 		}
 	}
-	// 송신자 ID 수집
-	senderIDs := make([]uint, len(chatMessages))
-	for i, msg := range chatMessages {
-		senderIDs[i] = msg.SenderID
+
+	senderIdMap := make(map[uint]struct{})
+	for _, msg := range chatMessages {
+		senderIdMap[msg.SenderID] = struct{}{}
 	}
 
+	uniqueSenderIds := make([]uint, 0, len(senderIdMap))
+	for senderId := range senderIdMap {
+		uniqueSenderIds = append(uniqueSenderIds, senderId)
+	}
+
+	// 사용자 프로필 이미지 조회
 	// 사용자 프로필 이미지 조회
 	var userProfiles []struct {
 		UserID uint    `gorm:"column:user_id"`
@@ -321,7 +327,7 @@ func (r *chatPersistence) GetChatMessages(chatRoomID uint, queryOptions map[stri
 
 	if err := r.db.Table("user_profiles").
 		Select("user_id, image").
-		Where("user_id IN ?", senderIDs).
+		Where("user_id IN ?", uniqueSenderIds).
 		Scan(&userProfiles).Error; err != nil {
 		return nil, nil, fmt.Errorf("사용자 프로필 이미지 조회 중 오류: %w", err)
 	}
