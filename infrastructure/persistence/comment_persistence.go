@@ -164,12 +164,19 @@ func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint
 		return nil, nil, fmt.Errorf("댓글 전체 개수 조회에 실패하였습니다: %w", err)
 	}
 
+	var nextCursor string
+	if len(result) > 0 {
+		nextCursor = result[len(result)-1].CreatedAt.Format("2006-01-02 15:04:05")
+	} else {
+		nextCursor = ""
+	}
+
 	hasMore := totalCount > int64(queryOptions["limit"].(int)*queryOptions["page"].(int))
 	return &entity.CommentMeta{
 		TotalCount: int(totalCount),
 		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
 		PageSize:   queryOptions["limit"].(int),
-		NextCursor: result[len(result)-1].CreatedAt.Format("2006-01-02 15:04:05"),
+		NextCursor: nextCursor,
 		HasMore:    &hasMore,
 		PrevPage:   queryOptions["page"].(int) - 1,
 		NextPage:   queryOptions["page"].(int) + 1,
