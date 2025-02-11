@@ -156,9 +156,9 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 					}
 					if order, ok := queryOptions["order"].(string); ok {
 						if strings.ToUpper(order) == "ASC" {
-							query = query.Where("created_at < ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
-						} else {
 							query = query.Where("created_at > ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
+						} else {
+							query = query.Where("created_at < ?", parsedTime.UTC()) // UTC로 변환된 시간 사용
 						}
 					}
 				}
