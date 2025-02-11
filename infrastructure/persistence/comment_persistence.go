@@ -169,16 +169,22 @@ func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId u
 		model.Comment
 		LikeCount int  `gorm:"column:like_count"`
 		IsLiked   bool `gorm:"column:is_liked"`
+
+		UserID           uint   `json:"user_id"`
+		UserName         string `json:"user_name"`
+		UserEmail        string `json:"user_email"`
+		UserNickname     string `json:"user_nickname"`
+		UserProfileImage string `json:"user_profile_image"`
 	}
 
 	query := r.db.Model(&model.Comment{}).
 		Select(`
 				comments.*,
-				users.id as user_id,
-				users.name,
-				users.email,
-				users.nickname,
-				user_profiles.image,
+				COALESCE(users.id, 0) AS user_id,
+				COALESCE(users.name, '익명') AS user_name,
+				COALESCE(users.email, 'N/A') AS user_email,
+				COALESCE(users.nickname, '') AS user_nickname,
+				COALESCE(user_profiles.image, '') AS user_profile_image,
 				COUNT(DISTINCT likes.id) as like_count,
 				BOOL_OR(user_likes.user_id = ?) as is_liked
 		`, requestUserId).
@@ -187,12 +193,12 @@ func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId u
 		Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = comments.id").
 		Joins("LEFT JOIN likes user_likes ON user_likes.target_type = 'COMMENT' AND user_likes.target_id = comments.id AND user_likes.user_id = ?", requestUserId).
 		Where("comments.parent_id = ?", parentId).
-		Group("comments.id, users.id, user_profiles.image").
+		Group("comments.id, users.id, users.name, users.email, users.nickname, user_profiles.image").
 		Order(fmt.Sprintf("comments.%s %s", queryOptions["sort"], queryOptions["order"]))
 
 	var totalCount int64
-	countQuery := *query
-	if err := countQuery.Count(&totalCount).Error; err != nil {
+	countQuery := query.Session(&gorm.Session{}).Count(&totalCount)
+	if err := countQuery.Error; err != nil {
 		return nil, nil, fmt.Errorf("대댓글 전체 개수 조회에 실패하였습니다: %w", err)
 	}
 
@@ -233,48 +239,14 @@ func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId u
 	result := make([]*entity.Comment, 0)
 	for _, comment := range results {
 
-		//TODO 대댓글 좋아요 수 조회
-		var likeCount int64
-		if err := r.db.Model(&model.Like{}).Where("target_type = 'COMMENT' AND target_id = ?", comment.ID).Count(&likeCount).Error; err != nil {
-			return nil, nil, fmt.Errorf("대댓글 좋아요 수 조회에 실패하였습니다: %w", err)
-		}
-		comment.LikeCount = int(likeCount)
-
-		authorMap := map[string]interface{}{
-			"name": "익명",
-		}
-
-		if comment.User != nil {
-			authorMap["id"] = comment.User.ID
-			authorMap["name"] = comment.User.Name
-			authorMap["email"] = comment.User.Email
-			if comment.User.Nickname != "" {
-				authorMap["nickname"] = comment.User.Nickname
-			}
-
-			if comment.User.UserProfile != nil {
-				authorMap["image"] = comment.User.UserProfile.Image
-			}
-		}
-
-		var profileImage string
-		if img, ok := authorMap["image"].(*string); ok && img != nil {
-			profileImage = *img
-		}
-
-		var userName string
-		if name, ok := authorMap["name"].(string); ok && name != "" {
-			userName = name
-		}
-
 		result = append(result, &entity.Comment{
 			ID:           comment.ID,
 			ParentID:     comment.ParentID,
 			UserID:       comment.UserID,
 			PostID:       comment.PostID,
 			Content:      comment.Content,
-			ProfileImage: profileImage,
-			UserName:     userName,
+			ProfileImage: comment.UserProfileImage,
+			UserName:     comment.UserName,
 			LikeCount:    comment.LikeCount,
 			IsLiked:      &comment.IsLiked,
 			IsAnonymous:  &comment.IsAnonymous,
