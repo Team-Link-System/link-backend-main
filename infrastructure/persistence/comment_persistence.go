@@ -44,10 +44,9 @@ func (r *commentPersistence) CreateComment(comment *entity.Comment) error {
 func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint, queryOptions map[string]interface{}) (*entity.CommentMeta, []*entity.Comment, error) {
 	type CommentResult struct {
 		model.Comment
-		ReplyCount int  `gorm:"column:reply_count"`
-		LikeCount  int  `gorm:"column:like_count"`
-		IsLiked    bool `gorm:"column:is_liked"`
-
+		ReplyCount       int    `gorm:"column:reply_count"`
+		LikeCount        int    `gorm:"column:like_count"`
+		IsLiked          bool   `gorm:"column:is_liked"`
 		UserID           uint   `json:"user_id"`
 		UserName         string `json:"user_name"`
 		UserEmail        string `json:"user_email"`
@@ -56,47 +55,52 @@ func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint
 	}
 
 	var results []CommentResult
+	// 기본 쿼리 구성
 	query := r.db.Model(&model.Comment{}).
 		Select(`
-			comments.*,
-			COALESCE(users.id, 0) AS user_id,
-			COALESCE(users.name, '익명') AS user_name,
-			COALESCE(users.email, 'N/A') AS user_email,
-			COALESCE(users.nickname, '') AS user_nickname,
-			COALESCE(user_profiles.image, '') AS user_profile_image,
-			COUNT(DISTINCT replies.id) AS reply_count,
-			COUNT(DISTINCT likes.id) AS like_count,
-			BOOL_OR(user_likes.user_id = ?) AS is_liked
-	`, requestUserId).
+            comments.*,
+            COALESCE(users.id, 0) AS user_id,
+            COALESCE(users.name, '익명') AS user_name,
+            COALESCE(users.email, 'N/A') AS user_email,
+            COALESCE(users.nickname, '') AS user_nickname,
+            COALESCE(user_profiles.image, '') AS user_profile_image,
+            (SELECT COUNT(*) FROM comments r WHERE r.parent_id = comments.id) AS reply_count,
+            (SELECT COUNT(*) FROM likes l WHERE l.target_type = 'COMMENT' AND l.target_id = comments.id) AS like_count,
+            EXISTS(
+                SELECT 1 FROM likes ul 
+                WHERE ul.target_type = 'COMMENT' 
+                AND ul.target_id = comments.id 
+                AND ul.user_id = ?
+            ) AS is_liked
+        `, requestUserId).
 		Joins("LEFT JOIN users ON comments.user_id = users.id").
 		Joins("LEFT JOIN user_profiles ON users.id = user_profiles.user_id").
-		Joins("LEFT JOIN comments replies ON replies.parent_id = comments.id").
-		Joins("LEFT JOIN likes ON likes.target_type = 'COMMENT' AND likes.target_id = comments.id").
-		Joins("LEFT JOIN likes user_likes ON user_likes.target_type = 'COMMENT' AND user_likes.target_id = comments.id AND user_likes.user_id = ?", requestUserId).
-		Where("comments.post_id = ? AND comments.parent_id IS NULL", postId).
-		Group("comments.id, users.id, users.name, users.email, users.nickname, user_profiles.image").
-		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"]))
+		Where("comments.post_id = ? AND comments.parent_id IS NULL", postId)
 
+	// 커서 처리 전에 파라미터 출력
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
-		if createdAt, ok := cursor["created_at"].(string); ok {
-			parsedTime, err := time.Parse("2006-01-02 15:04:05", createdAt)
+		if createdAt, ok := cursor["created_at"].(string); ok && createdAt != "" {
+
+			// 시간 파싱
+			loc, _ := time.LoadLocation("Asia/Seoul")
+			parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", createdAt, loc)
 			if err != nil {
 				return nil, nil, fmt.Errorf("cursor 시간 파싱에 실패하였습니다: %w", err)
 			}
 
-			if order, ok := queryOptions["order"].(string); ok {
-				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("created_at < ?", parsedTime.UTC())
-				} else {
-					query = query.Where("created_at > ?", parsedTime.UTC())
-				}
+			// WHERE 조건 추가
+			if strings.ToUpper(queryOptions["order"].(string)) == "ASC" {
+				query = query.Where("comments.created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
+			} else {
+				query = query.Where("comments.created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
 			}
+
 		} else if id, ok := cursor["id"].(uint); ok {
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("id > ?", id)
+					query = query.Where("comments.id > ?", id)
 				} else {
-					query = query.Where("id < ?", id)
+					query = query.Where("comments.id < ?", id)
 				}
 			}
 		} else if likeCount, ok := cursor["like_count"].(uint); ok {
@@ -110,9 +114,22 @@ func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint
 		}
 	}
 
-	//TODO 해당 댓글에 대한 대댓글 갯수도 필요
+	sortField := "created_at" // comments. 제거
+	if sort, ok := queryOptions["sort"].(string); ok && sort != "" {
+		sortField = sort
+	}
+
+	orderDirection := "DESC"
+	if order, ok := queryOptions["order"].(string); ok && order != "" {
+		orderDirection = strings.ToUpper(order)
+	}
+
+	query = query.Order(fmt.Sprintf("comments.%s %s", sortField, orderDirection))
+
 	if limit, ok := queryOptions["limit"].(int); ok {
 		query = query.Limit(limit)
+	} else {
+		query = query.Limit(10)
 	}
 
 	if err := query.Scan(&results).Error; err != nil {
@@ -204,16 +221,17 @@ func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId u
 
 	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
 		if createdAt, ok := cursor["created_at"].(string); ok {
-			parsedTime, err := time.Parse("2006-01-02 15:04:05", createdAt)
+			loc, _ := time.LoadLocation("Asia/Seoul")
+			parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", createdAt, loc)
 			if err != nil {
 				return nil, nil, fmt.Errorf("cursor 시간 파싱에 실패하였습니다: %w", err)
 			}
 
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("created_at < ?", parsedTime.UTC())
+					query = query.Where("created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
 				} else {
-					query = query.Where("created_at > ?", parsedTime.UTC())
+					query = query.Where("created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
 				}
 			}
 		} else if id, ok := cursor["id"].(uint); ok {
