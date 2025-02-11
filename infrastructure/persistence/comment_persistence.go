@@ -90,9 +90,9 @@ func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint
 
 			// WHERE 조건 추가
 			if strings.ToUpper(queryOptions["order"].(string)) == "ASC" {
-				query = query.Where("comments.created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
-			} else {
 				query = query.Where("comments.created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
+			} else {
+				query = query.Where("comments.created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
 			}
 
 		} else if id, ok := cursor["id"].(uint); ok {
@@ -229,17 +229,17 @@ func (r *commentPersistence) GetRepliesByParentID(requestUserId uint, parentId u
 
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
+					query = query.Where("comments.created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
 				} else {
-					query = query.Where("created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
+					query = query.Where("comments.created_at::timestamp with time zone > ?::timestamp with time zone", parsedTime)
 				}
 			}
 		} else if id, ok := cursor["id"].(uint); ok {
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("id > ?", id)
+					query = query.Where("comments.id > ?", id)
 				} else {
-					query = query.Where("id < ?", id)
+					query = query.Where("comments.id < ?", id)
 				}
 			}
 		}
