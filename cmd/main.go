@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -19,8 +20,39 @@ import (
 	ws "link/pkg/ws"
 )
 
+func setUlimit() {
+	var rLimit syscall.Rlimit
+
+	// 현재 설정 확인
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+	if err != nil {
+		log.Fatalf("ulimit 조회 실패: %v", err)
+	}
+
+	fmt.Printf("현재 ulimit: %d (Soft) / %d (Hard)\n", rLimit.Cur, rLimit.Max)
+
+	// ulimit을 65535로 증가 (하드 리밋 내에서)
+	rLimit.Cur = 65535
+	rLimit.Max = 65535
+
+	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+	if err != nil {
+		log.Fatalf("ulimit 설정 실패: %v", err)
+	}
+
+	// 설정 확인
+	err = syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+	if err != nil {
+		log.Fatalf("ulimit 재조회 실패: %v", err)
+	}
+
+	logger.LogSuccess(fmt.Sprintf("설정된 ulimit: %d (Soft) / %d (Hard)\n", rLimit.Cur, rLimit.Max))
+}
+
 func startServer() {
-	// 로거 초기화
+	// 🚀 ulimit 적용
+	setUlimit()
+
 	if err := logger.InitLogger(); err != nil {
 		log.Fatalf("로거 초기화 실패: %v", err)
 	}
