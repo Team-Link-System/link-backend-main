@@ -1,0 +1,56 @@
+config:
+  target: "http://localhost:8080"
+  phases: 
+    - duration: 60
+      arrivalRate: 100
+      maxVusers: 100
+  processor: "../artillery.js"
+
+scenarios:
+  - flow:
+
+    # 타임스탬프 및 변수 초기화
+    - function: "getTimestamp"
+
+    # 회원가입 (대기 시간 3~5초 랜덤 적용)
+    - post:
+        url : "/api/user/signup"
+        json:
+          email: "likeTestUser{{ timestampValue }}{{$randomNumber(1,9999)}}@example.com"
+          name: "likeTestUser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+          password: "password123"
+          nickname: "likeTestUser{{ timestampValue }}{{$randomNumber(1,9999) }}"
+          phone: "010-1234-5678"
+        capture:
+          - json: "$.payload.email"
+            as: "userEmail"
+        expect:
+          - statusCode: 201 
+    - think: "{{ $randomNumber(3,5) }}" # 회원가입 후 3~5초 랜덤 대기
+
+    # 로그인 (대기 시간 2~3초 랜덤 적용)
+    - post:
+        url : "/api/auth/signin"
+        json:
+          email: "{{ userEmail }}"
+          password: "password123"
+        capture:
+          - json: "$.payload.id"
+            as: "userId"
+          - header: "authorization"
+            as: "accessToken"
+          - header: "content-type"
+            as: "contentType"
+        expect:
+          - statusCode: 200
+    - think: "{{ $randomNumber(2,3) }}" # 로그인 후 2~3초 랜덤 대기
+
+    # 댓글 좋아요 동시성 테스트 (대기 시간 1~2초 랜덤 적용)
+    - post:
+        url: "/api/like/comment/2"
+        headers:
+          Authorization: "{{ accessToken }}"
+          Content-Type: "{{ contentType }}"
+        expect:
+          - statusCode: 201
+    - think: "{{ $randomNumber(1,2) }}" # 좋아요 요청 후 1~2초 랜덤 대기
