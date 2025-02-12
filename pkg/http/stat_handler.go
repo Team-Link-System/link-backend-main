@@ -5,8 +5,11 @@ import (
 	_statUsecase "link/internal/stat/usecase"
 	"link/pkg/common"
 	"net/http"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
 type StatHandler struct {
@@ -71,6 +74,31 @@ func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "현재 접속중인 사용자 수 조회 성공", response))
+}
+
+// TODO 시스템 리소스 정보 반환
+func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
+	_, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
+		return
+	}
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	vmStat, _ := mem.VirtualMemory()
+
+	cpuUsage, _ := cpu.Percent(0, false)
+
+	// JSON 응답 반환
+	c.JSON(http.StatusOK, gin.H{
+		"CPU 사용량(%)": fmt.Sprintf("%.2f%%", cpuUsage[0]),
+		"총 메모리(GB)":  fmt.Sprintf("%.2f GB", float64(vmStat.Total)/(1024*1024*1024)),
+		"사용 메모리(GB)": fmt.Sprintf("%.2f GB", float64(vmStat.Used)/(1024*1024*1024)),
+		"메모리 사용률(%)": fmt.Sprintf("%.2f%%", vmStat.UsedPercent),
+	})
 }
 
 //TODO 일자별 출근 통계

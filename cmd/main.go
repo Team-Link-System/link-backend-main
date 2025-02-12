@@ -291,6 +291,7 @@ func startServer() {
 			{
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
 				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
+				stat.GET("/system/resource", statHandler.GetSystemResourceInfo)
 			}
 
 			report := protectedRoute.Group("report")
