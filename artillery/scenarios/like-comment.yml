@@ -2,8 +2,8 @@ config:
   target: "http://localhost:8080"
   phases: 
     - duration: 60
-      arrivalRate: 100
-      maxVusers: 100
+      arrivalRate: 50
+      maxVusers: 1000
   processor: "../artillery.js"
 
 scenarios:
