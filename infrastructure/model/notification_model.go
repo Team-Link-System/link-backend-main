@@ -13,7 +13,7 @@ type Notification struct {
 	SenderID       uint               `json:"sender_id" bson:"sender_id"`                                 // 초대를 보낸 사용자 ID
 	ReceiverID     uint               `json:"receiver_id" bson:"receiver_id"`                             // 초대를 받은 사용자 ID
 	Title          string             `json:"title" bson:"title"`                                         // 알림 제목
-	Status         *string            `json:"status,omitempty" bson:"status,omitempty" default:"pending"` // 초대 상태 (초대일 경우: pending, accepted, rejected)
+	Status         string             `json:"status,omitempty" bson:"status,omitempty" default:"pending"` // 초대 상태 (초대일 경우: pending, accepted, rejected)
 	Content        string             `json:"content" bson:"content"`                                     // 알림 내용
 	AlarmType      string             `json:"alarm_type" binding:"required" bson:"alarm_type"`            // 알림 타입 (e.g., "mention", "invite")
 	IsRead         bool               `json:"is_read,omitempty" bson:"is_read" default:"false"`           // 읽음 여부

@@ -136,8 +136,8 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 			CreatedAt:      notification.CreatedAt,
 		}
 
-		if notification.Status != nil {
-			notificationsEntity[i].Status = *notification.Status
+		if notification.Status != "" {
+			notificationsEntity[i].Status = notification.Status
 		}
 	}
 
@@ -204,6 +204,12 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 	collection := r.db.Database("link").Collection("notifications")
 	filter := bson.M{"_id": id}
 	result := collection.FindOne(context.Background(), filter)
+
+	// 결과가 없을 경우 nil 반환
+	if err := result.Err(); err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+
 	var notification *model.Notification
 	if err := result.Decode(&notification); err != nil {
 		return nil, fmt.Errorf("알림 조회에 실패했습니다: %w", err)
@@ -215,7 +221,7 @@ func (r *notificationPersistence) GetNotificationByID(notificationId string) (*e
 		SenderId:       notification.SenderID,
 		ReceiverId:     notification.ReceiverID,
 		Title:          notification.Title,
-		Status:         *notification.Status,
+		Status:         notification.Status,
 		Content:        notification.Content,
 		AlarmType:      notification.AlarmType,
 		IsRead:         notification.IsRead,
@@ -247,7 +253,7 @@ func (r *notificationPersistence) GetNotificationByDocID(docID string) (*entity.
 		SenderId:       notification.SenderID,
 		ReceiverId:     notification.ReceiverID,
 		Title:          notification.Title,
-		Status:         *notification.Status,
+		Status:         notification.Status,
 		Content:        notification.Content,
 		AlarmType:      notification.AlarmType,
 		IsRead:         notification.IsRead,

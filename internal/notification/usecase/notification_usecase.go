@@ -430,7 +430,7 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, noti
 		return common.NewError(http.StatusBadRequest, "처리할 수 없는 알림입니다", nil)
 	}
 
-	if notification.IsRead || notification.Status == "ACCEPTED" || notification.Status == "REJECTED" {
+	if notification.IsRead || (notification.Status != "" && (notification.Status == "ACCEPTED" || notification.Status == "REJECTED")) {
 		return common.NewError(http.StatusBadRequest, "이미 처리된 알림입니다", nil)
 	}
 
