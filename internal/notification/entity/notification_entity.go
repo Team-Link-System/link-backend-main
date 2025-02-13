@@ -12,7 +12,7 @@ type Notification struct {
 	SenderId       uint               `json:"sender_id,omitempty"`
 	ReceiverId     uint               `json:"receiver_id,omitempty"`
 	Title          string             `json:"title,omitempty"`
-	Status         string             `json:"status,omitempty" default:"pending"` // Status 값 ("pending", "accepted", "rejected","request" 등)
+	Status         string             `json:"status,omitempty"` // Status 값 ("pending", "accepted", "rejected","request" 등)
 	Content        string             `json:"content,omitempty"`
 	AlarmType      string             `json:"alarm_type" binding:"required"`     // 알림 타입 ("mention", "invite", "request", "response")
 	IsRead         bool               `json:"is_read,omitempty" default:"false"` // 읽음 여부
