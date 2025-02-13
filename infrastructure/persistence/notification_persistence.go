@@ -43,10 +43,10 @@ func (r *notificationPersistence) GetNotificationsByReceiverId(receiverId uint, 
 		direction = "next"
 	}
 
-	if isRead, _ := queryOptions["is_read"].(string); isRead != "" {
-		parsedIsRead, err := strconv.ParseBool(isRead)
+	if isReadStr, exists := queryOptions["is_read"].(string); exists && isReadStr != "" {
+		parsedIsRead, err := strconv.ParseBool(isReadStr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("유효하지 않은 is_read 값: %s", isRead)
+			return nil, nil, fmt.Errorf("유효하지 않은 is_read 값: %s", isReadStr)
 		}
 		filter["is_read"] = parsedIsRead
 	}
