@@ -29,7 +29,7 @@ type NotificationUsecase interface {
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
-	UpdateNotificationReadStatus(receiverId uint, notificationId string) error
+	UpdateNotificationReadStatus(receiverId uint, docId string) error
 }
 
 type notificationUsecase struct {
@@ -415,8 +415,8 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, ta
 }
 
 // TODO 읽음 처리
-func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, notificationId string) error {
-	notification, err := n.notificationRepo.GetNotificationByID(notificationId)
+func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, docId string) error {
+	notification, err := n.notificationRepo.GetNotificationByDocID(docId)
 	if err != nil || notification == nil {
 		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}

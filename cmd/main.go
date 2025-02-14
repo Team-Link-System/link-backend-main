@@ -222,7 +222,7 @@ func startServer() {
 				notification.POST("/mention", notificationHandler.SendMentionNotification)
 				notification.GET("/list", notificationHandler.GetNotifications)
 				notification.PUT("/invite/status", notificationHandler.UpdateInviteNotificationStatus) //! 초대 알림 수락 및 거절
-				notification.PUT("/:notificationId", notificationHandler.UpdateNotificationReadStatus) //! 알림 읽음 처리
+				notification.PUT("/:docId", notificationHandler.UpdateNotificationReadStatus)          //! 알림 읽음 처리
 			}
 
 			post := protectedRoute.Group("post")
