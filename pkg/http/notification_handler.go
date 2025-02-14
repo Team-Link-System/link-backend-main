@@ -102,11 +102,7 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	}
 
 	//읽음 여부 조회
-	IsRead := c.DefaultQuery("is_read", "false")
-	if IsRead == "" && IsRead != "true" && IsRead != "false" {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 읽음 여부 값입니다.", nil))
-		return
-	}
+	IsRead := c.Query("is_read")
 
 	cursorParam := c.Query("cursor")
 	var cursor *req.NotificationCursor
@@ -200,8 +196,8 @@ func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {
 	}
 
 	//TODO DB가 다른 종류이기 때문에 하나가 멈추면 다른 하나도 멈춰야함
-	notificationId := c.Param("notificationId")
-	err := h.notificationUsecase.UpdateNotificationReadStatus(userId.(uint), notificationId)
+	docId := c.Param("docId")
+	err := h.notificationUsecase.UpdateNotificationReadStatus(userId.(uint), docId)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			fmt.Printf("알림 읽음 처리 오류: %v", appError.Err)
