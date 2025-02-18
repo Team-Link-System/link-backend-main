@@ -101,6 +101,30 @@ func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
 	})
 }
 
+// TODO 월별 게시글 통계
+func (h *StatHandler) GetMonthlyPostStat(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 요청입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
+		return
+	}
+
+	response, err := h.statUsecase.GetMonthlyPostStat(userId.(uint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "월별 게시글 통계 조회 실패", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "월별 게시글 통계 조회 성공", response))
+}
+
+//TODO 주간 게시글 통계
+
 //TODO 일자별 출근 통계
 
 //TODO 일자별 사용자 수 조회

@@ -292,6 +292,11 @@ func startServer() {
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
 				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
 				stat.GET("/system/resource", statHandler.GetSystemResourceInfo)
+				//회사의 월별 게시글 (월별 게시글 수, 월별 좋아요 수, 월별 댓글 수)
+				// stat.GET("/post/monthly/:companyid", statHandler.GetMonthlyPostStat)
+				//회사 주간 게시글
+				//내가 쓴 게시글
+				//활동 로그
 			}
 
 			report := protectedRoute.Group("report")
