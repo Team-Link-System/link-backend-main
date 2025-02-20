@@ -527,9 +527,12 @@ func (r *postPersistence) GetPostByCommentID(commentId uint) (*entity.Post, erro
 }
 
 func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip string) error {
+	ctx := context.Background()
 	key := fmt.Sprintf("post:viewed:%d:%s", postId, ip)
+	viewCountKey := fmt.Sprintf("post:views:%d", postId)
 
-	exists, err := r.redis.SetNX(context.Background(), key, 1, 60*time.Second).Result()
+	// 중복 조회 방지 (IP 기준 TTL 60초)
+	exists, err := r.redis.SetNX(ctx, key, 1, 60*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -539,11 +542,40 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 		return nil
 	}
 
-	// Redis 조회수 증가
-	_, err = r.redis.Incr(context.Background(), fmt.Sprintf("post:views:%d", postId)).Result()
+	// Redis 조회수 증가 후 값 반환
+	newCount, err := r.redis.Incr(ctx, viewCountKey).Result()
 	if err != nil {
 		return err
 	}
 
+	// TTL이 없을 경우 기본 5분 설정 (조회수 캐싱 유지)
+	ttl, _ := r.redis.TTL(ctx, viewCountKey).Result()
+	if ttl < 0 {
+		_ = r.redis.Expire(ctx, viewCountKey, 5*time.Minute).Err()
+	}
+
+	fmt.Printf(" 조회수 증가: postId=%d, newCount=%d\n", postId, newCount)
 	return nil
+}
+
+func (r *postPersistence) GetPostViewCount(postId uint) (int, error) {
+	ctx := context.Background()
+	key := fmt.Sprintf("post:views:%d", postId)
+
+	count, err := r.redis.Get(ctx, key).Int()
+	if err == nil {
+		return count, nil // Redis에서 값이 있으면 바로 반환
+	}
+
+	var post model.Post
+	err = r.db.Model(&post).Where("id = ?", postId).Select("views").First(&post).Error
+	if err != nil {
+		return 0, err
+	}
+
+	count = post.Views
+	_ = r.redis.Set(ctx, key, count, 5*time.Minute).Err()
+
+	fmt.Printf(" 조회수 조회 & 캐싱: postId=%d, count=%d\n", postId, count)
+	return count, nil
 }

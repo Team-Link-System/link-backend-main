@@ -26,6 +26,7 @@ type PostUsecase interface {
 	UpdatePost(requestUserId uint, postId uint, post *req.UpdatePostRequest) error
 	DeletePost(requestUserId uint, postId uint) error
 	IncreasePostViewCount(requestUserId uint, postId uint, ip string) error
+	GetPostViewCount(requestUserId uint, postId uint) (*res.GetPostViewCountResponse, error)
 }
 
 type postUsecase struct {
@@ -333,6 +334,25 @@ func (uc *postUsecase) IncreasePostViewCount(requestUserId uint, postId uint, ip
 	}
 
 	return nil
+}
+
+// TODO 게시물 조회수 가져오기
+func (uc *postUsecase) GetPostViewCount(requestUserId uint, postId uint) (*res.GetPostViewCountResponse, error) {
+	_, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	viewCount, err := uc.postRepo.GetPostViewCount(postId)
+	if err != nil {
+		fmt.Printf("게시물 조회수 가져오기 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "게시물 조회수 가져오기 실패", err)
+	}
+
+	return &res.GetPostViewCountResponse{
+		ViewCount: viewCount,
+	}, nil
 }
 
 // TODO 게시물 수정

@@ -268,12 +268,47 @@ func (h *PostHandler) IncreasePostViewCount(c *gin.Context) {
 
 	err = h.postUsecase.IncreasePostViewCount(userId.(uint), uint(postId), ip)
 	if err != nil {
-		fmt.Printf("게시물 조회수 증가 실패: %v", err)
-		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("게시물 조회수 증가 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회수 증가 완료", nil))
+}
+
+// TODO : 게시물 조회수 가져오기
+func (h *PostHandler) GetPostViewCount(c *gin.Context) {
+
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	postId, err := strconv.Atoi(c.Param("postid"))
+	if err != nil {
+		fmt.Printf("게시물 아이디 처리 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
+		return
+	}
+
+	viewCount, err := h.postUsecase.GetPostViewCount(userId.(uint), uint(postId))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("게시물 조회수 증가 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "게시물 조회수 가져오기 완료", viewCount))
 }
 
 // TODO 게시물 수정

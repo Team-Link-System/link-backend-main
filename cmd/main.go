@@ -232,7 +232,8 @@ func startServer() {
 				post.GET("/:postid", postHandler.GetPost)
 				post.DELETE("/:postid", postHandler.DeletePost)
 				post.PUT("/:postid", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.UpdatePost)
-				post.POST("/:postid/view", postHandler.IncreasePostViewCount) //TODO : 조회수 증가 및 가져오기
+				post.POST("/:postid/view", postHandler.IncreasePostViewCount) //TODO : 조회수 증가
+				post.GET("/:postid/view", postHandler.GetPostViewCount)       //TODO : 조회수 가져오기
 			}
 
 			//TODO 댓글 관련 핸들러
