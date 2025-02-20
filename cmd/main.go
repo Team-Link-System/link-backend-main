@@ -232,6 +232,8 @@ func startServer() {
 				post.GET("/:postid", postHandler.GetPost)
 				post.DELETE("/:postid", postHandler.DeletePost)
 				post.PUT("/:postid", params.PostImageMiddleware.PostImageUploadMiddleware(), postHandler.UpdatePost)
+				post.POST("/:postid/view", postHandler.IncreasePostViewCount) //TODO : 조회수 증가
+				post.GET("/:postid/view", postHandler.GetPostViewCount)       //TODO : 조회수 가져오기
 			}
 
 			//TODO 댓글 관련 핸들러
@@ -292,6 +294,11 @@ func startServer() {
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
 				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
 				stat.GET("/system/resource", statHandler.GetSystemResourceInfo)
+				//회사의 월별 게시글 (월별 게시글 수, 월별 좋아요 수, 월별 댓글 수)
+				// stat.GET("/post/monthly/:companyid", statHandler.GetMonthlyPostStat)
+				//회사 주간 게시글
+				//내가 쓴 게시글
+				//활동 로그
 			}
 
 			report := protectedRoute.Group("report")

@@ -12,4 +12,6 @@ type PostRepository interface {
 	UpdatePost(requestUserId uint, postId uint, post *entity.Post) error
 	GetPostByID(postId uint) (*entity.Post, error)
 	GetPostByCommentID(commentId uint) (*entity.Post, error)
+	IncreasePostViewCount(requestUserId uint, postId uint, ip string) error
+	GetPostViewCount(postId uint) (int, error)
 }

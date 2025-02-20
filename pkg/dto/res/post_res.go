@@ -31,3 +31,7 @@ type PaginationMeta struct {
 	PrevPage   int    `json:"prev_page,omitempty"`   // 이전 페이지 번호 커서, 오프셋 둘다 사용
 	NextPage   int    `json:"next_page,omitempty"`   // 다음 페이지 번호 커서, 오프셋 둘다 사용
 }
+
+type GetPostViewCountResponse struct {
+	ViewCount int `json:"view_count"`
+}

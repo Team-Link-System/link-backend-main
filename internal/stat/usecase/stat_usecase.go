@@ -17,6 +17,8 @@ type StatUsecase interface {
 	GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrentOnlineUsersResponse, error)
 
 	GetTodayPostStat(companyId uint) (*res.GetTodayPostStatResponse, error)
+
+	GetMonthlyPostStat(companyId uint) (*res.GetPostStatResponse, error)
 }
 
 type statUsecase struct {
@@ -107,4 +109,33 @@ func (uc *statUsecase) GetTodayPostStat(requestUserId uint) (*res.GetTodayPostSt
 	}
 
 	return response, nil
+}
+
+func (uc *statUsecase) GetMonthlyPostStat(requestUserId uint) (*res.GetPostStatResponse, error) {
+	user, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	if user.UserProfile.CompanyID == nil {
+		fmt.Printf("사용자의 회사 정보가 없습니다")
+		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+	}
+
+	//TODO post 집계 데이터 조회
+	// postsStat, err := uc.statRepo.GetMonthlyPostStat(*user.UserProfile.CompanyID)
+	// if err != nil {
+	// 	fmt.Printf("게시물 집계 데이터 조회 실패: %v", err)
+	// 	return nil, common.NewError(http.StatusBadRequest, "게시물 집계 데이터 조회 실패", err)
+	// }
+
+	// response := &res.GetPostStatResponse{
+	// 	PeriodType:  "monthly",
+	// 	PeriodValue: fmt.Sprintf("%d-%02d", postsStat.Year, postsStat.Month),
+	// 	SortBy:      "trending_score",
+	// 	Posts:       postsStat.Posts,
+	// }
+
+	return nil, nil
 }

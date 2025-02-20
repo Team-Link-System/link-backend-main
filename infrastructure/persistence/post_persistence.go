@@ -1,11 +1,13 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -16,11 +18,12 @@ import (
 //TODO postgres
 
 type postPersistence struct {
-	db *gorm.DB
+	db    *gorm.DB
+	redis *redis.Client
 }
 
-func NewPostPersistence(db *gorm.DB) repository.PostRepository {
-	return &postPersistence{db: db}
+func NewPostPersistence(db *gorm.DB, redis *redis.Client) repository.PostRepository {
+	return &postPersistence{db: db, redis: redis}
 }
 
 func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
@@ -521,4 +524,58 @@ func (r *postPersistence) GetPostByCommentID(commentId uint) (*entity.Post, erro
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
+}
+
+func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip string) error {
+	ctx := context.Background()
+	key := fmt.Sprintf("post:viewed:%d:%s", postId, ip)
+	viewCountKey := fmt.Sprintf("post:views:%d", postId)
+
+	// 중복 조회 방지 (IP 기준 TTL 60초)
+	exists, err := r.redis.SetNX(ctx, key, 1, 60*time.Second).Result()
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// 이미 조회한 경우 → 조회수 증가하지 않음
+		return nil
+	}
+
+	// Redis 조회수 증가 후 값 반환
+	newCount, err := r.redis.Incr(ctx, viewCountKey).Result()
+	if err != nil {
+		return err
+	}
+
+	// TTL이 없을 경우 기본 5분 설정 (조회수 캐싱 유지)
+	ttl, _ := r.redis.TTL(ctx, viewCountKey).Result()
+	if ttl < 0 {
+		_ = r.redis.Expire(ctx, viewCountKey, 5*time.Minute).Err()
+	}
+
+	fmt.Printf(" 조회수 증가: postId=%d, newCount=%d\n", postId, newCount)
+	return nil
+}
+
+func (r *postPersistence) GetPostViewCount(postId uint) (int, error) {
+	ctx := context.Background()
+	key := fmt.Sprintf("post:views:%d", postId)
+
+	count, err := r.redis.Get(ctx, key).Int()
+	if err == nil {
+		return count, nil // Redis에서 값이 있으면 바로 반환
+	}
+
+	var post model.Post
+	err = r.db.Model(&post).Where("id = ?", postId).Select("views").First(&post).Error
+	if err != nil {
+		return 0, err
+	}
+
+	count = post.Views
+	_ = r.redis.Set(ctx, key, count, 5*time.Minute).Err()
+
+	fmt.Printf(" 조회수 조회 & 캐싱: postId=%d, count=%d\n", postId, count)
+	return count, nil
 }
