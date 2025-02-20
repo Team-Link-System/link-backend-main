@@ -1,11 +1,13 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 
 	"link/infrastructure/model"
@@ -16,11 +18,12 @@ import (
 //TODO postgres
 
 type postPersistence struct {
-	db *gorm.DB
+	db    *gorm.DB
+	redis *redis.Client
 }
 
-func NewPostPersistence(db *gorm.DB) repository.PostRepository {
-	return &postPersistence{db: db}
+func NewPostPersistence(db *gorm.DB, redis *redis.Client) repository.PostRepository {
+	return &postPersistence{db: db, redis: redis}
 }
 
 func (r *postPersistence) CreatePost(authorId uint, post *entity.Post) error {
@@ -521,4 +524,26 @@ func (r *postPersistence) GetPostByCommentID(commentId uint) (*entity.Post, erro
 		Departments: &departments,
 		Author:      authorMap,
 	}, nil
+}
+
+func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip string) error {
+	key := fmt.Sprintf("post:viewed:%d:%s", postId, ip)
+
+	exists, err := r.redis.SetNX(context.Background(), key, 1, 60*time.Second).Result()
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// 이미 조회한 경우 → 조회수 증가하지 않음
+		return nil
+	}
+
+	// Redis 조회수 증가
+	_, err = r.redis.Incr(context.Background(), fmt.Sprintf("post:views:%d", postId)).Result()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
