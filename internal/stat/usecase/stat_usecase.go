@@ -123,7 +123,7 @@ func (uc *statUsecase) GetMonthlyPostStat(requestUserId uint) (*res.GetPostStatR
 		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 	}
 
-	//TODO post 집계 데이터 조회
+	// //TODO post 집계 데이터 조회
 	// postsStat, err := uc.statRepo.GetMonthlyPostStat(*user.UserProfile.CompanyID)
 	// if err != nil {
 	// 	fmt.Printf("게시물 집계 데이터 조회 실패: %v", err)

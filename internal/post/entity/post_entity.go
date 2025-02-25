@@ -16,6 +16,7 @@ type Post struct {
 	DepartmentIds []*uint                `json:"department_id,omitempty"`
 	CreatedAt     time.Time              `json:"created_at,omitempty"`
 	UpdatedAt     time.Time              `json:"updated_at,omitempty"`
+	ViewCount     int                    `json:"view_count"`
 	Comments      *[]interface{}         `json:"comments,omitempty"`
 	Likes         *[]interface{}         `json:"likes,omitempty"`
 	Author        map[string]interface{} `json:"author,omitempty"`

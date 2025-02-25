@@ -247,6 +247,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			CreatedAt:   post.CreatedAt,
 			Departments: &departments,
 			Author:      authorMap,
+			ViewCount:   post.Views,
 		})
 	}
 
@@ -528,33 +529,45 @@ func (r *postPersistence) GetPostByCommentID(commentId uint) (*entity.Post, erro
 
 func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip string) error {
 	ctx := context.Background()
-	key := fmt.Sprintf("post:viewed:%d:%s", postId, ip)
+	// IP + userId로 키를 생성하여 더 정확한 중복 체크
+	key := fmt.Sprintf("post:viewed:%d:%d:%s", postId, userId, ip)
 	viewCountKey := fmt.Sprintf("post:views:%d", postId)
 
-	// 중복 조회 방지 (IP 기준 TTL 60초)
-	exists, err := r.redis.SetNX(ctx, key, 1, 60*time.Second).Result()
+	// 이미 조회했는지 확인 (TTL 24시간으로 설정)
+	exists, err := r.redis.SetNX(ctx, key, 1, 24*time.Hour).Result()
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		// 이미 조회한 경우 → 조회수 증가하지 않음
-		return nil
+		fmt.Printf("이미 조회한 userId , ip : %d, %s\n", userId, ip)
+		return fmt.Errorf("이미 조회한 userId, ip  : %d, %s", userId, ip) // 이미 조회한 경우 종료
 	}
 
-	// Redis 조회수 증가 후 값 반환
+	//TODO : 만약에 조회수 없는 경우 조회수 db에서 조회후 캐싱
+	viewCount, err := r.redis.Get(ctx, viewCountKey).Int64()
+	if err != nil {
+		err = r.db.Model(&model.Post{}).Where("id = ?", postId).Select("views").Scan(&viewCount).Error
+		if err != nil {
+			return err
+		}
+
+		err = r.redis.Set(ctx, viewCountKey, viewCount, 1*time.Hour).Err()
+		if err != nil {
+			return err
+		}
+	}
+	// 조회수 증가
 	newCount, err := r.redis.Incr(ctx, viewCountKey).Result()
 	if err != nil {
 		return err
 	}
 
-	// TTL이 없을 경우 기본 5분 설정 (조회수 캐싱 유지)
-	ttl, _ := r.redis.TTL(ctx, viewCountKey).Result()
-	if ttl < 0 {
-		_ = r.redis.Expire(ctx, viewCountKey, 5*time.Minute).Err()
-	}
+	// 캐시 만료 설정 (없을 경우에만)
+	// 3️ TTL을 5분으로 갱신 (조회가 발생할 때마다)
+	_ = r.redis.Expire(ctx, viewCountKey, 5*time.Minute).Err()
+	fmt.Printf("조회수 증가: postId=%d, newCount=%d\n", postId, newCount)
 
-	fmt.Printf(" 조회수 증가: postId=%d, newCount=%d\n", postId, newCount)
 	return nil
 }
 
