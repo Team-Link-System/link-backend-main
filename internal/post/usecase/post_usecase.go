@@ -228,6 +228,7 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 			AuthorName:   authorName,
 			AuthorImage:  authorImage,
 			IsAuthor:     requestUserId == post.UserID,
+			ViewCount:    post.ViewCount,
 			CreatedAt:    _util.ParseKst(post.CreatedAt).Format(time.DateTime),
 			UpdatedAt:    _util.ParseKst(post.UpdatedAt).Format(time.DateTime),
 		}

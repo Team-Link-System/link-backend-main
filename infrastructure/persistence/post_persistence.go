@@ -247,6 +247,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			CreatedAt:   post.CreatedAt,
 			Departments: &departments,
 			Author:      authorMap,
+			ViewCount:   post.Views,
 		})
 	}
 
@@ -551,7 +552,7 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 			return err
 		}
 
-		err = r.redis.Set(ctx, viewCountKey, viewCount, 5*time.Minute).Err()
+		err = r.redis.Set(ctx, viewCountKey, viewCount, 1*time.Hour).Err()
 		if err != nil {
 			return err
 		}

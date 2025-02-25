@@ -15,6 +15,7 @@ type GetPostResponse struct {
 	DepartmentId uint     `json:"department_id,omitempty"`
 	CreatedAt    string   `json:"created_at"`
 	UpdatedAt    string   `json:"updated_at,omitempty"`
+	ViewCount    int      `json:"view_count"`
 }
 
 type GetPostsResponse struct {
