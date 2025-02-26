@@ -541,7 +541,7 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 
 	if !exists {
 		fmt.Printf("이미 조회한 userId , ip : %d, %s\n", userId, ip)
-		return fmt.Errorf("이미 조회한 userId, ip  : %d, %s", userId, ip) // 이미 조회한 경우 종료
+		return nil
 	}
 
 	//TODO : 만약에 조회수 없는 경우 조회수 db에서 조회후 캐싱

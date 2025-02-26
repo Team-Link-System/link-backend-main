@@ -19,24 +19,26 @@ type GetTodayPostStatResponse struct {
 	DepartmentPost           []DepartmentPostStat `json:"department_post"`
 }
 
-type GetPostStatResponse struct {
-	PeriodType    string     `json:"period_type"`  // "monthly" or "weekly"
-	PeriodValue   string     `json:"period_value"` // "2025-02" or "2025-W06"
-	TrendingScore int        `json:"trending_score"`
-	SortBy        string     `json:"sort_by"` // "likes", "comments", "views", "trending_score"
-	Posts         []PostStat `json:"posts"`
+type GetPopularPostStatResponse struct {
+	Period     string        `json:"period"`
+	Visibility string        `json:"visibility"`
+	StartDate  string        `json:"start_date"`
+	CreatedAt  time.Time     `json:"created_at"`
+	Posts      []PostPayload `json:"posts"`
 }
 
-type PostStat struct {
-	PostId           uint      `json:"post_id"`
-	PostTitle        string    `json:"post_title"`
-	PostContent      string    `json:"post_content,omitempty"` // 요약된 내용
-	AuthorName       string    `json:"author_name"`
-	AuthorId         uint      `json:"author_id"`
-	AuthorProfile    string    `json:"author_profile"`
-	PostCreatedAt    time.Time `json:"post_created_at"`
-	PostLikeCount    int       `json:"post_like_count"`
-	PostCommentCount int       `json:"post_comment_count"`
-	TrendingScore    int       `json:"trending_score"`
-	Rank             int       `json:"rank"`
+type PostPayload struct {
+	Rank   int    `json:"rank"`
+	PostId int    `json:"post_id"`
+	UserId int    `json:"user_id"`
+	Title  string `json:"title"`
+	// Content       string `json:"content"`
+	IsAnonymous   bool   `json:"is_anonymous"`
+	Visibility    string `json:"visibility"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	TotalViews    int    `json:"total_views"`
+	TotalLikes    int    `json:"total_likes"`
+	TotalComments int    `json:"total_comments"`
+	Score         int    `json:"score"`
 }

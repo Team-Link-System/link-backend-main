@@ -102,7 +102,7 @@ func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
 }
 
 // TODO 월별 게시글 통계
-func (h *StatHandler) GetMonthlyPostStat(c *gin.Context) {
+func (h *StatHandler) GetPopularPostStat(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("인증되지 않은 요청입니다.")
@@ -110,7 +110,17 @@ func (h *StatHandler) GetMonthlyPostStat(c *gin.Context) {
 		return
 	}
 
-	response, err := h.statUsecase.GetMonthlyPostStat(userId.(uint))
+	period := c.Query("period")
+	if period == "" {
+		period = "month"
+	}
+
+	visibility := c.Query("visibility")
+	if visibility == "" {
+		visibility = "public"
+	}
+
+	response, err := h.statUsecase.GetPopularPostStat(userId.(uint), period, visibility)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
@@ -122,8 +132,6 @@ func (h *StatHandler) GetMonthlyPostStat(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "월별 게시글 통계 조회 성공", response))
 }
-
-//TODO 주간 게시글 통계
 
 //TODO 일자별 출근 통계
 

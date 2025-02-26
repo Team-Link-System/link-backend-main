@@ -6,6 +6,8 @@ import (
 	"link/pkg/dto/res"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	_postRepo "link/internal/post/repository"
 	_statRepo "link/internal/stat/repository"
@@ -18,7 +20,7 @@ type StatUsecase interface {
 
 	GetTodayPostStat(companyId uint) (*res.GetTodayPostStatResponse, error)
 
-	GetMonthlyPostStat(companyId uint) (*res.GetPostStatResponse, error)
+	GetPopularPostStat(companyId uint, period string, visibility string) (*res.GetPopularPostStatResponse, error)
 }
 
 type statUsecase struct {
@@ -111,31 +113,59 @@ func (uc *statUsecase) GetTodayPostStat(requestUserId uint) (*res.GetTodayPostSt
 	return response, nil
 }
 
-func (uc *statUsecase) GetMonthlyPostStat(requestUserId uint) (*res.GetPostStatResponse, error) {
+func (uc *statUsecase) GetPopularPostStat(requestUserId uint, period string, visibility string) (*res.GetPopularPostStatResponse, error) {
 	user, err := uc.userRepo.GetUserByID(requestUserId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
-	if user.UserProfile.CompanyID == nil {
-		fmt.Printf("사용자의 회사 정보가 없습니다")
-		return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+	if strings.ToLower(visibility) == "public" {
+		visibility = "public"
+	} else if strings.ToLower(visibility) == "company" {
+		if user.UserProfile.CompanyID == nil {
+			fmt.Printf("사용자의 회사 정보가 없습니다")
+			return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
+		}
+	} else if strings.ToLower(visibility) == "department" {
+		if user.UserProfile.Departments == nil {
+			fmt.Printf("사용자의 부서 정보가 없습니다")
+			return nil, common.NewError(http.StatusBadRequest, "사용자의 부서 정보가 없습니다", nil)
+		}
 	}
 
 	// //TODO post 집계 데이터 조회
-	// postsStat, err := uc.statRepo.GetMonthlyPostStat(*user.UserProfile.CompanyID)
-	// if err != nil {
-	// 	fmt.Printf("게시물 집계 데이터 조회 실패: %v", err)
-	// 	return nil, common.NewError(http.StatusBadRequest, "게시물 집계 데이터 조회 실패", err)
-	// }
+	postsStat, err := uc.statRepo.GetPopularPost(visibility, period)
+	if err != nil {
+		fmt.Printf("게시물 집계 데이터 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "게시물 집계 데이터 조회 실패", err)
+	}
 
-	// response := &res.GetPostStatResponse{
-	// 	PeriodType:  "monthly",
-	// 	PeriodValue: fmt.Sprintf("%d-%02d", postsStat.Year, postsStat.Month),
-	// 	SortBy:      "trending_score",
-	// 	Posts:       postsStat.Posts,
-	// }
+	response := &res.GetPopularPostStatResponse{
+		Period:     period,
+		Visibility: visibility,
+		StartDate:  postsStat.StartDate,
+		CreatedAt:  postsStat.CreatedAt,
+		Posts:      []res.PostPayload{},
+	}
 
-	return nil, nil
+	for _, post := range postsStat.Posts {
+		response.Posts = append(response.Posts, res.PostPayload{
+			Rank:   post.Rank,
+			PostId: post.PostId,
+			UserId: post.UserId,
+			Title:  post.Title,
+			// Content:       post.Content,
+			IsAnonymous:   post.IsAnonymous,
+			Visibility:    post.Visibility,
+			CreatedAt:     post.CreatedAt.Format(time.DateTime),
+			UpdatedAt:     post.UpdatedAt.Format(time.DateTime),
+			TotalViews:    post.TotalViews,
+			TotalLikes:    post.TotalLikes,
+			TotalComments: post.TotalComments,
+			Score:         post.Score,
+		})
+	}
+
+	return response, nil
 }
