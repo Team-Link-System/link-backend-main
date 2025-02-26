@@ -15,12 +15,12 @@ type DepartmentPostStat struct {
 }
 
 type PopularPost struct {
-	ID         string        `json:"id,omitempty" bson:"id,omitempty"`
-	Period     string        `json:"period,omitempty" bson:"period,omitempty"`
-	Visibility string        `json:"visibility,omitempty" bson:"visibility,omitempty"`
-	StartDate  string        `json:"start_date,omitempty" bson:"startDate,omitempty"`
-	CreatedAt  time.Time     `json:"created_at,omitempty" bson:"createdAt,omitempty"`
-	Posts      []PostPayload `json:"posts,omitempty" bson:"posts,omitempty"`
+	ID         string `json:"id,omitempty" bson:"id,omitempty"`
+	Period     string `json:"period,omitempty" bson:"period,omitempty"`
+	Visibility string `json:"visibility,omitempty" bson:"visibility,omitempty"`
+	// StartDate  string        `json:"start_date,omitempty" bson:"startDate,omitempty"`
+	CreatedAt time.Time     `json:"created_at,omitempty" bson:"createdAt,omitempty"`
+	Posts     []PostPayload `json:"posts,omitempty" bson:"posts,omitempty"`
 }
 
 type PostPayload struct {

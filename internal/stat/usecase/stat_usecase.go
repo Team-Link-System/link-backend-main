@@ -128,7 +128,7 @@ func (uc *statUsecase) GetPopularPostStat(requestUserId uint, period string, vis
 			return nil, common.NewError(http.StatusBadRequest, "사용자의 회사 정보가 없습니다", nil)
 		}
 	} else if strings.ToLower(visibility) == "department" {
-		if user.UserProfile.Departments == nil {
+		if len(user.UserProfile.Departments) == 0 {
 			fmt.Printf("사용자의 부서 정보가 없습니다")
 			return nil, common.NewError(http.StatusBadRequest, "사용자의 부서 정보가 없습니다", nil)
 		}
@@ -138,13 +138,12 @@ func (uc *statUsecase) GetPopularPostStat(requestUserId uint, period string, vis
 	postsStat, err := uc.statRepo.GetPopularPost(visibility, period)
 	if err != nil {
 		fmt.Printf("게시물 집계 데이터 조회 실패: %v", err)
-		return nil, common.NewError(http.StatusBadRequest, "게시물 집계 데이터 조회 실패", err)
+		return nil, common.NewError(http.StatusBadRequest, err.Error(), err)
 	}
 
 	response := &res.GetPopularPostStatResponse{
 		Period:     period,
 		Visibility: visibility,
-		StartDate:  postsStat.StartDate,
 		CreatedAt:  postsStat.CreatedAt,
 		Posts:      []res.PostPayload{},
 	}
