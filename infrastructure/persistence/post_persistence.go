@@ -203,9 +203,17 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 	if err := query.Find(&posts).Error; err != nil {
 		return nil, nil, fmt.Errorf("게시물 조회 실패: %w", err)
 	}
-
+	ctx := context.Background()
 	result := make([]*entity.Post, 0)
 	for _, post := range posts {
+
+		viewDiffCountKey := fmt.Sprintf("post:views:diff:%d", post.ID)
+
+		viewDiffCount := 0
+		viewDiffCount, err := r.redis.Get(ctx, viewDiffCountKey).Int()
+		if err != nil {
+			viewDiffCount = 0
+		}
 
 		images := make([]*string, 0)
 		for _, image := range post.PostImages {
@@ -247,7 +255,7 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 			CreatedAt:   post.CreatedAt,
 			Departments: &departments,
 			Author:      authorMap,
-			ViewCount:   post.Views,
+			ViewCount:   post.Views + viewDiffCount,
 		})
 	}
 
@@ -531,7 +539,7 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 	ctx := context.Background()
 	// IP + userId로 키를 생성하여 더 정확한 중복 체크
 	key := fmt.Sprintf("post:viewed:%d:%d:%s", postId, userId, ip)
-	viewCountKey := fmt.Sprintf("post:views:%d", postId)
+	viewDiffCountKey := fmt.Sprintf("post:views:diff:%d", postId) //차이값 저장
 
 	// 이미 조회했는지 확인 (TTL 24시간으로 설정)
 	exists, err := r.redis.SetNX(ctx, key, 1, 24*time.Hour).Result()
@@ -544,28 +552,15 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 		return nil
 	}
 
-	//TODO : 만약에 조회수 없는 경우 조회수 db에서 조회후 캐싱
-	viewCount, err := r.redis.Get(ctx, viewCountKey).Int64()
-	if err != nil {
-		err = r.db.Model(&model.Post{}).Where("id = ?", postId).Select("views").Scan(&viewCount).Error
-		if err != nil {
-			return err
-		}
-
-		err = r.redis.Set(ctx, viewCountKey, viewCount, 1*time.Hour).Err()
-		if err != nil {
-			return err
-		}
-	}
 	// 조회수 증가
-	newCount, err := r.redis.Incr(ctx, viewCountKey).Result()
+	newCount, err := r.redis.Incr(ctx, viewDiffCountKey).Result()
 	if err != nil {
 		return err
 	}
 
 	// 캐시 만료 설정 (없을 경우에만)
 	// 3️ TTL을 5분으로 갱신 (조회가 발생할 때마다)
-	_ = r.redis.Expire(ctx, viewCountKey, 5*time.Minute).Err()
+	_ = r.redis.Expire(ctx, viewDiffCountKey, 5*time.Minute).Err()
 	fmt.Printf("조회수 증가: postId=%d, newCount=%d\n", postId, newCount)
 
 	return nil
@@ -573,22 +568,26 @@ func (r *postPersistence) IncreasePostViewCount(userId uint, postId uint, ip str
 
 func (r *postPersistence) GetPostViewCount(postId uint) (int, error) {
 	ctx := context.Background()
-	key := fmt.Sprintf("post:views:%d", postId)
+	viewCountKey := fmt.Sprintf("post:views:%d", postId)
+	viewDiffCountKey := fmt.Sprintf("post:views:diff:%d", postId)
 
-	count, err := r.redis.Get(ctx, key).Int()
-	if err == nil {
-		return count, nil // Redis에서 값이 있으면 바로 반환
-	}
-
-	var post model.Post
-	err = r.db.Model(&post).Where("id = ?", postId).Select("views").First(&post).Error
+	count, err := r.redis.Get(ctx, viewCountKey).Int()
 	if err != nil {
-		return 0, err
+		//redis에 없으면 DB에서 조회
+		var post model.Post
+		err = r.db.Model(&post).Where("id = ?", postId).Select("views").First(&post).Error
+		if err != nil {
+			return 0, err
+		}
+
+		count = post.Views
+		_ = r.redis.Set(ctx, viewCountKey, count, 5*time.Minute).Err()
 	}
 
-	count = post.Views
-	_ = r.redis.Set(ctx, key, count, 5*time.Minute).Err()
+	// Redis에서 증가량(`diff`) 가져오기
+	diff, _ := r.redis.Get(ctx, viewDiffCountKey).Int()
+	count += diff // 증가량을 합산하여 반환
 
-	fmt.Printf(" 조회수 조회 & 캐싱: postId=%d, count=%d\n", postId, count)
+	fmt.Printf("조회수 조회: postId=%d, DB count=%d, diff=%d, total=%d\n", postId, count-diff, diff, count)
 	return count, nil
 }

@@ -1,7 +1,6 @@
 package interceptor
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -19,9 +18,6 @@ func NewTokenInterceptor(authUsecase usecase.AuthUsecase) *TokenInterceptor {
 	return &TokenInterceptor{authUsecase: authUsecase}
 }
 
-// TODO CROSS-STIE 요청일 경우 OPTIONS 요청은 토큰검증없이 바로 처리
-// Access Token 검증 인터셉터
-// Access Token 검증 인터셉터
 func (i *TokenInterceptor) AccessTokenInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// OPTIONS 요청은 인증 없이 바로 처리
@@ -57,15 +53,9 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		// Redis에 저장된 리프레시 토큰 검증
-		refreshToken, err := i.authUsecase.GetRefreshToken(userId.(uint), email.(string))
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
-			c.Abort()
-			return
-		}
+		//아니라면, 리프레시 토큰 검증
 
-		//TODO 리프레시 토큰 꺼내기
+		refreshToken := c.GetHeader("RefreshToken")
 		claims, err := util.ValidateRefreshToken(refreshToken)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "유효하지 않은 Refresh Token입니다. 다시 로그인 해주세요."})
@@ -73,16 +63,6 @@ func (i *TokenInterceptor) RefreshTokenInterceptor() gin.HandlerFunc {
 			return
 		}
 
-		// Access Token 재발급
-		newAccessToken, err := util.GenerateAccessToken(claims.Name, claims.Email, claims.UserId)
-		if err != nil {
-			log.Printf("액세스 토큰 재발급 실패: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "액세스 토큰 재발급에 실패했습니다"})
-			c.Abort()
-			return
-		}
-		c.SetCookie("accessToken", newAccessToken, 1200, "/", "", false, true)
-		// 새로운 Access Token 정보로 Context 설정
 		c.Set("email", claims.Email)
 		c.Set("userId", claims.UserId)
 		c.Next()
