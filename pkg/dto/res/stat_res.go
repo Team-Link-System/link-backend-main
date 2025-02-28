@@ -22,7 +22,6 @@ type GetTodayPostStatResponse struct {
 type GetPopularPostStatResponse struct {
 	Period     string        `json:"period"`
 	Visibility string        `json:"visibility"`
-	StartDate  string        `json:"start_date"`
 	CreatedAt  time.Time     `json:"created_at"`
 	Posts      []PostPayload `json:"posts"`
 }

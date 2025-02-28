@@ -96,13 +96,15 @@ func startServer() {
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
 	// allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
-	// r.Use(cors.New(cors.Config{
-	// 	AllowOrigins:     allowedOrigins,
-	// 	AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-	// 	AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-	// 	ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
-	// 	AllowCredentials: true,
-	// }))
+	allowedOrigins := []string{"http://localhost:3000", "http://192.168.1.13:3000"}
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
 
@@ -158,6 +160,7 @@ func startServer() {
 			publicRoute.GET("company/list", companyHandler.GetAllCompanies)
 			publicRoute.GET("company/:id", companyHandler.GetCompanyInfo)
 			publicRoute.POST("company/search", companyHandler.SearchCompany)
+			publicRoute.GET("auth/refresh", tokenInterceptor.RefreshTokenInterceptor(), authHandler.RefreshToken) //TODO accessToken 재발급
 
 		}
 		protectedRoute := api.Group("/", tokenInterceptor.AccessTokenInterceptor())
@@ -167,7 +170,6 @@ func startServer() {
 			auth := protectedRoute.Group("auth")
 			{
 				auth.POST("/signout", authHandler.SignOut)
-				auth.GET("/refresh", authHandler.RefreshToken) //TODO accessToken 재발급
 			}
 
 			chat := protectedRoute.Group("chat")

@@ -6,7 +6,6 @@ import (
 	"link/internal/stat/entity"
 	"link/internal/stat/repository"
 	"log"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -94,11 +93,6 @@ func (r *StatPersistence) GetPopularPost(visibility string, period string) (*ent
 
 	collection := r.mongoDB.Database("link").Collection("poststats")
 
-	year, month, _ := time.Now().Date()
-	startDate := fmt.Sprintf("%d-%02d-01", year, month-1) // YYYY-MM-DD 형식
-
-	log.Printf("쿼리 실행: period=%s, visibility=%s, startDate=%s", period, visibility, startDate)
-
 	// MongoDB 쿼리 옵션 설정 (최신 데이터 1개 조회)
 	findOptions := options.FindOne().SetSort(bson.M{"createdAt": -1})
 
@@ -106,13 +100,12 @@ func (r *StatPersistence) GetPopularPost(visibility string, period string) (*ent
 	err := collection.FindOne(context.Background(), bson.M{
 		"period":     period,
 		"visibility": visibility,
-		"startDate":  startDate,
 	}, findOptions).Decode(&popularPost)
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			log.Println("MongoDB에서 인기 게시물 통계를 찾을 수 없습니다.")
-			return nil, nil // 데이터를 찾지 못한 경우 nil 반환
+			return nil, fmt.Errorf("인기 게시물 통계 조회 실패: %w", err) // 데이터를 찾지 못한 경우 nil 반환
 		}
 		log.Printf("인기 게시물 통계 조회 실패: %v", err)
 		return nil, fmt.Errorf("인기 게시물 통계 조회 실패: %w", err)

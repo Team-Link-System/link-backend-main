@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const accessTokenExp = time.Hour * 1
+const accessTokenExp = time.Hour * 24
 const refreshTokenExp = time.Hour * 24 * 5
 
 var accessTokenSecret = []byte(os.Getenv("ACCESS_TOKEN_SECRET"))

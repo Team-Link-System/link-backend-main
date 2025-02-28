@@ -44,8 +44,8 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 
 	//! 도메인 다를 때 사용
 	authorization := fmt.Sprintf("Bearer %s", token.AccessToken)
-	// c.SetCookie("accessToken", token.AccessToken, 1200, "/", "", false, true)
 	c.Header("Authorization", authorization)
+	c.SetCookie("refreshToken", token.RefreshToken, 259200, "/", "", false, true) // 3일
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "로그인 성공", response))
 }
 
@@ -82,17 +82,12 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 	// accessToken 쿠키 삭제
 	// TODO 리프레시 토큰은 레디스에 저장되어 있음
 	c.SetCookie("accessToken", "", -1, "/", "", false, true)
+	c.SetCookie("refreshToken", "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "로그아웃 되었습니다", nil))
 }
 
 // TODO accessToken 재발급 핸들러
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	//TODO 액세스 토큰 재발급 로직 구현
-
-	//TODO accessToken을 setTimeOut으로 넘겨옴(next서버에서 15분마다 넘김) -> validate가 됐다면 재발급 -> 재발급 된 accessToken을 쿠키에 저장
-
-	//TODO 없다면 로그아웃 처리
-
 	userId, exists := c.Get("userId")
 	if !exists {
 		fmt.Printf("유저 ID 가져오기 중 오류가 발생했습니다")
