@@ -9,9 +9,9 @@ import (
 type Project struct {
 	ID        uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	Name      string    `gorm:"not null"`
-	CompanyID uuid.UUID `gorm:"not null"`             // 회사 ID (외래 키)
-	Company   Company   `gorm:"foreignKey:CompanyID"` // 관계 설정
-	CreatedBy uuid.UUID `gorm:"not null"`             // 프로젝트 생성자 (사용자 ID)
+	CompanyID uint      `gorm:"default:null; references:users_profile(company_id)"` // 회사 ID (외래 키)
+	Company   Company   `gorm:"foreignKey:CompanyID"`                               // 관계 설정
+	CreatedBy uint      `gorm:"not null; references:users(id)"`                     // 프로젝트 생성자 (사용자 ID)
 	StartDate time.Time `gorm:"not null"`
 	EndDate   time.Time `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"` // 자동 생성 시간

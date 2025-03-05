@@ -128,6 +128,7 @@ func startServer() {
 		adminHandler *handlerHttp.AdminHandler,
 		statHandler *handlerHttp.StatHandler,
 		reportHandler *handlerHttp.ReportHandler,
+		projectHandler *handlerHttp.ProjectHandler,
 		params struct {
 			dig.In
 			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
@@ -291,6 +292,13 @@ func startServer() {
 				like.DELETE("/comment/:commentid", likeHandler.DeleteCommentLike) //! 댓글 대댓글 좋아요 취소
 			}
 
+			project := protectedRoute.Group("project")
+			{
+				project.POST("", projectHandler.CreateProject)
+				project.GET("", projectHandler.GetProjects)
+				project.GET("/:projectid", projectHandler.GetProject)
+			}
+
 			stat := protectedRoute.Group("stat")
 			{
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
@@ -308,6 +316,7 @@ func startServer() {
 				report.POST("", reportHandler.CreateReport)
 				report.GET("/list", reportHandler.GetReports)
 			}
+
 		}
 	})
 	if err != nil {
