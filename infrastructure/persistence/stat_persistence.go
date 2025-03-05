@@ -111,6 +111,5 @@ func (r *StatPersistence) GetPopularPost(visibility string, period string) (*ent
 		return nil, fmt.Errorf("인기 게시물 통계 조회 실패: %w", err)
 	}
 
-	log.Printf("가져온 인기 게시물 데이터: %+v", popularPost)
 	return &popularPost, nil
 }

@@ -68,8 +68,10 @@ func (u *projectUsecase) CreateProject(userId uint, request *req.CreateProjectRe
 		CreatedBy: *user.ID,
 	}
 
-	if user.UserProfile.CompanyID != nil {
-		project.CompanyID = *user.UserProfile.CompanyID
+	if strings.ToLower(request.Category) == "company" {
+		if user.UserProfile.CompanyID != nil {
+			project.CompanyID = *user.UserProfile.CompanyID
+		}
 	}
 
 	err = u.projectRepo.CreateProject(&project)
