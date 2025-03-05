@@ -11,4 +11,5 @@ type ProjectRepository interface {
 	GetProjectsByCompanyID(companyID uint) ([]entity.Project, error)
 	GetProjectsByUserID(userID uint) ([]entity.Project, error)
 	GetProjectByID(userID uint, projectID uuid.UUID) (*entity.Project, error)
+	GetProjectUsers(projectID uuid.UUID) ([]entity.ProjectUser, error)
 }

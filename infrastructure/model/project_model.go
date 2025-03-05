@@ -23,4 +23,6 @@ type Project struct {
 type ProjectUser struct {
 	ProjectID uuid.UUID `gorm:"type:uuid;not null;primaryKey"`
 	UserID    uint      `gorm:"not null;primaryKey"`
+	Project   Project   `gorm:"foreignKey:ProjectID"`
+	User      User      `gorm:"foreignKey:UserID"`
 }

@@ -8,6 +8,7 @@ import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	_utils "link/pkg/util"
 	"net/http"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ type ProjectUsecase interface {
 	CreateProject(userId uint, request *req.CreateProjectRequest) error
 	GetProjects(userId uint, category string) (*res.GetProjectsResponse, error)
 	GetProject(userId uint, projectID uuid.UUID) (*res.GetProjectResponse, error)
+	GetProjectUsers(userId uint, projectID uuid.UUID) (*res.GetProjectUsersResponse, error)
 }
 
 type projectUsecase struct {
@@ -152,4 +154,68 @@ func (u *projectUsecase) GetProject(userId uint, projectID uuid.UUID) (*res.GetP
 	}
 
 	return &response, nil
+}
+
+func (u *projectUsecase) GetProjectUsers(userId uint, projectID uuid.UUID) (*res.GetProjectUsersResponse, error) {
+	user, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(*user.ID, projectID)
+	if err != nil {
+		fmt.Printf("프로젝트 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "존재하지 않는 프로젝트입니다.", err)
+	}
+
+	projectUsers, err := u.projectRepo.GetProjectUsers(project.ID)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	userIds := make([]uint, len(projectUsers))
+	for i, user := range projectUsers {
+		userIds[i] = user.UserID
+	}
+
+	users, err := u.userRepo.GetUserByIds(userIds)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	var companyName string
+	if user.UserProfile.CompanyID != nil {
+		companyName = (*user.UserProfile.Company)["name"].(string)
+	}
+
+	var positionName string
+	if user.UserProfile.PositionId != nil {
+		positionName = (*user.UserProfile.Position)["name"].(string)
+	}
+
+	var usersRes []res.GetProjectUserResponse
+	for _, user := range users {
+		usersRes = append(usersRes, res.GetProjectUserResponse{
+			ID:           _utils.GetValueOrDefault(user.ID, 0),
+			Name:         _utils.GetValueOrDefault(user.Name, ""),
+			Email:        _utils.GetValueOrDefault(user.Email, ""),
+			Phone:        _utils.GetValueOrDefault(user.Phone, ""),
+			Nickname:     _utils.GetValueOrDefault(user.Nickname, ""),
+			IsSubscribed: _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
+			Image:        _utils.GetValueOrDefault(user.UserProfile.Image, ""),
+			Birthday:     _utils.GetValueOrDefault(&user.UserProfile.Birthday, ""),
+			CompanyID:    _utils.GetValueOrDefault(user.UserProfile.CompanyID, 0),
+			CompanyName:  companyName,
+			PositionId:   _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
+			PositionName: positionName,
+			EntryDate:    user.UserProfile.EntryDate,
+			CreatedAt:    _utils.GetValueOrDefault(&user.UserProfile.CreatedAt, time.Time{}),
+			UpdatedAt:    _utils.GetValueOrDefault(&user.UserProfile.UpdatedAt, time.Time{}),
+		})
+	}
+
+	return &res.GetProjectUsersResponse{Users: usersRes}, nil
 }
