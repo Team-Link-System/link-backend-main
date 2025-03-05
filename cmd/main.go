@@ -297,6 +297,7 @@ func startServer() {
 				project.POST("", projectHandler.CreateProject)
 				project.GET("", projectHandler.GetProjects)
 				project.GET("/:projectid", projectHandler.GetProject)
+				project.GET("/:projectid/user", projectHandler.GetProjectUsers)
 			}
 
 			stat := protectedRoute.Group("stat")

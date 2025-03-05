@@ -5,6 +5,7 @@ import (
 	"link/internal/project/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/ws"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +14,11 @@ import (
 
 type ProjectHandler struct {
 	projectUsecase usecase.ProjectUsecase
+	hub            *ws.WebSocketHub
 }
 
-func NewProjectHandler(projectUsecase usecase.ProjectUsecase) *ProjectHandler {
-	return &ProjectHandler{projectUsecase: projectUsecase}
+func NewProjectHandler(projectUsecase usecase.ProjectUsecase, hub *ws.WebSocketHub) *ProjectHandler {
+	return &ProjectHandler{projectUsecase: projectUsecase, hub: hub}
 }
 
 // TODO 프로젝트 생성
@@ -46,6 +48,10 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	} else if request.EndDate == nil {
 		fmt.Printf("종료일이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "종료일이 없습니다.", nil))
+		return
+	} else if request.Category == "" {
+		fmt.Printf("카테고리가 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "카테고리가 없습니다.", nil))
 		return
 	}
 
@@ -115,6 +121,53 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 조회 완료", project))
+}
+
+//  TODO 프로젝트 초대
+// func (h *ProjectHandler) InviteProject(c *gin.Context) {
+// 	userId, exists := c.Get("userId")
+// 	if !exists {
+// 		fmt.Printf("인증되지 않은 사용자입니다.")
+// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+// 		return
+// 	}
+
+// 	projectID := c.Param("projectid")
+// 	parsedID, err := uuid.Parse(projectID)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+// 		return
+// 	}
+
+// }
+
+// 해당 프로젝트 참여자들 조회
+func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	projectID := c.Param("projectid")
+	parsedID, err := uuid.Parse(projectID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
+
+	users, err := h.projectUsecase.GetProjectUsers(userId.(uint), parsedID)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 참여자 목록 조회 완료", users))
 }
 
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {

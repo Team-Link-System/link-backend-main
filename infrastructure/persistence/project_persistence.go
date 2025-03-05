@@ -33,6 +33,15 @@ func (p *ProjectPersistence) CreateProject(project *entity.Project) error {
 		return fmt.Errorf("프로젝트 생성 실패: %v", err)
 	}
 
+	projectUser := &model.ProjectUser{
+		ProjectID: dbProject.ID,
+		UserID:    project.CreatedBy,
+	}
+	if err := tx.Create(projectUser).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("프로젝트 사용자 생성 실패: %v", err)
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("트랜잭션 커밋 실패: %v", err)
 	}
@@ -76,4 +85,15 @@ func (p *ProjectPersistence) GetProjectsByUserID(userID uint) ([]entity.Project,
 	}
 
 	return projects, nil
+}
+
+func (p *ProjectPersistence) GetProjectUsers(projectID uuid.UUID) ([]entity.ProjectUser, error) {
+	var projectUsers []entity.ProjectUser
+	if err := p.db.Where("project_id = ?", projectID).Find(&projectUsers).Error; err != nil {
+		return nil, err
+	}
+
+	fmt.Println("projectUsers", projectUsers)
+
+	return projectUsers, nil
 }
