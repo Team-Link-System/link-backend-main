@@ -129,6 +129,13 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Like{},
 		&model.Company{},
 		&model.Position{},
+		&model.Project{},
+		&model.ProjectUser{},
+		&model.Board{},
+		&model.BoardUser{},
+		&model.BoardColumn{},
+		&model.BoardCard{},
+		&model.CardAssignee{},
 	); err != nil {
 		log.Fatalf("마이그레이션 실패: %v", err)
 	}
