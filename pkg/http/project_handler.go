@@ -5,6 +5,7 @@ import (
 	"link/internal/project/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/ws"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +14,11 @@ import (
 
 type ProjectHandler struct {
 	projectUsecase usecase.ProjectUsecase
+	hub            *ws.WebSocketHub
 }
 
-func NewProjectHandler(projectUsecase usecase.ProjectUsecase) *ProjectHandler {
-	return &ProjectHandler{projectUsecase: projectUsecase}
+func NewProjectHandler(projectUsecase usecase.ProjectUsecase, hub *ws.WebSocketHub) *ProjectHandler {
+	return &ProjectHandler{projectUsecase: projectUsecase, hub: hub}
 }
 
 // TODO 프로젝트 생성
@@ -120,6 +122,24 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 조회 완료", project))
 }
+
+//  TODO 프로젝트 초대
+// func (h *ProjectHandler) InviteProject(c *gin.Context) {
+// 	userId, exists := c.Get("userId")
+// 	if !exists {
+// 		fmt.Printf("인증되지 않은 사용자입니다.")
+// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+// 		return
+// 	}
+
+// 	projectID := c.Param("projectid")
+// 	parsedID, err := uuid.Parse(projectID)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+// 		return
+// 	}
+
+// }
 
 // 해당 프로젝트 참여자들 조회
 func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {

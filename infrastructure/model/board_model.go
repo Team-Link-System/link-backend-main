@@ -18,9 +18,17 @@ type Board struct {
 	Columns   []BoardColumn `gorm:"one2many:board_columns;foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }
 
+const (
+	RoleEditor    = 0 // 읽기 & 쓰기 가능
+	RoleReadOnly  = 1 // 읽기 전용
+	RoleWriteOnly = 2 // 쓰기 전용
+	RoleNoAccess  = 3 // 읽기 & 쓰기 제한
+)
+
 type BoardUser struct {
 	BoardID uuid.UUID `gorm:"type:uuid;primaryKey"`
 	UserID  uint      `gorm:"primaryKey"`
+	Role    int       `gorm:"not null default:0"` // 0: 읽기, 쓰기 허용 1: 읽기 제한 2: 쓰기 제한 3: 읽기 쓰기 제한
 }
 
 // 여러개의 컬럼
