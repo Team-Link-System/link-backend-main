@@ -27,5 +27,4 @@ type User struct {
 	CreatedAt      time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	ChatRoomsUsers []ChatRoomUser `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	Projects       []Project      `gorm:"many2many:project_users;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }

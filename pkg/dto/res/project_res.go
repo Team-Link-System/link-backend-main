@@ -2,8 +2,6 @@ package res
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type GetProjectsResponse struct {
@@ -11,7 +9,7 @@ type GetProjectsResponse struct {
 }
 
 type GetProjectResponse struct {
-	ID        uuid.UUID `json:"id"`
+	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
 	StartDate string    `json:"start_date"`
 	EndDate   string    `json:"end_date"`

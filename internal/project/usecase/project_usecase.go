@@ -22,9 +22,9 @@ import (
 type ProjectUsecase interface {
 	CreateProject(userId uint, request *req.CreateProjectRequest) error
 	GetProjects(userId uint, category string) (*res.GetProjectsResponse, error)
-	GetProject(userId uint, projectID uuid.UUID) (*res.GetProjectResponse, error)
-	GetProjectUsers(userId uint, projectID uuid.UUID) (*res.GetProjectUsersResponse, error)
-	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateProjectInviteResponse, error)
+	GetProject(userId uint, projectID uint) (*res.GetProjectResponse, error)
+	GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error)
+	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error)
 }
 
 type projectUsecase struct {
@@ -143,7 +143,7 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 	return &res.GetProjectsResponse{Projects: projects}, nil
 }
 
-func (u *projectUsecase) GetProject(userId uint, projectID uuid.UUID) (*res.GetProjectResponse, error) {
+func (u *projectUsecase) GetProject(userId uint, projectID uint) (*res.GetProjectResponse, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
@@ -167,7 +167,7 @@ func (u *projectUsecase) GetProject(userId uint, projectID uuid.UUID) (*res.GetP
 	return &response, nil
 }
 
-func (u *projectUsecase) GetProjectUsers(userId uint, projectID uuid.UUID) (*res.GetProjectUsersResponse, error) {
+func (u *projectUsecase) GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		fmt.Printf("사용자 조회 실패: %v", err)
@@ -231,7 +231,7 @@ func (u *projectUsecase) GetProjectUsers(userId uint, projectID uuid.UUID) (*res
 	return &res.GetProjectUsersResponse{Users: usersRes}, nil
 }
 
-func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateProjectInviteResponse, error) {
+func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error) {
 	sender, err := u.userRepo.GetUserByID(senderId)
 	if err != nil {
 		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
@@ -254,6 +254,17 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
 	}
 
+	checkSenderRole, err := u.projectRepo.CheckProjectRole(*sender.ID, project.ID)
+	if err != nil {
+		fmt.Printf("프로젝트 초대 권한 확인 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 초대 권한 확인 실패", err)
+	}
+
+	if checkSenderRole.Role < entity.ProjectMaintainer {
+		fmt.Printf("프로젝트 초대 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", *sender.ID, project.ID, checkSenderRole.Role)
+		return nil, common.NewError(http.StatusBadRequest, "프로젝트 초대 권한이 없습니다.", nil)
+	}
+
 	for _, projectUser := range projectUsers {
 		if projectUser.UserID == *receiver.ID {
 			fmt.Printf("해당 프로젝트에 이미 참여중인 사용자입니다. : 사용자 ID : %v, 프로젝트 ID : %v", *receiver.ID, project.ID)
@@ -273,6 +284,7 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 			"project_id":   project.ID,
 			"project_name": project.Name,
 			"alarm_type":   "INVITE",
+			"invite_type":  "PROJECT",
 			"is_read":      false,
 			"target_type":  "PROJECT",
 			"status":       "PENDING",
@@ -289,7 +301,7 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 
 	go u.natsPublisher.PublishEvent("link.event.notification.invite.request", jsonData)
 
-	return &res.CreateProjectInviteResponse{
+	return &res.CreateNotificationResponse{
 		DocID:      docID,
 		SenderID:   *sender.ID,
 		ReceiverID: *receiver.ID,
@@ -298,7 +310,7 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 		Title:      "INVITE",
 		IsRead:     false,
 		TargetType: "PROJECT",
-		TargetID:   project.ID.String(),
+		TargetID:   project.ID,
 		CreatedAt:  time.Now().Format(time.DateTime),
 	}, nil
 }
