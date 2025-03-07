@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"encoding/json"
 	"fmt"
 	"link/internal/project/entity"
 	_projectRepo "link/internal/project/repository"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_nats "link/pkg/nats"
+
 	"github.com/google/uuid"
 )
 
@@ -21,17 +24,23 @@ type ProjectUsecase interface {
 	GetProjects(userId uint, category string) (*res.GetProjectsResponse, error)
 	GetProject(userId uint, projectID uuid.UUID) (*res.GetProjectResponse, error)
 	GetProjectUsers(userId uint, projectID uuid.UUID) (*res.GetProjectUsersResponse, error)
+	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateProjectInviteResponse, error)
 }
 
 type projectUsecase struct {
-	projectRepo _projectRepo.ProjectRepository
-	userRepo    _userRepo.UserRepository
+	projectRepo   _projectRepo.ProjectRepository
+	userRepo      _userRepo.UserRepository
+	natsPublisher *_nats.NatsPublisher
 }
 
-func NewProjectUsecase(projectRepo _projectRepo.ProjectRepository, userRepo _userRepo.UserRepository) ProjectUsecase {
+func NewProjectUsecase(
+	projectRepo _projectRepo.ProjectRepository,
+	userRepo _userRepo.UserRepository,
+	natsPublisher *_nats.NatsPublisher) ProjectUsecase {
 	return &projectUsecase{
-		projectRepo: projectRepo,
-		userRepo:    userRepo,
+		projectRepo:   projectRepo,
+		userRepo:      userRepo,
+		natsPublisher: natsPublisher,
 	}
 }
 
@@ -220,4 +229,76 @@ func (u *projectUsecase) GetProjectUsers(userId uint, projectID uuid.UUID) (*res
 	}
 
 	return &res.GetProjectUsersResponse{Users: usersRes}, nil
+}
+
+func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateProjectInviteResponse, error) {
+	sender, err := u.userRepo.GetUserByID(senderId)
+	if err != nil {
+		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	receiver, err := u.userRepo.GetUserByID(request.ReceiverID)
+	if err != nil {
+		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(*sender.ID, request.ProjectID)
+	if err != nil {
+		fmt.Printf("프로젝트 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "속하지 않는 프로젝트 입니다.", err)
+	}
+
+	projectUsers, err := u.projectRepo.GetProjectUsers(project.ID)
+	if err != nil {
+		fmt.Printf("프로젝트 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	for _, projectUser := range projectUsers {
+		if projectUser.UserID == *receiver.ID {
+			fmt.Printf("해당 프로젝트에 이미 참여중인 사용자입니다. : 사용자 ID : %v, 프로젝트 ID : %v", *receiver.ID, project.ID)
+			return nil, common.NewError(http.StatusBadRequest, "해당 프로젝트에 이미 참여중인 사용자입니다.", nil)
+		}
+	}
+	docID := uuid.New().String()
+
+	natsData := map[string]interface{}{
+		"topic": "link.event.notification.invite.request",
+		"payload": map[string]interface{}{
+			"doc_id":       docID,
+			"sender_id":    sender.ID,
+			"receiver_id":  receiver.ID,
+			"title":        "INVITE",
+			"content":      fmt.Sprintf("[INVITE] %s님이 %s님을 초대했습니다", *sender.Name, *receiver.Name),
+			"project_id":   project.ID,
+			"project_name": project.Name,
+			"alarm_type":   "INVITE",
+			"is_read":      false,
+			"target_type":  "PROJECT",
+			"status":       "PENDING",
+			"target_id":    project.ID,
+			"timestamp":    time.Now(),
+		},
+	}
+
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		fmt.Printf("NATS 데이터 직렬화 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+	}
+
+	go u.natsPublisher.PublishEvent("link.event.notification.invite.request", jsonData)
+
+	return &res.CreateProjectInviteResponse{
+		DocID:      docID,
+		SenderID:   *sender.ID,
+		ReceiverID: *receiver.ID,
+		Content:    fmt.Sprintf("[INVITE] %s님이 %s님을 초대했습니다", *sender.Name, *receiver.Name),
+		AlarmType:  "INVITE",
+		Title:      "INVITE",
+		IsRead:     false,
+		TargetType: "PROJECT",
+		TargetID:   project.ID.String(),
+		CreatedAt:  time.Now().Format(time.DateTime),
+	}, nil
 }

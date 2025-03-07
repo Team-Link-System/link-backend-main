@@ -93,7 +93,12 @@ func (p *ProjectPersistence) GetProjectUsers(projectID uuid.UUID) ([]entity.Proj
 		return nil, err
 	}
 
-	fmt.Println("projectUsers", projectUsers)
-
 	return projectUsers, nil
+}
+
+func (p *ProjectPersistence) InviteProject(projectUser *entity.ProjectUser) error {
+	if err := p.db.Model(&model.ProjectUser{}).Create(projectUser).Error; err != nil {
+		return err
+	}
+	return nil
 }
