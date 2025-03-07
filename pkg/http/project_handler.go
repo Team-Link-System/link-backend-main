@@ -198,6 +198,7 @@ func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 참여자 목록 조회 완료", users))
 }
 
+// 프로젝트 수정
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	// projectUsecase.UpdateProject(c)
 }

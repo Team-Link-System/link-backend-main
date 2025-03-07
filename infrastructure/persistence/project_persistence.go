@@ -35,6 +35,7 @@ func (p *ProjectPersistence) CreateProject(project *entity.Project) error {
 	projectUser := &model.ProjectUser{
 		ProjectID: dbProject.ID,
 		UserID:    project.CreatedBy,
+		Role:      model.ProjectMaster,
 	}
 	if err := tx.Create(projectUser).Error; err != nil {
 		tx.Rollback()
@@ -51,13 +52,15 @@ func (p *ProjectPersistence) CreateProject(project *entity.Project) error {
 func (p *ProjectPersistence) GetProjectByID(userID uint, projectID uint) (*entity.Project, error) {
 	var project entity.Project
 	err := p.db.
-		Select("projects.*").
+		Select("projects.*, project_users.*").
+		Table("projects").
 		Joins("LEFT JOIN project_users ON projects.id = project_users.project_id").
 		Where("projects.id = ? AND (projects.created_by = ? OR project_users.user_id = ?)", projectID, userID, userID).
+		Preload("ProjectUsers").
 		First(&project).Error
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("프로젝트 조회 실패: %v", err)
 	}
 
 	return &project, nil
@@ -74,7 +77,7 @@ func (p *ProjectPersistence) GetProjectsByCompanyID(companyID uint) ([]entity.Pr
 func (p *ProjectPersistence) GetProjectsByUserID(userID uint) ([]entity.Project, error) {
 	var projects []entity.Project
 	err := p.db.
-		Select("projects.*").
+		Select("projects.*, project_users.role").
 		Joins("LEFT JOIN project_users ON projects.id = project_users.project_id").
 		Where("project_users.user_id = ? OR projects.created_by = ?", userID, userID).
 		Find(&projects).Error
@@ -104,4 +107,12 @@ func (p *ProjectPersistence) InviteProject(senderID uint, receiverID uint, proje
 		return err
 	}
 	return nil
+}
+
+func (p *ProjectPersistence) CheckProjectRole(userID uint, projectID uint) (entity.ProjectUser, error) {
+	var projectUser entity.ProjectUser
+	if err := p.db.Where("user_id = ? AND project_id = ?", userID, projectID).First(&projectUser).Error; err != nil {
+		return entity.ProjectUser{}, err
+	}
+	return projectUser, nil
 }

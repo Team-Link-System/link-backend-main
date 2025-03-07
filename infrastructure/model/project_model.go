@@ -4,6 +4,13 @@ import (
 	"time"
 )
 
+const (
+	ProjectRoleUser = iota
+	ProjectMaintainer
+	ProjectAdmin
+	ProjectMaster
+)
+
 type Project struct {
 	ID        uint      `gorm:"primaryKey"`
 	Name      string    `gorm:"not null"`
@@ -22,6 +29,7 @@ type Project struct {
 type ProjectUser struct {
 	ProjectID uint    `gorm:"primaryKey"`
 	UserID    uint    `gorm:"primaryKey"`
+	Role      int     `gorm:"column:role;not null;default:0"` // 0: 일반 사용자(프로젝트 참여자), 1: 참여자(프로젝트 초대가능), 2: 관리자(프로젝트 초대가능, 프로젝트 삭제 가능, 프로젝트 수정 가능) 3: 마스터(프로젝트 초대가능, 프로젝트 삭제 가능, 프로젝트 수정 가능)
 	Project   Project `gorm:"foreignKey:ProjectID"`
 	User      User    `gorm:"foreignKey:UserID"`
 }

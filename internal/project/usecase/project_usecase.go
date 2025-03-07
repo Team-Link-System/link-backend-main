@@ -254,6 +254,17 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
 	}
 
+	checkSenderRole, err := u.projectRepo.CheckProjectRole(*sender.ID, project.ID)
+	if err != nil {
+		fmt.Printf("프로젝트 초대 권한 확인 실패: %v", err)
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 초대 권한 확인 실패", err)
+	}
+
+	if checkSenderRole.Role < entity.ProjectMaintainer {
+		fmt.Printf("프로젝트 초대 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", *sender.ID, project.ID, checkSenderRole.Role)
+		return nil, common.NewError(http.StatusBadRequest, "프로젝트 초대 권한이 없습니다.", nil)
+	}
+
 	for _, projectUser := range projectUsers {
 		if projectUser.UserID == *receiver.ID {
 			fmt.Printf("해당 프로젝트에 이미 참여중인 사용자입니다. : 사용자 ID : %v, 프로젝트 ID : %v", *receiver.ID, project.ID)

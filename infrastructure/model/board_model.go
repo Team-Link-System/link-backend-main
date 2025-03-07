@@ -20,9 +20,11 @@ type Board struct {
 
 // BoardUser (다대다 관계)
 type BoardUser struct {
-	BoardID uint `gorm:"primaryKey"`
-	UserID  uint `gorm:"primaryKey"`
-	Role    int  `gorm:"not null;default:0"` // `default:` 키워드 뒤에 `;` 추가
+	BoardID uint  `gorm:"primaryKey"`
+	UserID  uint  `gorm:"primaryKey"`
+	Board   Board `gorm:"foreignKey:BoardID"`
+	User    User  `gorm:"foreignKey:UserID"`
+	Role    int   `gorm:"not null;default:0"` // 0: 일반 사용자(읽기 권한만), 1: 참여자(읽기, 쓰기 권한), 2: 관리자(읽기, 쓰기, 삭제 권한)
 }
 
 // BoardColumn (컬럼 테이블)

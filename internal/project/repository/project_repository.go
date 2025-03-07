@@ -11,4 +11,5 @@ type ProjectRepository interface {
 	GetProjectByID(userID uint, projectID uint) (*entity.Project, error)
 	GetProjectUsers(projectID uint) ([]entity.ProjectUser, error)
 	InviteProject(senderID uint, receiverID uint, projectID uint) error
+	CheckProjectRole(userID uint, projectID uint) (entity.ProjectUser, error)
 }
