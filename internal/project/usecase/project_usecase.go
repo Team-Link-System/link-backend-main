@@ -161,6 +161,7 @@ func (u *projectUsecase) GetProject(userId uint, projectID uint) (*res.GetProjec
 		EndDate:   project.EndDate.Format("2006-01-02 15:04:05"),
 		CreatedBy: project.CreatedBy,
 		CompanyID: project.CompanyID,
+		UserRole:  project.ProjectUsers[0].Role,
 		CreatedAt: project.CreatedAt,
 	}
 
