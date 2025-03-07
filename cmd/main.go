@@ -50,7 +50,6 @@ func setUlimit() {
 }
 
 func startServer() {
-	// 🚀 ulimit 적용
 	setUlimit()
 
 	if err := logger.InitLogger(); err != nil {
@@ -170,7 +169,7 @@ func startServer() {
 
 			auth := protectedRoute.Group("auth")
 			{
-				auth.POST("/signout", authHandler.SignOut)
+				auth.POST("/signout", authHandler.SignOut) //완료되면 모든 로그 찍기
 			}
 
 			chat := protectedRoute.Group("chat")
@@ -298,6 +297,7 @@ func startServer() {
 				project.GET("", projectHandler.GetProjects)
 				project.GET("/:projectid", projectHandler.GetProject)
 				project.GET("/:projectid/user", projectHandler.GetProjectUsers)
+				project.POST("/invite", projectHandler.InviteProject)
 			}
 
 			stat := protectedRoute.Group("stat")

@@ -5,6 +5,8 @@ import (
 	"link/internal/project/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
+	"link/pkg/dto/res"
+	"link/pkg/logger"
 	"link/pkg/ws"
 	"net/http"
 
@@ -123,23 +125,54 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 조회 완료", project))
 }
 
-//  TODO 프로젝트 초대
-// func (h *ProjectHandler) InviteProject(c *gin.Context) {
-// 	userId, exists := c.Get("userId")
-// 	if !exists {
-// 		fmt.Printf("인증되지 않은 사용자입니다.")
-// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
-// 		return
-// 	}
+// TODO 프로젝트 초대
+func (h *ProjectHandler) InviteProject(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
 
-// 	projectID := c.Param("projectid")
-// 	parsedID, err := uuid.Parse(projectID)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
-// 		return
-// 	}
+	var request req.InviteProjectRequest
+	if err := c.ShouldBind(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+	response, err := h.projectUsecase.InviteProject(userId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			fmt.Printf("프로젝트 초대 실패: %v", appError.Err)
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			fmt.Printf("프로젝트 초대 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
 
-// }
+	h.hub.SendMessageToUser(request.ReceiverID, res.JsonResponse{
+		Success: true,
+		Type:    "notification",
+		Payload: &res.ProjectInviteNotificationPayload{
+			DocID:      response.DocID,
+			SenderID:   response.SenderID,
+			ReceiverID: response.ReceiverID,
+			Content:    response.Content,
+			AlarmType:  string(response.AlarmType),
+			Title:      response.Title,
+			IsRead:     response.IsRead,
+			Status:     response.Status,
+			TargetType: response.TargetType,
+			TargetID:   response.TargetID,
+			CreatedAt:  response.CreatedAt,
+		},
+	})
+
+	logger.LogSuccess(fmt.Sprintf("프로젝트 초대 완료 : 사용자 ID : %v, 프로젝트 ID : %v", userId.(uint), request.ProjectID))
+	c.JSON(http.StatusCreated, common.NewResponse(http.StatusCreated, "프로젝트 초대 완료", nil))
+}
 
 // 해당 프로젝트 참여자들 조회
 func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
