@@ -2,12 +2,10 @@ package entity
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Project struct {
-	ID          uuid.UUID `json:"id"`
+	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	StartDate   time.Time `json:"start_date"`
@@ -19,6 +17,6 @@ type Project struct {
 }
 
 type ProjectUser struct {
-	ProjectID uuid.UUID `json:"project_id"`
-	UserID    uint      `json:"user_id"`
+	ProjectID uint `json:"project_id"`
+	UserID    uint `json:"user_id"`
 }

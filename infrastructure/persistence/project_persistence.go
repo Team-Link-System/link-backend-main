@@ -6,7 +6,6 @@ import (
 	"link/internal/project/entity"
 	"link/internal/project/repository"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +48,7 @@ func (p *ProjectPersistence) CreateProject(project *entity.Project) error {
 	return nil
 }
 
-func (p *ProjectPersistence) GetProjectByID(userID uint, projectID uuid.UUID) (*entity.Project, error) {
+func (p *ProjectPersistence) GetProjectByID(userID uint, projectID uint) (*entity.Project, error) {
 	var project entity.Project
 	err := p.db.
 		Select("projects.*").
@@ -87,7 +86,7 @@ func (p *ProjectPersistence) GetProjectsByUserID(userID uint) ([]entity.Project,
 	return projects, nil
 }
 
-func (p *ProjectPersistence) GetProjectUsers(projectID uuid.UUID) ([]entity.ProjectUser, error) {
+func (p *ProjectPersistence) GetProjectUsers(projectID uint) ([]entity.ProjectUser, error) {
 	var projectUsers []entity.ProjectUser
 	if err := p.db.Where("project_id = ?", projectID).Find(&projectUsers).Error; err != nil {
 		return nil, err
@@ -96,7 +95,11 @@ func (p *ProjectPersistence) GetProjectUsers(projectID uuid.UUID) ([]entity.Proj
 	return projectUsers, nil
 }
 
-func (p *ProjectPersistence) InviteProject(projectUser *entity.ProjectUser) error {
+func (p *ProjectPersistence) InviteProject(senderID uint, receiverID uint, projectID uint) error {
+	projectUser := &model.ProjectUser{
+		ProjectID: projectID,
+		UserID:    receiverID,
+	}
 	if err := p.db.Model(&model.ProjectUser{}).Create(projectUser).Error; err != nil {
 		return err
 	}

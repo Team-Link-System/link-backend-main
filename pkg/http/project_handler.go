@@ -9,9 +9,9 @@ import (
 	"link/pkg/logger"
 	"link/pkg/ws"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type ProjectHandler struct {
@@ -106,13 +106,9 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	}
 
 	projectID := c.Param("projectid")
-	parsedID, err := uuid.Parse(projectID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
-		return
-	}
-
-	project, err := h.projectUsecase.GetProject(userId.(uint), parsedID)
+	//projectId는 uint로 변환
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	project, err := h.projectUsecase.GetProject(userId.(uint), uint(parsedID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
@@ -155,7 +151,7 @@ func (h *ProjectHandler) InviteProject(c *gin.Context) {
 	h.hub.SendMessageToUser(request.ReceiverID, res.JsonResponse{
 		Success: true,
 		Type:    "notification",
-		Payload: &res.ProjectInviteNotificationPayload{
+		Payload: &res.NotificationPayload{
 			DocID:      response.DocID,
 			SenderID:   response.SenderID,
 			ReceiverID: response.ReceiverID,
@@ -184,13 +180,12 @@ func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
 	}
 
 	projectID := c.Param("projectid")
-	parsedID, err := uuid.Parse(projectID)
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
 		return
 	}
-
-	users, err := h.projectUsecase.GetProjectUsers(userId.(uint), parsedID)
+	users, err := h.projectUsecase.GetProjectUsers(userId.(uint), uint(parsedID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))

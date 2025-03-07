@@ -261,6 +261,8 @@ func (r *notificationPersistence) GetNotificationByDocID(docID string) (*entity.
 		RequestType:    notification.RequestType,
 		CompanyId:      notification.CompanyId,
 		CompanyName:    notification.CompanyName,
+		TargetType:     notification.TargetType,
+		TargetID:       notification.TargetID,
 		DepartmentId:   notification.DepartmentId,
 		DepartmentName: notification.DepartmentName,
 		CreatedAt:      notification.CreatedAt,

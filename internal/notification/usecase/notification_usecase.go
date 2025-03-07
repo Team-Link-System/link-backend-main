@@ -12,6 +12,7 @@ import (
 	_departmentRepo "link/internal/department/repository"
 	_notificationEntity "link/internal/notification/entity"
 	_notificationRepo "link/internal/notification/repository"
+	_projectRepo "link/internal/project/repository"
 	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 	"link/pkg/common"
@@ -37,6 +38,7 @@ type notificationUsecase struct {
 	userRepo         _userRepo.UserRepository
 	companyRepo      _companyRepo.CompanyRepository
 	departmentRepo   _departmentRepo.DepartmentRepository
+	projectRepo      _projectRepo.ProjectRepository
 	natsPublisher    *_nats.NatsPublisher
 	natsSubscriber   *_nats.NatsSubscriber
 }
@@ -46,6 +48,7 @@ func NewNotificationUsecase(
 	userRepo _userRepo.UserRepository,
 	companyRepo _companyRepo.CompanyRepository,
 	departmentRepo _departmentRepo.DepartmentRepository,
+	projectRepo _projectRepo.ProjectRepository,
 	natsPublisher *_nats.NatsPublisher,
 	natsSubscriber *_nats.NatsSubscriber) NotificationUsecase {
 	return &notificationUsecase{
@@ -53,6 +56,7 @@ func NewNotificationUsecase(
 		userRepo:         userRepo,
 		companyRepo:      companyRepo,
 		departmentRepo:   departmentRepo,
+		projectRepo:      projectRepo,
 		natsPublisher:    natsPublisher,
 		natsSubscriber:   natsSubscriber,
 	}
@@ -357,7 +361,13 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, ta
 					return nil, common.NewError(http.StatusInternalServerError, "부서 할당에 실패했습니다", err)
 				}
 			}
+		} else if notification.InviteType == "PROJECT" {
+			err := n.projectRepo.InviteProject(notification.SenderId, notification.ReceiverId, notification.TargetID)
+			if err != nil {
+				return nil, common.NewError(http.StatusInternalServerError, "프로젝트 초대에 실패했습니다", err)
+			}
 		}
+
 	} else if notification.Status == "REJECTED" {
 		title = "REJECTED"
 		content = fmt.Sprintf("[REJECTED] %s님이 %s님의 [%s] 초대를 거절했습니다", *receiver.Name, *sender.Name, notification.InviteType)
@@ -372,6 +382,7 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, ta
 		"payload": map[string]interface{}{
 			"doc_id":          responseDocID,
 			"target_doc_id":   targetDocID,
+			"target_type":     "NOTIFICATION",
 			"target_id":       notification.ID,
 			"sender_id":       notification.SenderId,
 			"receiver_id":     notification.ReceiverId,
