@@ -15,6 +15,7 @@ type GetProjectResponse struct {
 	EndDate   string    `json:"end_date"`
 	CreatedBy uint      `json:"created_by"`
 	CompanyID uint      `json:"company_id,omitempty"`
+	UserRole  int       `json:"user_project_role"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

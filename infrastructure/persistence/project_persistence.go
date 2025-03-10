@@ -116,3 +116,21 @@ func (p *ProjectPersistence) CheckProjectRole(userID uint, projectID uint) (enti
 	}
 	return projectUser, nil
 }
+
+func (p *ProjectPersistence) UpdateProject(project *entity.Project) error {
+	tx := p.db.Begin()
+
+	if err := tx.Model(&model.Project{}).Where("id = ?", project.ID).Updates(map[string]interface{}{
+		"name":       project.Name,
+		"start_date": project.StartDate,
+		"end_date":   project.EndDate,
+	}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	return nil
+}

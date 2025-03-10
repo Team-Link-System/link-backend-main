@@ -10,6 +10,7 @@ import (
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
 	_utils "link/pkg/util"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ type ProjectUsecase interface {
 	GetProject(userId uint, projectID uint) (*res.GetProjectResponse, error)
 	GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error)
 	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error)
+	UpdateProject(userId uint, request *req.UpdateProjectRequest) error
 }
 
 type projectUsecase struct {
@@ -47,25 +49,25 @@ func NewProjectUsecase(
 func (u *projectUsecase) CreateProject(userId uint, request *req.CreateProjectRequest) error {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
-		fmt.Printf("사용자 조회 실패: %v", err)
+		log.Printf("사용자 조회 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
 	loc, err := time.LoadLocation("Asia/Seoul")
 	if err != nil {
-		fmt.Printf("시간대 로드 실패: %v", err)
+		log.Printf("시간대 로드 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "시간대 로드 실패", err)
 	}
 
 	startTime, err := time.ParseInLocation("2006-01-02 15:04:05", *request.StartDate, loc)
 	if err != nil {
-		fmt.Printf("시작일 파싱 실패: %v", err)
+		log.Printf("시작일 파싱 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "시작일 파싱 실패", err)
 	}
 
 	endTime, err := time.ParseInLocation("2006-01-02 15:04:05", *request.EndDate, loc)
 	if err != nil {
-		fmt.Printf("종료일 파싱 실패: %v", err)
+		log.Printf("종료일 파싱 실패: %v", err)
 		return common.NewError(http.StatusBadRequest, "종료일 파싱 실패", err)
 	}
 
@@ -85,7 +87,7 @@ func (u *projectUsecase) CreateProject(userId uint, request *req.CreateProjectRe
 
 	err = u.projectRepo.CreateProject(&project)
 	if err != nil {
-		fmt.Printf("프로젝트 생성 실패: %v", err)
+		log.Printf("프로젝트 생성 실패: %v", err)
 		return common.NewError(http.StatusInternalServerError, "프로젝트 생성 실패", err)
 	}
 
@@ -96,7 +98,7 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 	// 사용자 조회
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
-		fmt.Printf("사용자 조회 실패: %v", err)
+		log.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
 	}
 
@@ -110,14 +112,14 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 	switch category {
 	case "company":
 		if user.UserProfile.CompanyID == nil {
-			fmt.Printf("회사가 없는 사용자입니다. : 사용자 ID : %v", user.ID)
+			log.Printf("회사가 없는 사용자입니다. : 사용자 ID : %v", user.ID)
 			return nil, common.NewError(http.StatusBadRequest, "회사가 없습니다", nil)
 		}
 		projectData, err = u.projectRepo.GetProjectsByCompanyID(*user.UserProfile.CompanyID)
 	case "my":
 		projectData, err = u.projectRepo.GetProjectsByUserID(userId)
 	default:
-		fmt.Printf("카테고리가 올바르지 않습니다. : 카테고리 : %v", category)
+		log.Printf("카테고리가 올바르지 않습니다. : 카테고리 : %v", category)
 		return nil, common.NewError(http.StatusBadRequest, "카테고리가 올바르지 않습니다", nil)
 	}
 
@@ -161,6 +163,7 @@ func (u *projectUsecase) GetProject(userId uint, projectID uint) (*res.GetProjec
 		EndDate:   project.EndDate.Format("2006-01-02 15:04:05"),
 		CreatedBy: project.CreatedBy,
 		CompanyID: project.CompanyID,
+		UserRole:  project.ProjectUsers[0].Role,
 		CreatedAt: project.CreatedAt,
 	}
 
@@ -170,19 +173,19 @@ func (u *projectUsecase) GetProject(userId uint, projectID uint) (*res.GetProjec
 func (u *projectUsecase) GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error) {
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
-		fmt.Printf("사용자 조회 실패: %v", err)
+		log.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
 	}
 
 	project, err := u.projectRepo.GetProjectByID(*user.ID, projectID)
 	if err != nil {
-		fmt.Printf("프로젝트 조회 실패: %v", err)
+		log.Printf("프로젝트 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "존재하지 않는 프로젝트입니다.", err)
 	}
 
 	projectUsers, err := u.projectRepo.GetProjectUsers(project.ID)
 	if err != nil {
-		fmt.Printf("사용자 조회 실패: %v", err)
+		log.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
 	}
 
@@ -193,7 +196,7 @@ func (u *projectUsecase) GetProjectUsers(userId uint, projectID uint) (*res.GetP
 
 	users, err := u.userRepo.GetUserByIds(userIds)
 	if err != nil {
-		fmt.Printf("사용자 조회 실패: %v", err)
+		log.Printf("사용자 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
 	}
 
@@ -244,30 +247,30 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 
 	project, err := u.projectRepo.GetProjectByID(*sender.ID, request.ProjectID)
 	if err != nil {
-		fmt.Printf("프로젝트 조회 실패: %v", err)
+		log.Printf("프로젝트 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "속하지 않는 프로젝트 입니다.", err)
 	}
 
 	projectUsers, err := u.projectRepo.GetProjectUsers(project.ID)
 	if err != nil {
-		fmt.Printf("프로젝트 조회 실패: %v", err)
+		log.Printf("프로젝트 조회 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
 	}
 
 	checkSenderRole, err := u.projectRepo.CheckProjectRole(*sender.ID, project.ID)
 	if err != nil {
-		fmt.Printf("프로젝트 초대 권한 확인 실패: %v", err)
+		log.Printf("프로젝트 초대 권한 확인 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 초대 권한 확인 실패", err)
 	}
 
 	if checkSenderRole.Role < entity.ProjectMaintainer {
-		fmt.Printf("프로젝트 초대 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", *sender.ID, project.ID, checkSenderRole.Role)
+		log.Printf("프로젝트 초대 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", *sender.ID, project.ID, checkSenderRole.Role)
 		return nil, common.NewError(http.StatusBadRequest, "프로젝트 초대 권한이 없습니다.", nil)
 	}
 
 	for _, projectUser := range projectUsers {
 		if projectUser.UserID == *receiver.ID {
-			fmt.Printf("해당 프로젝트에 이미 참여중인 사용자입니다. : 사용자 ID : %v, 프로젝트 ID : %v", *receiver.ID, project.ID)
+			log.Printf("해당 프로젝트에 이미 참여중인 사용자입니다. : 사용자 ID : %v, 프로젝트 ID : %v", *receiver.ID, project.ID)
 			return nil, common.NewError(http.StatusBadRequest, "해당 프로젝트에 이미 참여중인 사용자입니다.", nil)
 		}
 	}
@@ -295,7 +298,7 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 
 	jsonData, err := json.Marshal(natsData)
 	if err != nil {
-		fmt.Printf("NATS 데이터 직렬화 실패: %v", err)
+		log.Printf("NATS 데이터 직렬화 실패: %v", err)
 		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
 	}
 
@@ -313,4 +316,78 @@ func (u *projectUsecase) InviteProject(senderId uint, request *req.InviteProject
 		TargetID:   project.ID,
 		CreatedAt:  time.Now().Format(time.DateTime),
 	}, nil
+}
+
+func (u *projectUsecase) UpdateProject(userId uint, request *req.UpdateProjectRequest) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		log.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	if request.ProjectID == 0 {
+		log.Printf("프로젝트 ID가 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v", userId, request.ProjectID)
+		return common.NewError(http.StatusBadRequest, "프로젝트 ID가 없습니다.", nil)
+	}
+
+	//프로젝트에 속한 사용자인지 확인
+	_, err = u.projectRepo.GetProjectsByUserID(userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 속한 사용자 확인 실패", err)
+	}
+
+	//권한 확인
+	checkUserRole, err := u.projectRepo.CheckProjectRole(userId, request.ProjectID)
+	if err != nil {
+		log.Printf("프로젝트 초대 권한 확인 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 초대 권한 확인 실패", err)
+	}
+
+	if checkUserRole.Role <= entity.ProjectMaintainer {
+		log.Printf("프로젝트 초대 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", userId, request.ProjectID, checkUserRole.Role)
+		return common.NewError(http.StatusBadRequest, "프로젝트 초대 권한이 없습니다.", nil)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(userId, request.ProjectID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	if request.Name != "" {
+		project.Name = request.Name
+	}
+
+	loc, err := time.LoadLocation("Asia/Seoul")
+	if err != nil {
+		log.Printf("시간대 로드 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "시간대 로드 실패", err)
+	}
+
+	if request.StartDate != nil {
+
+		startTime, err := time.ParseInLocation("2006-01-02 15:04:05", *request.StartDate, loc)
+		if err != nil {
+			log.Printf("시작일 파싱 실패: %v", err)
+			return common.NewError(http.StatusBadRequest, "시작일 파싱 실패", err)
+		}
+
+		project.StartDate = startTime // -> 날짜로 타입 변경
+	}
+
+	if request.EndDate != nil {
+		endTime, err := time.ParseInLocation("2006-01-02 15:04:05", *request.EndDate, loc)
+		if err != nil {
+			log.Printf("종료일 파싱 실패: %v", err)
+			return common.NewError(http.StatusBadRequest, "종료일 파싱 실패", err)
+		}
+		project.EndDate = endTime
+	}
+
+	project.ID = request.ProjectID
+
+	if err := u.projectRepo.UpdateProject(project); err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 수정 실패", err)
+	}
+
+	return nil
 }

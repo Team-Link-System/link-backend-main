@@ -72,6 +72,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 
 }
 
+// TODO 프로젝트 리스트 조회
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
@@ -97,6 +98,7 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 조회 완료", projects))
 }
 
+// TODO 프로젝트 조회 - 이후 해당 프로젝트에 속한 칸반보드 리스트 및 추가해야함 , 그리고 내권한 과 정보까지
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
@@ -108,6 +110,11 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	projectID := c.Param("projectid")
 	//projectId는 uint로 변환
 	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
+
 	project, err := h.projectUsecase.GetProject(userId.(uint), uint(parsedID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
@@ -198,11 +205,50 @@ func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 참여자 목록 조회 완료", users))
 }
 
-// 프로젝트 수정
+// 프로젝트 정보 수정
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
-	// projectUsecase.UpdateProject(c)
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	projectID := c.Param("projectid")
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
+
+	var request req.UpdateProjectRequest
+	if err := c.ShouldBind(&request); err != nil {
+		fmt.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	request.ProjectID = uint(parsedID)
+	err = h.projectUsecase.UpdateProject(userId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 수정 완료", nil))
 }
 
+// TODO 프로젝트 삭제
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	// projectUsecase.DeleteProject(c)
 }
+
+// TODO 프로젝트 사용자 권한 바꾸기
+// func (h *ProjectHandler) UpdateProjectUserRole(c *gin.Context) {
+
+// }
+
+//TODO 프로젝트 진입시 해당 프로젝트에 대한 내정보

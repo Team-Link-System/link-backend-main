@@ -11,3 +11,10 @@ type InviteProjectRequest struct {
 	ReceiverID uint `json:"receiver_id" binding:"required"`
 	ProjectID  uint `json:"project_id" binding:"required"`
 }
+
+type UpdateProjectRequest struct {
+	ProjectID uint    `json:"project_id"`
+	Name      string  `json:"name,omitempty"`
+	StartDate *string `json:"start_date,omitempty"`
+	EndDate   *string `json:"end_date,omitempty"`
+}
