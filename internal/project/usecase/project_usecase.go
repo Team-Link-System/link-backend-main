@@ -27,6 +27,7 @@ type ProjectUsecase interface {
 	GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error)
 	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error)
 	UpdateProject(userId uint, request *req.UpdateProjectRequest) error
+	DeleteProject(userId uint, projectID uint) error
 }
 
 type projectUsecase struct {
@@ -387,6 +388,31 @@ func (u *projectUsecase) UpdateProject(userId uint, request *req.UpdateProjectRe
 
 	if err := u.projectRepo.UpdateProject(project); err != nil {
 		return common.NewError(http.StatusInternalServerError, "프로젝트 수정 실패", err)
+	}
+
+	return nil
+}
+
+func (u *projectUsecase) DeleteProject(userId uint, projectID uint) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(userId, projectID)
+	if err != nil {
+		log.Printf("프로젝트 조회 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	if project.CreatedBy != userId {
+		log.Printf("프로젝트 삭제 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v", userId, projectID)
+		return common.NewError(http.StatusBadRequest, "프로젝트 삭제 권한이 없습니다.", nil)
+	}
+
+	if err := u.projectRepo.DeleteProject(projectID); err != nil {
+		log.Printf("프로젝트 삭제 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 삭제 실패", err)
 	}
 
 	return nil

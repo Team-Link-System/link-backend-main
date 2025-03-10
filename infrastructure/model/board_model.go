@@ -11,7 +11,7 @@ type Board struct {
 	ID        uint          `gorm:"primaryKey;autoIncrement"`
 	Title     string        `gorm:"not null"`
 	ProjectID uint          `gorm:"not null;index"`
-	Project   Project       `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	Project   Project       `gorm:"foreignKey:ProjectID;references:ID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	CreatedAt time.Time     `gorm:"autoCreateTime"`
 	UpdatedAt time.Time     `gorm:"autoUpdateTime"`
 	Users     []User        `gorm:"many2many:board_users;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`

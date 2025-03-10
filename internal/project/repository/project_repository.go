@@ -13,4 +13,5 @@ type ProjectRepository interface {
 	InviteProject(senderID uint, receiverID uint, projectID uint) error
 	CheckProjectRole(userID uint, projectID uint) (entity.ProjectUser, error)
 	UpdateProject(project *entity.Project) error
+	DeleteProject(projectID uint) error
 }
