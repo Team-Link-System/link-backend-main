@@ -139,6 +139,19 @@ func (p *ProjectPersistence) DeleteProject(projectID uint) error {
 	if err := p.db.Where("id = ?", projectID).Delete(&model.Project{}).Error; err != nil {
 		return err
 	}
+	return nil
+}
 
+func (p *ProjectPersistence) UpdateProjectUserRole(projectID uint, userID uint, role int) error {
+	if err := p.db.Model(&model.ProjectUser{}).Where("project_id = ? AND user_id = ?", projectID, userID).Update("role", role).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *ProjectPersistence) DeleteProjectUser(projectID uint, userID uint) error {
+	if err := p.db.Where("project_id = ? AND user_id = ?", projectID, userID).Delete(&model.ProjectUser{}).Error; err != nil {
+		return err
+	}
 	return nil
 }

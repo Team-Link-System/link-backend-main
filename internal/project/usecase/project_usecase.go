@@ -28,6 +28,8 @@ type ProjectUsecase interface {
 	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error)
 	UpdateProject(userId uint, request *req.UpdateProjectRequest) error
 	DeleteProject(userId uint, projectID uint) error
+	UpdateProjectUserRole(userId uint, request *req.UpdateProjectUserRoleRequest) error
+	DeleteProjectUser(requestUserId uint, projectID uint, targetUserID uint) error
 }
 
 type projectUsecase struct {
@@ -413,6 +415,127 @@ func (u *projectUsecase) DeleteProject(userId uint, projectID uint) error {
 	if err := u.projectRepo.DeleteProject(projectID); err != nil {
 		log.Printf("프로젝트 삭제 실패: %v", err)
 		return common.NewError(http.StatusInternalServerError, "프로젝트 삭제 실패", err)
+	}
+
+	return nil
+}
+
+func (u *projectUsecase) UpdateProjectUserRole(requestUserId uint, request *req.UpdateProjectUserRoleRequest) error {
+	_, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		log.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	_, err = u.userRepo.GetUserByID(request.TargetUserID)
+	if err != nil {
+		log.Printf("사용자 조회 실패: %v", err)
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	if request.TargetUserID == requestUserId {
+		log.Printf("자기 자신을 선택할 수 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v", requestUserId, request.ProjectID)
+		return common.NewError(http.StatusBadRequest, "자기 자신을 선택할 수 없습니다.", nil)
+	}
+
+	existUser := false
+	projectUsers, err := u.projectRepo.GetProjectUsers(request.ProjectID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 조회 실패", err)
+	}
+
+	//권한 확인
+	checkUserRole, err := u.projectRepo.CheckProjectRole(requestUserId, request.ProjectID)
+	if err != nil {
+		log.Printf("프로젝트 사용자 권한 확인 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 권한 확인 실패", err)
+	}
+
+	targetUserRole, err := u.projectRepo.CheckProjectRole(request.TargetUserID, request.ProjectID)
+	if err != nil {
+		log.Printf("프로젝트 사용자 권한 확인 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 권한 확인 실패", err)
+	}
+
+	if checkUserRole.Role != entity.ProjectMaster && checkUserRole.Role != entity.ProjectAdmin {
+		log.Printf("프로젝트 Role 변경 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", requestUserId, request.ProjectID, checkUserRole.Role)
+		return common.NewError(http.StatusBadRequest, "프로젝트 Role 변경 권한이 없습니다.", nil)
+	}
+
+	//자기보다 낮은 권한만 수정가능하다 Role 3,4만 수정가능
+	if checkUserRole.Role != entity.ProjectMaster && (request.Role > checkUserRole.Role || targetUserRole.Role > checkUserRole.Role) {
+		log.Printf("자기보다 낮은 권한만 수정가능합니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", requestUserId, request.ProjectID, checkUserRole.Role)
+		return common.NewError(http.StatusBadRequest, "자기보다 낮은 권한만 수정가능합니다.", nil)
+	}
+
+	//projectUsers에 request.UserID가 포함되는지 확인
+	for _, projectUser := range projectUsers {
+		if projectUser.UserID == request.TargetUserID {
+			existUser = true
+		}
+	}
+
+	if !existUser {
+		log.Printf("프로젝트에 해당 사용자가 존재하지 않습니다. : 사용자 ID : %v, 프로젝트 ID : %v", request.TargetUserID, request.ProjectID)
+		return common.NewError(http.StatusBadRequest, "프로젝트에 해당 사용자가 존재하지 않습니다.", nil)
+	}
+
+	if err := u.projectRepo.UpdateProjectUserRole(request.ProjectID, request.TargetUserID, request.Role); err != nil {
+		log.Printf("프로젝트 사용자 권한 수정 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 권한 수정 실패", err)
+	}
+
+	return nil
+}
+
+func (u *projectUsecase) DeleteProjectUser(requestUserId uint, projectID uint, targetUserID uint) error {
+
+	if requestUserId == targetUserID {
+		log.Printf("자기 자신을 삭제할 수 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v", requestUserId, projectID)
+		return common.NewError(http.StatusBadRequest, "자기 자신을 삭제할 수 없습니다.", nil)
+	}
+
+	_, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	_, err = u.userRepo.GetUserByID(targetUserID)
+	if err != nil {
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+
+	_, err = u.projectRepo.GetProjectByID(requestUserId, projectID)
+	if err != nil {
+		log.Printf("프로젝트 조회 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	requestUserRole, err := u.projectRepo.CheckProjectRole(requestUserId, projectID)
+	if err != nil {
+		log.Printf("프로젝트 사용자 권한 확인 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 권한 확인 실패", err)
+	}
+
+	targetUserRole, err := u.projectRepo.CheckProjectRole(targetUserID, projectID)
+	if err != nil {
+		log.Printf("프로젝트 사용자 권한 확인 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 권한 확인 실패", err)
+	}
+
+	if requestUserRole.Role <= entity.ProjectMaintainer {
+		log.Printf("프로젝트 관리자 권한이 없습니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", requestUserId, projectID, requestUserRole.Role)
+		return common.NewError(http.StatusBadRequest, "프로젝트 관리자 권한이 없습니다.", nil)
+	}
+
+	if requestUserRole.Role <= targetUserRole.Role {
+		log.Printf("자기보다 낮은 권한만 삭제가능합니다. : 사용자 ID : %v, 프로젝트 ID : %v 권한 : %v", requestUserId, projectID, requestUserRole.Role)
+		return common.NewError(http.StatusBadRequest, "자기보다 낮은 권한만 삭제가능합니다.", nil)
+	}
+
+	if err := u.projectRepo.DeleteProjectUser(projectID, targetUserID); err != nil {
+		log.Printf("프로젝트 사용자 삭제 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 삭제 실패", err)
 	}
 
 	return nil

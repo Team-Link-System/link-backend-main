@@ -14,4 +14,6 @@ type ProjectRepository interface {
 	CheckProjectRole(userID uint, projectID uint) (entity.ProjectUser, error)
 	UpdateProject(project *entity.Project) error
 	DeleteProject(projectID uint) error
+	UpdateProjectUserRole(projectID uint, userID uint, role int) error
+	DeleteProjectUser(projectID uint, userID uint) error
 }
