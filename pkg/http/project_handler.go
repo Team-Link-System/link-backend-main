@@ -244,6 +244,31 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 // TODO 프로젝트 삭제
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	// projectUsecase.DeleteProject(c)
+	userId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	projectID := c.Param("projectid")
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
+
+	err = h.projectUsecase.DeleteProject(userId.(uint), uint(parsedID))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 삭제 완료", nil))
 }
 
 // TODO 프로젝트 사용자 권한 바꾸기

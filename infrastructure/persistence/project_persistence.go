@@ -134,3 +134,11 @@ func (p *ProjectPersistence) UpdateProject(project *entity.Project) error {
 	}
 	return nil
 }
+
+func (p *ProjectPersistence) DeleteProject(projectID uint) error {
+	if err := p.db.Where("id = ?", projectID).Delete(&model.Project{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
