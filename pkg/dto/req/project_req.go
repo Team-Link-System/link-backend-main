@@ -18,3 +18,9 @@ type UpdateProjectRequest struct {
 	StartDate *string `json:"start_date,omitempty"`
 	EndDate   *string `json:"end_date,omitempty"`
 }
+
+type UpdateProjectUserRoleRequest struct {
+	ProjectID    uint `json:"project_id"`
+	TargetUserID uint `json:"target_user_id"`
+	Role         int  `json:"role"`
+}

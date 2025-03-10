@@ -8,6 +8,7 @@ import (
 	"link/pkg/dto/res"
 	"link/pkg/logger"
 	"link/pkg/ws"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -272,8 +273,76 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 }
 
 // TODO 프로젝트 사용자 권한 바꾸기
-// func (h *ProjectHandler) UpdateProjectUserRole(c *gin.Context) {
+func (h *ProjectHandler) UpdateProjectUserRole(c *gin.Context) {
+	requestUserId, exists := c.Get("userId")
+	if !exists {
+		fmt.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
 
-// }
+	projectID := c.Param("projectid")
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
 
-//TODO 프로젝트 진입시 해당 프로젝트에 대한 내정보
+	var request req.UpdateProjectUserRoleRequest
+	if err := c.ShouldBind(&request); err != nil {
+		log.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
+
+	request.ProjectID = uint(parsedID)
+	err = h.projectUsecase.UpdateProjectUserRole(requestUserId.(uint), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 사용자 권한 수정 완료", nil))
+}
+
+// TODO 프로젝트 사용자 삭제
+func (h *ProjectHandler) DeleteProjectUser(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		log.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	projectID := c.Param("projectid")
+	parsedID, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		log.Printf("projectID 파싱 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "projectID 파싱 실패", err))
+		return
+	}
+
+	targetUserID := c.Param("userid")
+	targetParsedUserID, err := strconv.ParseUint(targetUserID, 10, 64)
+	if err != nil {
+		log.Printf("userID 파싱 실패: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "userID 파싱 실패", err))
+		return
+	}
+
+	err = h.projectUsecase.DeleteProjectUser(userId.(uint), uint(parsedID), uint(targetParsedUserID))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "프로젝트 사용자 삭제 완료", nil))
+}

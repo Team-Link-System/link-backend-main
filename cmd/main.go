@@ -300,6 +300,8 @@ func startServer() {
 				project.POST("/invite", projectHandler.InviteProject)
 				project.PUT("/:projectid", projectHandler.UpdateProject)
 				project.DELETE("/:projectid", projectHandler.DeleteProject)
+				project.PUT("/:projectid/role", projectHandler.UpdateProjectUserRole)
+				project.DELETE("/:projectid/role/:userid", projectHandler.DeleteProjectUser)
 			}
 
 			stat := protectedRoute.Group("stat")
