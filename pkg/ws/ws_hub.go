@@ -63,29 +63,26 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 	} else {
 		//TODO userClient가 메모리에있는지 확인
 		// 기존 연결 확인
-		_, existingConnection := hub.Clients.Load(userID)
-		if existingConnection {
-			conn.WriteJSON(res.JsonResponse{
-				Success: true,
-				Message: fmt.Sprintf("User %d 재연결 성공", userID),
-				Type:    "reconnection",
-			})
-			return
-		}
+		clientsMap, _ := hub.Clients.LoadOrStore(userID, make(map[*websocket.Conn]bool))
 
-		hub.Clients.Store(userID, conn)
+		connsMap := clientsMap.(map[*websocket.Conn]bool)
+		connsMap[conn] = true
+		hub.Clients.Store(userID, connsMap)
+
 		conn.WriteJSON(res.JsonResponse{
 			Success: true,
 			Message: fmt.Sprintf("User %d 연결 성공", userID),
 			Type:    "connection",
 		})
 
-		//TODO 온라인 상태 변경 -> (새 연결일 때만)
-		oldStatus, _ := hub.OnlineClients.Load(userID)
-		if oldStatus == nil || oldStatus == false {
-			hub.OnlineClients.Store(userID, true)
-			// Redis 업데이트 및 상태 변경 브로드캐스트
-			hub.BroadcastOnlineStatus(userID, true)
+		//TODO -> 첫 연결일때만 온라인 상태
+		if len(connsMap) == 1 {
+			oldStatus, _ := hub.OnlineClients.Load(userID)
+			if oldStatus == nil || oldStatus == false {
+				hub.OnlineClients.Store(userID, true)
+				// Redis 업데이트 및 상태 변경 브로드캐스트
+				hub.BroadcastOnlineStatus(userID, true)
+			}
 		}
 	}
 }
@@ -97,17 +94,19 @@ func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint, roo
 		hub.RemoveFromChatRoom(roomID, userID)
 		return
 	} else {
-		// 현재 저장된 연결이 해제하려는 연결과 동일한지 확인
-		if currentConn, exists := hub.Clients.Load(userID); exists {
-			if currentConn == conn {
-				hub.Clients.Delete(userID)
-				conn.Close()
+		if clientsMap, exists := hub.Clients.Load(userID); exists {
+			connsMap := clientsMap.(map[*websocket.Conn]bool)
 
-				// 다른 활성 연결이 없을 때만 오프라인으로 변경
-				if _, hasOtherConnection := hub.Clients.Load(userID); !hasOtherConnection {
-					hub.OnlineClients.Store(userID, false)
-					hub.BroadcastOnlineStatus(userID, false)
-				}
+			//특정 연결 제거
+			delete(connsMap, conn)
+			conn.Close()
+
+			if len(connsMap) > 0 {
+				hub.Clients.Store(userID, connsMap)
+			} else {
+				hub.Clients.Delete(userID)
+				hub.OnlineClients.Store(userID, false)
+				hub.BroadcastOnlineStatus(userID, false)
 			}
 		}
 	}
@@ -152,9 +151,11 @@ func (hub *WebSocketHub) SendMessageToChatRoom(roomID uint, message res.JsonResp
 // 특정 유저에게 메시지 전송 -> 특정 유저에게 알람을 보낼 때,
 // 알림 같은거 보낼 때 사용
 func (hub *WebSocketHub) SendMessageToUser(userID uint, message res.JsonResponse) {
-	if conn, ok := hub.Clients.Load(userID); ok {
-		client := conn.(*websocket.Conn)
-		hub.sendMessageToClient(client, message) // roomID는 0으로 설정
+	if clientsMap, ok := hub.Clients.Load(userID); ok {
+		connsMap := clientsMap.(map[*websocket.Conn]bool)
+		for client := range connsMap {
+			hub.sendMessageToClient(client, message)
+		}
 	}
 }
 
@@ -225,9 +226,10 @@ func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 
 // TODO 이건 RoomID와는 관계 없음
 func (hub *WebSocketHub) BroadcastToAllUsers(message interface{}) {
-	hub.Clients.Range(func(id, conn interface{}) bool {
-		if _, ok := id.(uint); ok {
-			conn.(*websocket.Conn).WriteJSON(message)
+	hub.Clients.Range(func(id, clientsMap interface{}) bool {
+		connsMap := clientsMap.(map[*websocket.Conn]bool)
+		for client := range connsMap {
+			client.WriteJSON(message)
 		}
 		return true
 	})

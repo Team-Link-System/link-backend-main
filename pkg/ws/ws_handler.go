@@ -488,49 +488,62 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		return
 	}
 
-	defer func() {
-		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
+	// 디버깅 로그 추가
+	log.Printf("사용자 %d의 새 웹소켓 연결 시도", userIdUint)
+
+	// 사용자 정보 확인
+	user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
+	if err != nil {
+		log.Printf("사용자 조회에 실패했습니다: %v", err)
+		conn.WriteJSON(res.JsonResponse{
+			Success: false,
+			Message: "사용자 조회에 실패했습니다",
+			Type:    "error",
+		})
 		conn.Close()
-		// 다른 활성 연결이 있는지 확인 후 상태 업데이트
-		if _, exists := h.hub.Clients.Load(uint(userIdUint)); !exists {
+		return
+	}
+
+	// 클라이언트 등록 - 이미 연결이 있어도 추가 연결 허용
+	h.hub.RegisterClient(conn, *user.ID, 0)
+
+	// 첫 연결인 경우에만 상태 업데이트
+	clientsMap, _ := h.hub.Clients.Load(uint(userIdUint))
+	connsMap := clientsMap.(map[*websocket.Conn]bool)
+	if len(connsMap) == 1 {
+		if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
+			log.Printf("온라인 상태 업데이트 실패: %v", err)
+		}
+	}
+
+	// 연결 종료 시 처리
+	defer func() {
+		log.Printf("사용자 %d의 웹소켓 연결 종료", userIdUint)
+		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
+
+		// 남은 연결 확인
+		if clientsMap, exists := h.hub.Clients.Load(uint(userIdUint)); exists {
+			connsMap := clientsMap.(map[*websocket.Conn]bool)
+			if len(connsMap) == 0 {
+				// 모든 연결이 종료된 경우에만 오프라인으로 변경
+				if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
+					log.Printf("유저 상태 업데이트 실패: %v", err)
+				}
+			}
+		} else {
+			// 연결 맵이 없는 경우도 오프라인으로 변경
 			if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
 				log.Printf("유저 상태 업데이트 실패: %v", err)
 			}
 		}
 	}()
 
-	//TODO 메모리에 유저 상태 확인
-	_, exists := h.hub.Clients.Load(uint(userIdUint))
-	if !exists {
-		user, err := h.userUsecase.GetUserMyInfo(uint(userIdUint))
-		if err != nil {
-			log.Printf("사용자 조회에 실패했습니다: %v", err)
-			conn.WriteJSON(res.JsonResponse{
-				Success: false,
-				Message: "사용자 조회에 실패했습니다",
-				Type:    "error",
-			})
-			return
-		}
-		h.hub.RegisterClient(conn, *user.ID, 0)
-		if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
-			log.Printf("온라인 상태 업데이트 실패: %v", err)
-		}
-	}
-
-	//! 메시지 처리 루프 (여기서는 알림이나 시스템 메시지 처리)
+	// 메시지 처리 루프
 	for {
 		_, messageBytes, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("예기치 않은 WebSocket 종료: %v", err)
-
-				// 다른 활성 연결이 없을 때만 상태 업데이트
-				if _, exists := h.hub.Clients.Load(uint(userIdUint)); !exists {
-					if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-						log.Printf("유저 상태 업데이트 실패: %v", err)
-					}
-				}
 			}
 			break
 		}
@@ -547,6 +560,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
+		// 메시지 처리 로직...
 	}
 }
 
