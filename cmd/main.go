@@ -128,6 +128,7 @@ func startServer() {
 		statHandler *handlerHttp.StatHandler,
 		reportHandler *handlerHttp.ReportHandler,
 		projectHandler *handlerHttp.ProjectHandler,
+		boardHandler *handlerHttp.BoardHandler,
 		params struct {
 			dig.In
 			ProfileImageMiddleware *middleware.ImageUploadMiddleware `name:"profileImageMiddleware"`
@@ -302,6 +303,13 @@ func startServer() {
 				project.DELETE("/:projectid", projectHandler.DeleteProject)
 				project.PUT("/:projectid/role", projectHandler.UpdateProjectUserRole)
 				project.DELETE("/:projectid/role/:userid", projectHandler.DeleteProjectUser)
+			}
+
+			board := protectedRoute.Group("board")
+			{
+				board.POST("", boardHandler.CreateBoard)
+				board.GET("/:boardid", boardHandler.GetBoard)
+				board.GET("/project/:projectid", boardHandler.GetBoards)
 			}
 
 			stat := protectedRoute.Group("stat")

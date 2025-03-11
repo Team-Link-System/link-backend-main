@@ -1,0 +1,204 @@
+package usecase
+
+import (
+	"encoding/json"
+	"link/internal/board/entity"
+	_boardRepo "link/internal/board/repository"
+	_projectRepo "link/internal/project/repository"
+	_userRepo "link/internal/user/repository"
+	"link/pkg/common"
+	"link/pkg/dto/req"
+	"link/pkg/dto/res"
+	"log"
+	"net/http"
+	"time"
+
+	_nats "link/pkg/nats"
+
+	"github.com/google/uuid"
+)
+
+type BoardUsecase interface {
+	CreateBoard(userId uint, request *req.CreateBoardRequest) error
+	GetBoard(userId uint, boardID uint) (*res.GetBoardResponse, error)
+	GetBoards(userId uint, projectID uint) (*res.GetBoardsResponse, error)
+}
+
+type boardUsecase struct {
+	boardRepo     _boardRepo.BoardRepository
+	userRepo      _userRepo.UserRepository
+	projectRepo   _projectRepo.ProjectRepository
+	natsPublisher *_nats.NatsPublisher
+}
+
+func NewBoardUsecase(
+	boardRepo _boardRepo.BoardRepository,
+	userRepo _userRepo.UserRepository,
+	projectRepo _projectRepo.ProjectRepository,
+	natsPublisher *_nats.NatsPublisher) BoardUsecase {
+	return &boardUsecase{
+		boardRepo:     boardRepo,
+		userRepo:      userRepo,
+		projectRepo:   projectRepo,
+		natsPublisher: natsPublisher,
+	}
+}
+
+func (u *boardUsecase) CreateBoard(userId uint, request *req.CreateBoardRequest) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusBadRequest, "사용자 조회 실패", err)
+	}
+	hasAcess, err := u.projectRepo.GetProjectByID(userId, request.ProjectID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	if hasAcess == nil {
+		return common.NewError(http.StatusForbidden, "프로젝트 접근 권한 없음", nil)
+	}
+
+	board := entity.Board{
+		Title:     request.Title,
+		ProjectID: request.ProjectID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := u.boardRepo.CreateBoard(&board); err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 생성 실패", err)
+	}
+
+	boardUser := entity.BoardUser{
+		BoardID: board.ID,
+		UserID:  userId,
+		Role:    2,
+	}
+
+	if err := u.boardRepo.AddUserToBoard(&boardUser); err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 사용자 추가 실패", err)
+	}
+
+	//TODO 더미로 생성 이후 삭제 필요
+	defaultColums := []entity.BoardColumn{ // 일단 더미로 생성
+		{
+			Name:      "To Do",
+			BoardID:   board.ID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			Name:      "In Progress",
+			BoardID:   board.ID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+	}
+
+	for _, column := range defaultColums {
+		if err := u.boardRepo.CreateBoardColumn(&column); err != nil {
+			return common.NewError(http.StatusInternalServerError, "보드 컬럼 생성 실패", err)
+		}
+	}
+
+	user, _ := u.userRepo.GetUserByID(userId)
+
+	//mongoDB 에 로그성 데이터는 nats로 전송
+	docID := uuid.New().String()
+
+	natsData := map[string]interface{}{
+		"topic": "link.event.notification.board.create",
+		"payload": map[string]interface{}{
+			"doc_id":      docID,
+			"board_id":    board.ID,
+			"title":       board.Title,
+			"project_id":  board.ProjectID,
+			"created_at":  board.CreatedAt,
+			"updated_at":  board.UpdatedAt,
+			"user_id":     *user.ID,
+			"user_name":   *user.Name,
+			"alarm_type":  "BOARD",
+			"target_type": "BOARD",
+			"action":      "create.board",
+			"timestamp":   time.Now(),
+		},
+	}
+
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 실패: %v", err)
+		return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+	}
+
+	go u.natsPublisher.PublishEvent("link.event.notification.board.create", jsonData)
+
+	return nil
+}
+
+func (u *boardUsecase) GetBoards(userId uint, projectID uint) (*res.GetBoardsResponse, error) {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(userId, projectID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	boards, err := u.boardRepo.GetBoardsByProjectID(projectID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	boardsResponse := make([]res.GetBoardResponse, len(boards))
+	for i, board := range boards {
+		boardsResponse[i] = res.GetBoardResponse{
+			BoardID:     board.ID,
+			Title:       board.Title,
+			ProjectID:   board.ProjectID,
+			ProjectName: project.Name,
+			CreatedAt:   board.CreatedAt,
+			UpdatedAt:   board.UpdatedAt,
+		}
+	}
+
+	return &res.GetBoardsResponse{
+		Boards: boardsResponse,
+	}, nil
+}
+
+func (u *boardUsecase) GetBoard(userId uint, boardID uint) (*res.GetBoardResponse, error) {
+
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	board, err := u.boardRepo.GetBoardByID(boardID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	checkBoardUserRole, err := u.boardRepo.CheckBoardUserRole(boardID, userId)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 사용자 권한 조회 실패", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(userId, board.ProjectID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	boardResponse := &res.GetBoardResponse{
+		BoardID:       board.ID,
+		Title:         board.Title,
+		ProjectID:     board.ProjectID,
+		ProjectName:   project.Name,
+		UserBoardRole: &checkBoardUserRole,
+		CreatedAt:     board.CreatedAt,
+		UpdatedAt:     board.UpdatedAt,
+	}
+
+	return boardResponse, nil
+}
