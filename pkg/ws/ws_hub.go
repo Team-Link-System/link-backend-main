@@ -332,6 +332,12 @@ func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint, roo
 func (hub *WebSocketHub) AddToChatRoom(roomID uint, userID uint, conn *websocket.Conn) {
 	room, _ := hub.ChatRooms.LoadOrStore(roomID, &ChatRoom{})
 	room.(*ChatRoom).Clients.Store(userID, conn)
+
+	conn.SetPongHandler(func(string) error {
+		return nil
+	})
+
+	log.Printf("사용자 %d가 채팅방 %d에 추가됨", userID, roomID)
 }
 
 // 채팅방에서 클라이언트 제거
@@ -387,27 +393,37 @@ func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message int
 
 // 회사 클라이언트 등록
 func (hub *WebSocketHub) RegisterCompanyClient(conn *websocket.Conn, companyID uint) {
-	clients, _ := hub.CompanyClients.LoadOrStore(companyID, make(map[*websocket.Conn]bool))
-	clientMap := clients.(map[*websocket.Conn]bool)
-	clientMap[conn] = true
-	hub.CompanyClients.Store(companyID, clientMap)
+	clientsMapInterface, _ := hub.CompanyClients.LoadOrStore(companyID, make(map[*websocket.Conn]*ConnectionInfo))
+	clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+
+	clientsMap[conn] = &ConnectionInfo{
+		Conn:     conn,
+		UserID:   0, // 회사는 UserID가 없음
+		LastPing: time.Now(),
+		IsActive: true,
+	}
+
+	hub.CompanyClients.Store(companyID, clientsMap)
 
 	conn.WriteJSON(res.JsonResponse{
 		Success: true,
 		Message: fmt.Sprintf("Company %d 연결 성공", companyID),
 		Type:    "company_connection",
 	})
+
 }
 
 // 회사 클라이언트 해제
 func (hub *WebSocketHub) UnregisterCompanyClient(conn *websocket.Conn, companyID uint) {
-	if clients, ok := hub.CompanyClients.Load(companyID); ok {
-		clientMap := clients.(map[*websocket.Conn]bool)
-		delete(clientMap, conn)
-		if len(clientMap) == 0 {
+	if clientsMapInterface, ok := hub.CompanyClients.Load(companyID); ok {
+		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+		delete(clientsMap, conn)
+		if len(clientsMap) == 0 {
 			hub.CompanyClients.Delete(companyID)
+			log.Printf("회사 %d의 모든 클라이언트 연결 해제됨", companyID)
 		} else {
-			hub.CompanyClients.Store(companyID, clientMap)
+			hub.CompanyClients.Store(companyID, clientsMap)
+			log.Printf("회사 %d 클라이언트 연결 해제, 남은 연결 수: %d", companyID, len(clientsMap))
 		}
 	}
 	conn.Close()
@@ -415,10 +431,10 @@ func (hub *WebSocketHub) UnregisterCompanyClient(conn *websocket.Conn, companyID
 
 // 회사 클라이언트에게 메시지 전송
 func (h *WebSocketHub) SendMessageToCompany(companyId uint, msg res.JsonResponse) {
-	if clients, ok := h.CompanyClients.Load(companyId); ok {
-		connMap := clients.(map[*websocket.Conn]bool)
-		for client := range connMap {
-			if err := client.WriteJSON(msg); err != nil {
+	if clientsMapInterface, ok := h.CompanyClients.Load(companyId); ok {
+		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+		for conn := range clientsMap {
+			if err := conn.WriteJSON(msg); err != nil {
 				log.Printf("웹소켓 메시지 전송 실패: %v", err)
 			}
 		}
@@ -443,10 +459,10 @@ func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 
 // TODO 이건 RoomID와는 관계 없음
 func (hub *WebSocketHub) BroadcastToAllUsers(message interface{}) {
-	hub.Clients.Range(func(id, clientsMap interface{}) bool {
-		connsMap := clientsMap.(map[*websocket.Conn]bool)
-		for client := range connsMap {
-			client.WriteJSON(message)
+	hub.Clients.Range(func(id, clientsMapInterface interface{}) bool {
+		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+		for conn := range clientsMap {
+			hub.sendMessageToClient(conn, message)
 		}
 		return true
 	})
