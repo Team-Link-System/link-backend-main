@@ -504,8 +504,14 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		return
 	}
 
+	userIDUint := uint(userIdUint)
 	// 클라이언트 등록 - 이미 연결이 있어도 추가 연결 허용
-	h.hub.RegisterClient(conn, *user.ID, 0)
+	h.hub.RegisterClient(conn, userIDUint, 0)
+
+	defer func() {
+		log.Printf("사용자 %d의 웹소켓 연결 종료", userIDUint)
+		h.hub.UnregisterClient(conn, userIDUint, 0)
+	}()
 
 	// 첫 연결인 경우에만 상태 업데이트
 	clientsMap, _ := h.hub.Clients.Load(uint(userIdUint))
@@ -516,27 +522,27 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		}
 	}
 
-	// 연결 종료 시 처리
-	defer func() {
-		log.Printf("사용자 %d의 웹소켓 연결 종료", userIdUint)
-		h.hub.UnregisterClient(conn, uint(userIdUint), 0)
+	// // 연결 종료 시 처리
+	// defer func() {
+	// 	log.Printf("사용자 %d의 웹소켓 연결 종료", userIdUint)
+	// 	h.hub.UnregisterClient(conn, uint(userIdUint), 0)
 
-		// 남은 연결 확인
-		if clientsMap, exists := h.hub.Clients.Load(uint(userIdUint)); exists {
-			connsMap := clientsMap.(map[*websocket.Conn]bool)
-			if len(connsMap) == 0 {
-				// 모든 연결이 종료된 경우에만 오프라인으로 변경
-				if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-					log.Printf("유저 상태 업데이트 실패: %v", err)
-				}
-			}
-		} else {
-			// 연결 맵이 없는 경우도 오프라인으로 변경
-			if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-				log.Printf("유저 상태 업데이트 실패: %v", err)
-			}
-		}
-	}()
+	// 	// 남은 연결 확인
+	// 	if clientsMap, exists := h.hub.Clients.Load(uint(userIdUint)); exists {
+	// 		connsMap := clientsMap.(map[*websocket.Conn]bool)
+	// 		if len(connsMap) == 0 {
+	// 			// 모든 연결이 종료된 경우에만 오프라인으로 변경
+	// 			if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
+	// 				log.Printf("유저 상태 업데이트 실패: %v", err)
+	// 			}
+	// 		}
+	// 	} else {
+	// 		// 연결 맵이 없는 경우도 오프라인으로 변경
+	// 		if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
+	// 			log.Printf("유저 상태 업데이트 실패: %v", err)
+	// 		}
+	// 	}
+	// }()
 
 	// 메시지 처리 루프
 	for {
@@ -560,7 +566,6 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			continue
 		}
 
-		// 메시지 처리 로직...
 	}
 }
 
