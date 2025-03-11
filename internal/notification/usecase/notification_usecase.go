@@ -30,7 +30,7 @@ type NotificationUsecase interface {
 	CreateInvite(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	CreateRequest(req req.NotificationRequest) (*res.CreateNotificationResponse, error)
 	UpdateInviteNotificationStatus(receiverId uint, targetDocID string, status string) (*res.UpdateNotificationStatusResponseMessage, error)
-	UpdateNotificationReadStatus(receiverId uint, docId string) error
+	UpdateNotificationReadStatus(receiverId uint, docId string) (*res.UpdateNotificationIsReadResponse, error)
 }
 
 type notificationUsecase struct {
@@ -426,23 +426,23 @@ func (n *notificationUsecase) UpdateInviteNotificationStatus(receiverId uint, ta
 }
 
 // TODO 읽음 처리
-func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, docId string) error {
+func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, docId string) (*res.UpdateNotificationIsReadResponse, error) {
 	notification, err := n.notificationRepo.GetNotificationByDocID(docId)
 	if err != nil || notification == nil {
-		return common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
+		return nil, common.NewError(http.StatusNotFound, "알림이 존재하지 않습니다", err)
 	}
 
 	if notification.ReceiverId != receiverId {
-		return common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다", err)
+		return nil, common.NewError(http.StatusBadRequest, "알림 수신자가 아닙니다", err)
 	}
 
 	var alarmType string = strings.ToUpper(notification.AlarmType)
 	if alarmType == "RESPONSE" || alarmType == "REQUEST" || alarmType == "INVITE" {
-		return common.NewError(http.StatusBadRequest, "처리할 수 없는 알림입니다", nil)
+		return nil, common.NewError(http.StatusBadRequest, "처리할 수 없는 알림입니다", nil)
 	}
 
 	if notification.IsRead || (notification.Status != "" && (notification.Status == "ACCEPTED" || notification.Status == "REJECTED")) {
-		return common.NewError(http.StatusBadRequest, "이미 처리된 알림입니다", nil)
+		return nil, common.NewError(http.StatusBadRequest, "이미 처리된 알림입니다", nil)
 	}
 
 	//TODO nats 통신
@@ -455,12 +455,20 @@ func (n *notificationUsecase) UpdateNotificationReadStatus(receiverId uint, docI
 	jsonData, err := json.Marshal(natsData)
 	if err != nil {
 		log.Printf("NATS 데이터 직렬화 오류: %v", err)
-		return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
+		return nil, common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화에 실패했습니다", err)
 	}
 
 	go n.natsPublisher.PublishEvent("link.event.notification.read", []byte(jsonData))
 
-	return nil
+	return &res.UpdateNotificationIsReadResponse{
+		DocID:      notification.DocID,
+		Content:    "알림 읽음 처리 완료",
+		AlarmType:  "READ",
+		IsRead:     true,
+		TargetType: "NOTIFICATION",
+		TargetID:   notification.ID.Hex(),
+		CreatedAt:  time.Now().Format(time.DateTime),
+	}, nil
 }
 
 // TODO 알림 리스트 조회
