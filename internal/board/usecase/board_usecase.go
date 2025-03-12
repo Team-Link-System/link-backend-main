@@ -6,6 +6,7 @@ import (
 	_boardRepo "link/internal/board/repository"
 	_projectRepo "link/internal/project/repository"
 	_userRepo "link/internal/user/repository"
+
 	"link/pkg/common"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
@@ -22,6 +23,7 @@ type BoardUsecase interface {
 	CreateBoard(userId uint, request *req.CreateBoardRequest) error
 	GetBoard(userId uint, boardID uint) (*res.GetBoardResponse, error)
 	GetBoards(userId uint, projectID uint) (*res.GetBoardsResponse, error)
+	UpdateBoard(userId uint, boardID uint, request *req.UpdateBoardRequest) error
 }
 
 type boardUsecase struct {
@@ -44,6 +46,7 @@ func NewBoardUsecase(
 	}
 }
 
+// ! 보드 관련
 func (u *boardUsecase) CreateBoard(userId uint, request *req.CreateBoardRequest) error {
 	_, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
@@ -201,4 +204,74 @@ func (u *boardUsecase) GetBoard(userId uint, boardID uint) (*res.GetBoardRespons
 	}
 
 	return boardResponse, nil
+}
+
+func (u *boardUsecase) UpdateBoard(userId uint, boardID uint, request *req.UpdateBoardRequest) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	board, err := u.boardRepo.GetBoardByID(boardID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	originalProjectId := board.ProjectID
+
+	//보드에 대한 권한 확인
+	checkBoardUserRole, err := u.boardRepo.CheckBoardUserRole(boardID, userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 사용자 권한 조회 실패", err)
+	}
+
+	if request.ProjectID != nil && originalProjectId != *request.ProjectID {
+
+		_, err := u.projectRepo.GetProjectByProjectID(*request.ProjectID)
+		if err != nil {
+			return common.NewError(http.StatusInternalServerError, "해당 보드를 옮기려는 프로젝트가 존재하지 않습니다.", err)
+		}
+
+		projectUsers, err := u.projectRepo.GetProjectUsers(*request.ProjectID)
+		if err != nil {
+			return common.NewError(http.StatusInternalServerError, "보드 사용자 조회 실패", err)
+		}
+
+		boardUsers, err := u.boardRepo.GetBoardUsersByBoardID(boardID)
+		if err != nil {
+			return common.NewError(http.StatusInternalServerError, "보드 사용자 조회 실패", err)
+		}
+
+		boardUsersIsExistInProjectMap := make(map[uint]bool) //보드에 있는 사용자들이 프로젝트에 존재하는지 확인
+		for _, boardUser := range boardUsers {
+			for _, projectUser := range projectUsers {
+				if boardUser.UserID == projectUser.UserID {
+					boardUsersIsExistInProjectMap[boardUser.UserID] = true
+				}
+			}
+		}
+
+		for _, projectUser := range projectUsers {
+			if !boardUsersIsExistInProjectMap[projectUser.UserID] {
+				log.Println("변경하려는 프로젝트에 포함되지 않는 유저가 있습니다. 먼저 프로젝트에 추가해주세요.")
+				return common.NewError(http.StatusForbidden, "변경하려는 프로젝트에 포함되지 않는 유저가 있습니다. 먼저 프로젝트에 추가해주세요.", nil)
+			}
+		}
+
+		board.ProjectID = *request.ProjectID
+	}
+
+	if checkBoardUserRole < entity.BoardRoleAdmin {
+		return common.NewError(http.StatusForbidden, "해당 보드의 수정 권한이 없습니다.", nil)
+	}
+
+	if request.Title != "" {
+		board.Title = request.Title
+	}
+
+	if err := u.boardRepo.UpdateBoard(board); err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 업데이트 실패", err)
+	}
+
+	return nil
 }

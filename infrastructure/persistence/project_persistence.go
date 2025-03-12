@@ -49,6 +49,14 @@ func (p *ProjectPersistence) CreateProject(project *entity.Project) error {
 	return nil
 }
 
+func (p *ProjectPersistence) GetProjectByProjectID(projectID uint) (*entity.Project, error) {
+	var project entity.Project
+	if err := p.db.Where("id = ?", projectID).First(&project).Error; err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
 func (p *ProjectPersistence) GetProjectByID(userID uint, projectID uint) (*entity.Project, error) {
 	var project entity.Project
 	err := p.db.
