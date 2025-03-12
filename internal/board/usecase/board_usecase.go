@@ -67,19 +67,28 @@ func (u *boardUsecase) CreateBoard(userId uint, request *req.CreateBoardRequest)
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+	//userId를 제외한 나머지 projectUser들의 boardRole을 0으로 변경
+	projectUsers, err := u.projectRepo.GetProjectUsers(request.ProjectID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 사용자 조회 실패", err)
+	}
 
-	if err := u.boardRepo.CreateBoard(&board); err != nil {
+	boardUsers := make([]entity.BoardUser, 0, len(projectUsers))
+	for _, projectUser := range projectUsers {
+		role := 0 // 기본적으로 읽기 권한 없음
+		if projectUser.UserID == userId {
+			role = 2 // 생성자는 관리자
+		}
+
+		boardUsers = append(boardUsers, entity.BoardUser{
+			UserID:  projectUser.UserID,
+			Role:    role,
+			BoardID: board.ID,
+		})
+	}
+
+	if err := u.boardRepo.CreateBoard(&board, boardUsers); err != nil {
 		return common.NewError(http.StatusInternalServerError, "보드 생성 실패", err)
-	}
-
-	boardUser := entity.BoardUser{
-		BoardID: board.ID,
-		UserID:  userId,
-		Role:    2,
-	}
-
-	if err := u.boardRepo.AddUserToBoard(&boardUser); err != nil {
-		return common.NewError(http.StatusInternalServerError, "보드 사용자 추가 실패", err)
 	}
 
 	//TODO 더미로 생성 이후 삭제 필요
@@ -92,6 +101,12 @@ func (u *boardUsecase) CreateBoard(userId uint, request *req.CreateBoardRequest)
 		},
 		{
 			Name:      "In Progress",
+			BoardID:   board.ID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			Name:      "Done",
 			BoardID:   board.ID,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -207,6 +222,11 @@ func (u *boardUsecase) GetBoard(userId uint, boardID uint) (*res.GetBoardRespons
 }
 
 func (u *boardUsecase) UpdateBoard(userId uint, boardID uint, request *req.UpdateBoardRequest) error {
+
+	if request.ProjectID == nil && request.Title == "" {
+		return common.NewError(http.StatusBadRequest, "프로젝트 ID 또는 제목이 필요합니다.", nil)
+	}
+
 	_, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
