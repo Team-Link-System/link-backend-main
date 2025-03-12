@@ -310,6 +310,7 @@ func startServer() {
 				board.POST("", boardHandler.CreateBoard)
 				board.GET("/:boardid", boardHandler.GetBoard)
 				board.GET("/project/:projectid", boardHandler.GetBoards)
+				board.PUT("/:boardid", boardHandler.UpdateBoard)
 			}
 
 			stat := protectedRoute.Group("stat")

@@ -2,6 +2,13 @@ package entity
 
 import "time"
 
+const (
+	BoardRoleUser = iota
+	BoardRoleMaintainer
+	BoardRoleAdmin
+	BoardRoleMaster
+)
+
 type Board struct {
 	ID        uint      `json:"id"`
 	Title     string    `json:"title"`

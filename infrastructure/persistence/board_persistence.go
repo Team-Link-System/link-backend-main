@@ -70,6 +70,17 @@ func (p *BoardPersistence) GetBoardsByProjectID(projectID uint) ([]entity.Board,
 	return boardsEntity, nil
 }
 
+func (p *BoardPersistence) UpdateBoard(board *entity.Board) error {
+	if err := p.db.Model(&model.Board{}).Where("id = ?", board.ID).Updates(map[string]interface{}{
+		"title":      board.Title,
+		"project_id": board.ProjectID,
+		"updated_at": board.UpdatedAt,
+	}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // ! 보드 사용자 관련
 func (p *BoardPersistence) AddUserToBoard(boardUser *entity.BoardUser) error {
 	boardUserModel := model.BoardUser{
@@ -87,10 +98,28 @@ func (p *BoardPersistence) AddUserToBoard(boardUser *entity.BoardUser) error {
 
 func (p *BoardPersistence) CheckBoardUserRole(boardID uint, userID uint) (int, error) {
 	var boardUser model.BoardUser
-	if err := p.db.Where("board_id = ? AND user_id = ?", boardID, userID).First(&boardUser).Error; err != nil {
+	if err := p.db.Select("role").Where("board_id = ? AND user_id = ?", boardID, userID).First(&boardUser).Error; err != nil {
 		return 0, err
 	}
 	return boardUser.Role, nil
+}
+
+func (p *BoardPersistence) GetBoardUsersByBoardID(boardID uint) ([]entity.BoardUser, error) {
+	var boardUsers []model.BoardUser
+	if err := p.db.Where("board_id = ?", boardID).Find(&boardUsers).Error; err != nil {
+		return nil, err
+	}
+
+	boardUsersEntity := make([]entity.BoardUser, len(boardUsers))
+	for i, boardUser := range boardUsers {
+		boardUsersEntity[i] = entity.BoardUser{
+			BoardID: boardUser.BoardID,
+			UserID:  boardUser.UserID,
+			Role:    boardUser.Role,
+		}
+	}
+
+	return boardUsersEntity, nil
 }
 
 // ! 컬럼 관련
