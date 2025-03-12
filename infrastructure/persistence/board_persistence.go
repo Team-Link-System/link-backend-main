@@ -1,9 +1,11 @@
 package persistence
 
 import (
+	"fmt"
 	"link/infrastructure/model"
 	"link/internal/board/entity"
 	"link/internal/board/repository"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -17,7 +19,18 @@ func NewBoardPersistence(db *gorm.DB) repository.BoardRepository {
 }
 
 // ! 보드 관련
-func (p *BoardPersistence) CreateBoard(board *entity.Board) error {
+func (p *BoardPersistence) CreateBoard(board *entity.Board, boardUsers []entity.BoardUser) error {
+	tx := p.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	//보드도 만들면서 사용자도 추가해야함
 	boardModel := model.Board{
 		Title:     board.Title,
 		ProjectID: board.ProjectID,
@@ -25,12 +38,36 @@ func (p *BoardPersistence) CreateBoard(board *entity.Board) error {
 		UpdatedAt: board.UpdatedAt,
 	}
 
-	if err := p.db.Create(&boardModel).Error; err != nil {
+	if err := tx.Create(&boardModel).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	board.ID = boardModel.ID
-	return nil
+
+	for i := range boardUsers {
+		boardUsers[i].BoardID = board.ID
+	}
+
+	userQuery := `INSERT INTO board_users (board_id, user_id, role) VALUES `
+	userValues := []interface{}{}
+	placeHolders := []string{}
+	for i, boardUser := range boardUsers {
+
+		userValues = append(userValues, board.ID, boardUser.UserID, boardUser.Role)
+		placeHolders = append(placeHolders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+	}
+
+	userQuery += strings.Join(placeHolders, ", ")
+
+	result := tx.Exec(userQuery, userValues...)
+	if result.Error != nil {
+		tx.Rollback()
+		return result.Error
+	}
+
+	board.ID = boardModel.ID
+	return tx.Commit().Error
 }
 
 func (p *BoardPersistence) GetBoardByID(boardID uint) (*entity.Board, error) {

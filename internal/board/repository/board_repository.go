@@ -6,7 +6,7 @@ import (
 
 type BoardRepository interface {
 	//보드 정보 관련
-	CreateBoard(board *entity.Board) error
+	CreateBoard(board *entity.Board, boardUsers []entity.BoardUser) error
 	GetBoardByID(boardID uint) (*entity.Board, error)
 	GetBoardsByProjectID(projectID uint) ([]entity.Board, error)
 	UpdateBoard(board *entity.Board) error
