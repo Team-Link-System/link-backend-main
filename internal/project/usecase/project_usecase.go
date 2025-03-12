@@ -82,10 +82,14 @@ func (u *projectUsecase) CreateProject(userId uint, request *req.CreateProjectRe
 		CreatedBy: *user.ID,
 	}
 
-	if strings.ToLower(request.Category) == "company" {
+	if request.Category != nil && strings.ToLower(*request.Category) == "company" {
 		if user.UserProfile.CompanyID != nil {
 			project.CompanyID = *user.UserProfile.CompanyID
+		} else {
+			return common.NewError(http.StatusBadRequest, "해당 사용자가 소속된 회사가 없습니다.", nil)
 		}
+	} else {
+		project.CompanyID = 0
 	}
 
 	err = u.projectRepo.CreateProject(&project)

@@ -10,6 +10,7 @@ type BoardRepository interface {
 	GetBoardByID(boardID uint) (*entity.Board, error)
 	GetBoardsByProjectID(projectID uint) ([]entity.Board, error)
 	UpdateBoard(board *entity.Board) error
+	DeleteBoard(boardID uint) error
 	//보드 사용자 관련
 	AddUserToBoard(boardUser *entity.BoardUser) error
 	CheckBoardUserRole(boardID uint, userID uint) (int, error)

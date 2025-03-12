@@ -8,22 +8,22 @@ import (
 
 // Board 모델
 type Board struct {
-	ID        uint          `gorm:"primaryKey;autoIncrement"`
-	Title     string        `gorm:"not null"`
-	ProjectID uint          `gorm:"not null;index"`
-	Project   Project       `gorm:"foreignKey:ProjectID;references:ID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	CreatedAt time.Time     `gorm:"autoCreateTime"`
-	UpdatedAt time.Time     `gorm:"autoUpdateTime"`
-	Users     []User        `gorm:"many2many:board_users;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	Columns   []BoardColumn `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	ID         uint          `gorm:"primaryKey;autoIncrement"`
+	Title      string        `gorm:"not null"`
+	ProjectID  uint          `gorm:"not null;index"`
+	Project    Project       `gorm:"foreignKey:ProjectID;references:ID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	CreatedAt  time.Time     `gorm:"autoCreateTime"`
+	UpdatedAt  time.Time     `gorm:"autoUpdateTime"`
+	BoardUsers []BoardUser   `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	Columns    []BoardColumn `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }
 
 // BoardUser (다대다 관계)
 type BoardUser struct {
 	BoardID uint  `gorm:"primaryKey"`
 	UserID  uint  `gorm:"primaryKey"`
-	Board   Board `gorm:"foreignKey:BoardID"`
-	User    User  `gorm:"foreignKey:UserID"`
+	Board   Board `gorm:"foreignKey:BoardID;references:ID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	User    User  `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	Role    int   `gorm:"not null;default:0"` // 0: 일반 사용자(읽기 권한만), 1: 참여자(읽기, 쓰기 권한), 2: 관리자(읽기, 쓰기, 삭제 권한)
 }
 
@@ -41,8 +41,8 @@ type BoardColumn struct {
 // BoardCard (카드 테이블)
 type BoardCard struct {
 	ID            uint           `gorm:"primaryKey;autoIncrement"`
-	Title         string         `gorm:"not null"`
-	Description   string         `gorm:"type:text"`
+	Name          string         `gorm:"not null"`
+	Content       string         `gorm:"type:text"`
 	BoardID       uint           `gorm:"not null;index"` //  인덱스 추가
 	Board         Board          `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	BoardColumnID uint           `gorm:"not null;index"` //  인덱스 추가

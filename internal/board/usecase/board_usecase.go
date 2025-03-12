@@ -24,6 +24,7 @@ type BoardUsecase interface {
 	GetBoard(userId uint, boardID uint) (*res.GetBoardResponse, error)
 	GetBoards(userId uint, projectID uint) (*res.GetBoardsResponse, error)
 	UpdateBoard(userId uint, boardID uint, request *req.UpdateBoardRequest) error
+	DeleteBoard(userId uint, boardID uint) error
 }
 
 type boardUsecase struct {
@@ -291,6 +292,33 @@ func (u *boardUsecase) UpdateBoard(userId uint, boardID uint, request *req.Updat
 
 	if err := u.boardRepo.UpdateBoard(board); err != nil {
 		return common.NewError(http.StatusInternalServerError, "보드 업데이트 실패", err)
+	}
+
+	return nil
+}
+
+func (u *boardUsecase) DeleteBoard(userId uint, boardID uint) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	_, err = u.boardRepo.GetBoardByID(boardID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	checkBoardUserRole, err := u.boardRepo.CheckBoardUserRole(boardID, userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 사용자 권한 조회 실패", err)
+	}
+
+	if checkBoardUserRole < entity.BoardRoleAdmin {
+		return common.NewError(http.StatusForbidden, "해당 보드의 삭제 권한이 없습니다.", nil)
+	}
+
+	if err := u.boardRepo.DeleteBoard(boardID); err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 삭제 실패", err)
 	}
 
 	return nil

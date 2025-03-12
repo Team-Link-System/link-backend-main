@@ -118,6 +118,13 @@ func (p *BoardPersistence) UpdateBoard(board *entity.Board) error {
 	return nil
 }
 
+func (p *BoardPersistence) DeleteBoard(boardID uint) error {
+	if err := p.db.Where("id = ?", boardID).Delete(&model.Board{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // ! 보드 사용자 관련
 func (p *BoardPersistence) AddUserToBoard(boardUser *entity.BoardUser) error {
 	boardUserModel := model.BoardUser{

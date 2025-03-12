@@ -311,6 +311,7 @@ func startServer() {
 				board.GET("/:boardid", boardHandler.GetBoard)
 				board.GET("/project/:projectid", boardHandler.GetBoards)
 				board.PUT("/:boardid", boardHandler.UpdateBoard)
+				board.DELETE("/:boardid", boardHandler.DeleteBoard)
 			}
 
 			stat := protectedRoute.Group("stat")

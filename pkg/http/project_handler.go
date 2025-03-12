@@ -52,10 +52,6 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		fmt.Printf("종료일이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "종료일이 없습니다.", nil))
 		return
-	} else if request.Category == "" {
-		fmt.Printf("카테고리가 없습니다.")
-		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "카테고리가 없습니다.", nil))
-		return
 	}
 
 	// projectUsecase.CreateProject(c)
