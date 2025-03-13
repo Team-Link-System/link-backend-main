@@ -312,6 +312,7 @@ func startServer() {
 				board.GET("/project/:projectid", boardHandler.GetBoards)
 				board.PUT("/:boardid", boardHandler.UpdateBoard)
 				board.DELETE("/:boardid", boardHandler.DeleteBoard)
+				board.POST("/:projectid/:boardid/snapshots", boardHandler.AutoSaveBoard)
 			}
 
 			stat := protectedRoute.Group("stat")

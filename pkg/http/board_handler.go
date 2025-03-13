@@ -194,65 +194,59 @@ func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 }
 
 // 칸반보드 상태 자동 저장
-// func (h *BoardHandler) AutoSaveBoard(c *gin.Context) {
-// 	userId, exists := c.Get("userId")
-// 	if !exists {
-// 		log.Printf("인증되지 않은 사용자입니다.")
-// 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
-// 		return
-// 	}
+func (h *BoardHandler) AutoSaveBoard(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		log.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
 
-// 	// username, _ := c.Get("username")
-// 	// userNameStr := "Unknown"
-// 	// if username != nil {
-// 	// 	userNameStr = username.(string)
-// 	// }
+	projectID := c.Param("projectid")
+	if projectID == "" {
+		log.Printf("프로젝트 ID가 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 없습니다.", nil))
+		return
+	}
 
-// 	projectID := c.Param("projectid")
-// 	if projectID == "" {
-// 		log.Printf("프로젝트 ID가 없습니다.")
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 없습니다.", nil))
-// 		return
-// 	}
+	projectIDUint, err := strconv.ParseUint(projectID, 10, 64)
+	if err != nil {
+		log.Printf("프로젝트 ID가 유효하지 않습니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 유효하지 않습니다.", err))
+		return
+	}
 
-// 	boardID := c.Param("boardid")
-// 	if boardID == "" {
-// 		log.Printf("보드 ID가 없습니다.")
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
-// 		return
-// 	}
+	boardID := c.Param("boardid")
+	if boardID == "" {
+		log.Printf("보드 ID가 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
+		return
+	}
 
-// 	projectIDUint, err := strconv.ParseUint(projectID, 10, 64)
-// 	if err != nil {
-// 		log.Printf("프로젝트 ID가 유효하지 않습니다: %v", err)
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 유효하지 않습니다.", err))
-// 		return
-// 	}
+	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
+	if err != nil {
+		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
+		return
+	}
 
-// 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
-// 	if err != nil {
-// 		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
-// 		return
-// 	}
+	var request req.BoardStateUpdateReqeust
+	if err := c.ShouldBind(&request); err != nil {
+		log.Printf("잘못된 요청입니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
+		return
+	}
 
-// 	var request req.BoardStateUpdateReqeust
-// 	if err := c.ShouldBind(&request); err != nil {
-// 		log.Printf("잘못된 요청입니다: %v", err)
-// 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
-// 		return
-// 	}
+	if err := h.boardUsecase.AutoSaveBoard(userId.(uint), uint(projectIDUint), uint(boardIDUint), &request); err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "보드 상태 자동 저장 실패", err))
+		}
+		return
+	}
 
-// 	if err := h.boardUsecase.AutoSaveBoard(userId.(uint), uint(projectIDUint), uint(boardIDUint), &request); err != nil {
-// 		if appError, ok := err.(*common.AppError); ok {
-// 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
-// 		} else {
-// 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "보드 상태 자동 저장 실패", err))
-// 		}
-// 		return
-// 	}
+	//WS 저장 (옵션)
 
-// 	//WS 저장 (옵션)
-
-// 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "보드 상태 자동 저장 성공", nil))
-// }
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "보드 상태 자동 저장 성공", nil))
+}

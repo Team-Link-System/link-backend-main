@@ -1,6 +1,10 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	BoardRoleUser = iota
@@ -25,28 +29,28 @@ type BoardUser struct {
 }
 
 type BoardColumn struct {
-	ID        uint
-	Name      string
-	BoardID   uint
-	Position  int
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Cards     []BoardCard
+	ID        uuid.UUID   `json:"id,omitempty"`
+	Name      string      `json:"name,omitempty"`
+	BoardID   uint        `json:"board_id,omitempty"`
+	Position  uint        `json:"position,omitempty"`
+	CreatedAt time.Time   `json:"created_at,omitempty"`
+	UpdatedAt time.Time   `json:"updated_at,omitempty"`
+	Cards     []BoardCard `json:"cards,omitempty"`
 }
 
 type BoardCard struct {
-	ID            uint
-	Title         string
-	Description   string
-	BoardID       uint
-	BoardColumnID uint
-	Position      int
-	StartDate     time.Time
-	EndDate       time.Time
-	Version       int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Assignees     []uint // 담당자 ID 목록
+	ID            uuid.UUID `json:"id,omitempty"`
+	Name          string    `json:"name,omitempty"`
+	Content       string    `json:"content,omitempty"`
+	BoardID       uint      `json:"board_id,omitempty"`
+	BoardColumnID uuid.UUID `json:"board_column_id,omitempty"`
+	Position      uint      `json:"position,omitempty"`
+	StartDate     time.Time `json:"start_date,omitempty"`
+	EndDate       time.Time `json:"end_date,omitempty"`
+	Version       int       `json:"version,omitempty"`
+	CreatedAt     time.Time `json:"created_at,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at,omitempty"`
+	Assignees     []uint    `json:"assignees,omitempty"`
 }
 
 // CardActivity 엔티티
