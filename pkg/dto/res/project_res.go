@@ -5,7 +5,18 @@ import (
 )
 
 type GetProjectsResponse struct {
-	Projects []GetProjectResponse `json:"projects"`
+	Projects []GetProjectResponse   `json:"projects"`
+	Meta     *ProjectPaginationMeta `json:"meta"`
+}
+
+type ProjectPaginationMeta struct {
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    *bool  `json:"has_more,omitempty"`
+	TotalCount int    `json:"total_count"`
+	TotalPages int    `json:"total_pages"`
+	PageSize   int    `json:"page_size"`
+	PrevPage   int    `json:"prev_page"`
+	NextPage   int    `json:"next_page"`
 }
 
 type GetProjectResponse struct {

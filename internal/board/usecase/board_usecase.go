@@ -323,3 +323,27 @@ func (u *boardUsecase) DeleteBoard(userId uint, boardID uint) error {
 
 	return nil
 }
+
+func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, request *req.BoardStateUpdateReqeust) error {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	_, err = u.projectRepo.GetProjectByID(userId, projectID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	_, err = u.boardRepo.GetBoardByID(boardID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	_, err = u.boardRepo.GetBoardUsersByBoardID(boardID)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 사용자 조회 실패", err)
+	}
+
+	return nil
+}

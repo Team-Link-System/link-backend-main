@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"link/internal/project/usecase"
 	"link/pkg/common"
@@ -78,11 +79,64 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 		return
 	}
 
-	category := c.Query("category")
-	if category == "" {
+	category := c.DefaultQuery("category", "my")
+	if category != "my" && category != "company" {
 		category = "my"
 	}
-	projects, err := h.projectUsecase.GetProjects(userId.(uint), category)
+
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	sort := c.DefaultQuery("sort", "created_at")
+	if sort != "created_at" && sort != "id" {
+		sort = "created_at"
+	}
+
+	order := c.DefaultQuery("order", "desc")
+	if order != "asc" && order != "desc" {
+		order = "desc"
+	}
+	cursorParam := c.Query("cursor")
+	var cursor *req.ProjectCursor
+
+	if cursorParam == "" {
+		cursor = nil
+		page = 1
+	} else {
+		var tempCursor req.ProjectCursor
+		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
+			return
+		}
+
+		// 커서가 있고 sort 값에 맞는 필드가 없는 경우 검증
+		if sort == "created_at" && tempCursor.CreatedAt == "" {
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		} else if sort == "id" && tempCursor.ID == "" {
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
+			return
+		}
+
+		cursor = &tempCursor
+	}
+
+	queryParams := req.GetProjectsQueryParams{
+		Category: category,
+		Page:     page,
+		Limit:    limit,
+		Order:    order,
+		Sort:     sort,
+		Cursor:   cursor,
+	}
+	projects, err := h.projectUsecase.GetProjects(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
