@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -165,28 +166,40 @@ func (r *postPersistence) GetPosts(requestUserId uint, queryOptions map[string]i
 						}
 					}
 				}
-			} else if id, ok := cursor["id"].(uint); ok {
+			} else if id, ok := cursor["id"]; ok {
+				idUint, err := strconv.ParseUint(id.(string), 10, 64)
+				if err != nil {
+					return nil, nil, fmt.Errorf("id가 uint 타입이 아닙니다")
+				}
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
-						query = query.Where("id > ?", id)
+						query = query.Where("id > ?", idUint)
 					} else {
-						query = query.Where("id < ?", id)
+						query = query.Where("id < ?", idUint)
 					}
 				}
-			} else if likeCount, ok := cursor["like_count"].(uint); ok {
+			} else if likeCount, ok := cursor["like_count"]; ok {
+				likeCountUint, err := strconv.ParseUint(likeCount.(string), 10, 64)
+				if err != nil {
+					return nil, nil, fmt.Errorf("like_count가 uint 타입이 아닙니다")
+				}
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
-						query = query.Where("like_count > ?", likeCount)
+						query = query.Where("like_count > ?", likeCountUint)
 					} else {
-						query = query.Where("like_count < ?", likeCount)
+						query = query.Where("like_count < ?", likeCountUint)
 					}
 				}
-			} else if commentCount, ok := cursor["comments_count"].(uint); ok {
+			} else if commentCount, ok := cursor["comments_count"]; ok {
+				commentCountUint, err := strconv.ParseUint(commentCount.(string), 10, 64)
+				if err != nil {
+					return nil, nil, fmt.Errorf("comments_count가 uint 타입이 아닙니다")
+				}
 				if order, ok := queryOptions["order"].(string); ok {
 					if strings.ToUpper(order) == "ASC" {
-						query = query.Where("comments_count > ?", commentCount)
+						query = query.Where("comments_count > ?", commentCountUint)
 					} else {
-						query = query.Where("comments_count < ?", commentCount)
+						query = query.Where("comments_count < ?", commentCountUint)
 					}
 				}
 			}

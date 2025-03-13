@@ -6,6 +6,7 @@ import (
 	"link/internal/comment/entity"
 	"link/internal/comment/repository"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,20 +96,28 @@ func (r *commentPersistence) GetCommentsByPostID(requestUserId uint, postId uint
 				query = query.Where("comments.created_at::timestamp with time zone < ?::timestamp with time zone", parsedTime)
 			}
 
-		} else if id, ok := cursor["id"].(uint); ok {
+		} else if id, ok := cursor["id"]; ok {
+			idUint, err := strconv.ParseUint(id.(string), 10, 64)
+			if err != nil {
+				return nil, nil, fmt.Errorf("id가 uint 타입이 아닙니다")
+			}
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("comments.id > ?", id)
+					query = query.Where("comments.id > ?", idUint)
 				} else {
-					query = query.Where("comments.id < ?", id)
+					query = query.Where("comments.id < ?", idUint)
 				}
 			}
-		} else if likeCount, ok := cursor["like_count"].(uint); ok {
+		} else if likeCount, ok := cursor["like_count"]; ok {
+			likeCountUint, err := strconv.ParseUint(likeCount.(string), 10, 64)
+			if err != nil {
+				return nil, nil, fmt.Errorf("like_count가 uint 타입이 아닙니다")
+			}
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
-					query = query.Where("like_count > ?", likeCount)
+					query = query.Where("like_count > ?", likeCountUint)
 				} else {
-					query = query.Where("like_count < ?", likeCount)
+					query = query.Where("like_count < ?", likeCountUint)
 				}
 			}
 		}

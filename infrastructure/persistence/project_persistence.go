@@ -5,7 +5,9 @@ import (
 	"link/infrastructure/model"
 	"link/internal/project/entity"
 	"link/internal/project/repository"
+	"log"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -198,14 +200,19 @@ func (p *ProjectPersistence) GetProjectsByUserID(userID uint, queryOptions map[s
 					searchParams = append(searchParams, parsedTime.UTC())
 				}
 			}
-		} else if id, ok := cursor["id"].(uint); ok {
+		} else if id, ok := cursor["id"]; ok {
+			idUint, err := strconv.ParseUint(id.(string), 10, 64)
+			if err != nil {
+				log.Println("id가 uint 타입이 아닙니다")
+				return nil, nil, fmt.Errorf("id가 uint 타입이 아닙니다")
+			}
 			if order, ok := queryOptions["order"].(string); ok {
 				if strings.ToUpper(order) == "ASC" {
 					searchCondition += " AND id > ?"
 				} else {
 					searchCondition += " AND id < ?"
 				}
-				searchParams = append(searchParams, id)
+				searchParams = append(searchParams, idUint)
 			}
 		}
 	}
@@ -243,7 +250,15 @@ func (p *ProjectPersistence) GetProjectsByUserID(userID uint, queryOptions map[s
 		}
 	}
 
+	var nextCursor string
+	if len(projects) > 0 {
+		nextCursor = projects[len(projects)-1].CreatedAt.Format("2006-01-02 15:04:05")
+	} else {
+		nextCursor = ""
+	}
+
 	return &entity.ProjectMeta{
+		NextCursor: nextCursor,
 		TotalCount: int(totalCount),
 		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
 		PrevPage:   queryOptions["page"].(int) - 1,

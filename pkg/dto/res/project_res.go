@@ -28,6 +28,7 @@ type GetProjectResponse struct {
 	CompanyID uint      `json:"company_id,omitempty"`
 	UserRole  int       `json:"user_project_role"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type GetProjectUsersResponse struct {

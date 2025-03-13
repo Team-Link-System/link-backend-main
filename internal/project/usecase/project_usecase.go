@@ -162,6 +162,7 @@ func (u *projectUsecase) GetProjects(userId uint, queryParams req.GetProjectsQue
 			CreatedBy: project.CreatedBy,
 			CompanyID: project.CompanyID,
 			CreatedAt: project.CreatedAt,
+			UpdatedAt: project.UpdatedAt,
 		})
 	}
 
