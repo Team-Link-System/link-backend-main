@@ -2,6 +2,8 @@ package repository
 
 import (
 	"link/internal/board/entity"
+
+	"github.com/google/uuid"
 )
 
 type BoardRepository interface {
@@ -17,8 +19,14 @@ type BoardRepository interface {
 	GetBoardUsersByBoardID(boardID uint) ([]entity.BoardUser, error)
 	//컬럼 관련
 	CreateBoardColumn(boardColumn *entity.BoardColumn) error
+	GetBoardColumnByID(columnID uuid.UUID) (*entity.BoardColumn, error)
+	UpdateBoardColumn(boardColumn *entity.BoardColumn) error
+	DeleteBoardColumn(columnID uuid.UUID) error
+	MoveBoardColumn(columnID uuid.UUID, position uint) error
 	//카드 관련
-
-	//카드 담당자 관련
-
+	CreateBoardCard(boardCard *entity.BoardCard) error
+	GetBoardCardByID(cardID uuid.UUID) (*entity.BoardCard, error)
+	UpdateBoardCard(boardCard *entity.BoardCard) error
+	DeleteBoardCard(cardID uuid.UUID) error
+	MoveBoardCard(cardID uuid.UUID, toColumnID *uuid.UUID, newPosition *uint) error
 }

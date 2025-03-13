@@ -25,6 +25,8 @@ type BoardUsecase interface {
 	GetBoards(userId uint, projectID uint) (*res.GetBoardsResponse, error)
 	UpdateBoard(userId uint, boardID uint, request *req.UpdateBoardRequest) error
 	DeleteBoard(userId uint, boardID uint) error
+
+	AutoSaveBoard(userId uint, projectID uint, boardID uint, request *req.BoardStateUpdateReqeust) error
 }
 
 type boardUsecase struct {
@@ -343,6 +345,140 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 	_, err = u.boardRepo.GetBoardUsersByBoardID(boardID)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "보드 사용자 조회 실패", err)
+	}
+
+	role, err := u.boardRepo.CheckBoardUserRole(boardID, userId)
+	if err != nil {
+		return common.NewError(http.StatusInternalServerError, "보드 사용자 권한 조회 실패", err)
+	}
+
+	if role < entity.BoardRoleMaintainer {
+		return common.NewError(http.StatusForbidden, "해당 보드의 수정 권한이 없습니다.", nil)
+	}
+
+	if request.Changes == nil {
+		return common.NewError(http.StatusBadRequest, "변경사항이 없습니다.", nil)
+	}
+
+	for _, change := range request.Changes {
+		switch change.Type {
+		case "column":
+			if change.Action == "create" {
+
+				// 새로운 컬럼 생성
+				newColumn := entity.BoardColumn{
+					ID:        *change.ColumnID,
+					Name:      *change.Name,
+					BoardID:   boardID,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}
+				if err := u.boardRepo.CreateBoardColumn(&newColumn); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 컬럼 생성 실패", err)
+				}
+			} else if change.Action == "update" {
+				// 컬럼 이름 변경
+				column, err := u.boardRepo.GetBoardColumnByID(*change.ColumnID)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 컬럼 조회 실패", err)
+				}
+				if change.Name != nil {
+					column.Name = *change.Name
+				}
+				if err := u.boardRepo.UpdateBoardColumn(column); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 컬럼 업데이트 실패", err)
+				}
+			} else if change.Action == "delete" {
+				// 컬럼 삭제
+				if err := u.boardRepo.DeleteBoardColumn(*change.ColumnID); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 컬럼 삭제 실패", err)
+				}
+			} else if change.Action == "move" {
+				// 컬럼 이동
+				if change.Position != nil {
+					if err := u.boardRepo.MoveBoardColumn(*change.ColumnID, *change.Position); err != nil {
+						return common.NewError(http.StatusInternalServerError, "보드 컬럼 이동 실패", err)
+					}
+				}
+			}
+		case "card":
+			if change.Action == "create" {
+
+				column, err := u.boardRepo.GetBoardColumnByID(*change.ColumnID)
+				if err != nil || column == nil {
+					return common.NewError(http.StatusInternalServerError, "카드 생성 실패: 컬럼이 존재하지 않음", err)
+				}
+				// 새로운 카드 생성
+				newCard := entity.BoardCard{
+					ID:            change.CardID,
+					Name:          *change.Name,
+					Content:       *change.Content,
+					BoardID:       boardID,
+					BoardColumnID: *change.ColumnID,
+					Assignees:     change.Assignees,
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+				}
+
+				if err := u.boardRepo.CreateBoardCard(&newCard); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 카드 생성 실패", err)
+				}
+			} else if change.Action == "update" {
+				// 카드 업데이트
+				card, err := u.boardRepo.GetBoardCardByID(change.CardID)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 카드 조회 실패", err)
+				}
+				if change.Name != nil {
+					card.Name = *change.Name
+				}
+				if change.Content != nil {
+					card.Content = *change.Content
+				}
+
+				if change.Assignees != nil {
+					card.Assignees = change.Assignees
+				}
+
+				loc, err := time.LoadLocation("Asia/Seoul")
+				if err != nil {
+					log.Printf("시간대 로드 실패: %v", err)
+					return common.NewError(http.StatusBadRequest, "시간대 로드 실패", err)
+				}
+				if change.StartDate != nil {
+					startTime, err := time.ParseInLocation("2006-01-02 15:04:05", *change.StartDate, loc)
+					if err != nil {
+						log.Printf("시작일 파싱 실패: %v", err)
+						return common.NewError(http.StatusBadRequest, "시작일 파싱 실패", err)
+					}
+					card.StartDate = startTime
+				}
+				if change.EndDate != nil {
+					endTime, err := time.ParseInLocation("2006-01-02 15:04:05", *change.EndDate, loc)
+					if err != nil {
+						log.Printf("종료일 파싱 실패: %v", err)
+						return common.NewError(http.StatusBadRequest, "종료일 파싱 실패", err)
+					}
+					card.EndDate = endTime
+				}
+
+				card.StartDate = time.Now()
+				card.EndDate = time.Now()
+
+				if err := u.boardRepo.UpdateBoardCard(card); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 카드 업데이트 실패", err)
+				}
+			} else if change.Action == "delete" {
+				// 카드 삭제
+				if err := u.boardRepo.DeleteBoardCard(change.CardID); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 카드 삭제 실패", err)
+				}
+			} else if change.Action == "move" {
+				if err := u.boardRepo.MoveBoardCard(change.CardID, change.ColumnID, change.Position); err != nil {
+					return common.NewError(http.StatusInternalServerError, "보드 카드 이동 실패", err)
+				}
+			}
+		}
 	}
 
 	return nil

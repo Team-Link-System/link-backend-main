@@ -28,4 +28,5 @@ type User struct {
 	UpdatedAt      time.Time      `json:"updated_at"`
 	ChatRoomsUsers []ChatRoomUser `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	ProjectUsers   []ProjectUser  `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	CardAssignees  []CardAssignee `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }

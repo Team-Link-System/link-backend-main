@@ -1,5 +1,7 @@
 package req
 
+import "github.com/google/uuid"
+
 type CreateBoardRequest struct {
 	Title     string `json:"title" binding:"required"`
 	ProjectID uint   `json:"project_id" binding:"required"`
@@ -15,29 +17,17 @@ type BoardStateUpdateReqeust struct {
 }
 
 type Change struct {
-	Type        string `json:"type" binding:"required"`
-	Action      string `json:"action" binding:"required"`
-	ProjectID   uint   `json:"project_id" binding:"required"`
-	BoardID     uint   `json:"board_id" binding:"required"`
-	ColumnID    uint   `json:"column_id,omitempty"`
-	CardID      uint   `json:"card_id,omitempty"`
-	Position    uint   `json:"position,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	StartDate   string `json:"start_date,omitempty"`
-	EndDate     string `json:"end_date,omitempty"`
-	Version     uint   `json:"version,omitempty"`
-}
-
-// 칸반보드 카드의 내용 변경
-type ChangeCardRequest struct {
-	CardID    uint   `json:"card_id" binding:"required"`
-	ProjectID uint   `json:"project_id" binding:"required"`
-	BoardID   uint   `json:"board_id" binding:"required"`
-	ColumnID  uint   `json:"column_id,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Content   string `json:"content,omitempty"`
-	StartDate string `json:"start_date,omitempty"`
-	EndDate   string `json:"end_date,omitempty"`
-	Assignees []uint `json:"assignees,omitempty"`
+	Type      string     `json:"type" binding:"required"`
+	Action    string     `json:"action" binding:"required"`
+	ProjectID uint       `json:"project_id" binding:"required"`
+	BoardID   uint       `json:"board_id" binding:"required"`
+	ColumnID  *uuid.UUID `json:"column_id"`
+	CardID    uuid.UUID  `json:"card_id"`
+	Position  *uint      `json:"position"`
+	Name      *string    `json:"name"`
+	Content   *string    `json:"content"`
+	StartDate *string    `json:"start_date"`
+	EndDate   *string    `json:"end_date"`
+	Version   *uint      `json:"version"`
+	Assignees []uint     `json:"assignees"`
 }

@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -29,38 +30,38 @@ type BoardUser struct {
 
 // BoardColumn (컬럼 테이블)
 type BoardColumn struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
+	ID        uuid.UUID `gorm:"primaryKey;type:uuid"`
 	Name      string    `gorm:"not null"`
 	BoardID   uint      `gorm:"not null;index"`
 	Board     Board     `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	Position  int       `gorm:"not null;default:0"`
+	Position  uint      `gorm:"not null;"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 // BoardCard (카드 테이블)
 type BoardCard struct {
-	ID            uint           `gorm:"primaryKey;autoIncrement"`
+	ID            uuid.UUID      `gorm:"primaryKey;type:uuid"`
 	Name          string         `gorm:"not null"`
 	Content       string         `gorm:"type:text"`
 	BoardID       uint           `gorm:"not null;index"` //  인덱스 추가
 	Board         Board          `gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	BoardColumnID uint           `gorm:"not null;index"` //  인덱스 추가
+	BoardColumnID uuid.UUID      `gorm:"not null;index"` //  인덱스 추가
 	BoardColumn   BoardColumn    `gorm:"foreignKey:BoardColumnID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
-	Position      int            `gorm:"not null;default:0"`
+	Position      uint           `gorm:"not null;"`
 	StartDate     time.Time      `gorm:"not null"`
 	EndDate       time.Time      `gorm:"not null"`
-	Version       int            `gorm:"not null;default:0"`
+	Version       int            `gorm:"not null;"`
 	CreatedAt     time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
-	Assignees     []CardAssignee `gorm:"many2many:card_assignees;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
+	Assignees     []CardAssignee `gorm:"foreignKey:CardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }
 
 // CardAssignee (카드 담당자 - 다대다 관계)
 type CardAssignee struct {
-	CardID uint      `gorm:"primaryKey"`
-	Card   BoardCard `gorm:"foreignKey:CardID"`
+	CardID uuid.UUID `gorm:"primaryKey;type:uuid"`
 	UserID uint      `gorm:"primaryKey"`
+	Card   BoardCard `gorm:"foreignKey:CardID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 	User   User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"`
 }
 
