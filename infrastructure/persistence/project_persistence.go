@@ -5,6 +5,11 @@ import (
 	"link/infrastructure/model"
 	"link/internal/project/entity"
 	"link/internal/project/repository"
+	"log"
+	"math"
+	"strconv"
+	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -74,27 +79,193 @@ func (p *ProjectPersistence) GetProjectByID(userID uint, projectID uint) (*entit
 	return &project, nil
 }
 
-func (p *ProjectPersistence) GetProjectsByCompanyID(companyID uint) ([]entity.Project, error) {
-	var projects []entity.Project
-	if err := p.db.Where("company_id = ?", companyID).Find(&projects).Error; err != nil {
-		return nil, err
+func (p *ProjectPersistence) GetProjectsByCompanyID(companyID uint, queryOptions map[string]interface{}) (*entity.ProjectMeta, []entity.Project, error) {
+
+	var searchCondition string
+	var searchParams []interface{}
+
+	searchCondition = "company_id = ?"
+	searchParams = append(searchParams, companyID)
+
+	if startDate, ok := queryOptions["start_date"].(string); ok {
+		searchCondition += " AND start_date >= ?"
+		searchParams = append(searchParams, startDate)
 	}
-	return projects, nil
+
+	if endDate, ok := queryOptions["end_date"].(string); ok {
+		searchCondition += " AND end_date <= ?"
+		searchParams = append(searchParams, endDate)
+	}
+
+	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
+		if createdAt := cursor["created_at"]; createdAt != nil {
+			createdAtStr, ok := createdAt.(string)
+			if ok {
+				parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", createdAtStr, time.FixedZone("Asia/Seoul", 9*3600))
+				if err != nil {
+					return nil, nil, fmt.Errorf("created_at 시간 파싱 실패: %v", err)
+				}
+				if order, ok := queryOptions["order"].(string); ok {
+					if strings.ToUpper(order) == "ASC" {
+						searchCondition += " AND created_at > ?"
+					} else {
+						searchCondition += " AND created_at < ?"
+					}
+					searchParams = append(searchParams, parsedTime.UTC())
+				}
+			}
+		} else if id, ok := cursor["id"].(uint); ok {
+			if order, ok := queryOptions["order"].(string); ok {
+				if strings.ToUpper(order) == "ASC" {
+					searchCondition += " AND id > ?"
+				} else {
+					searchCondition += " AND id < ?"
+				}
+				searchParams = append(searchParams, id)
+			}
+		}
+	}
+
+	var totalCount int64
+	if err := p.db.Model(&model.Project{}).Where(searchCondition, searchParams...).Count(&totalCount).Error; err != nil {
+		return nil, nil, fmt.Errorf("프로젝트 전체 개수 조회 실패: %v", err)
+	}
+
+	var dbProjects []model.Project
+	if err := p.db.Model(&model.Project{}).
+		Preload("ProjectUsers").
+		Where(searchCondition, searchParams...).
+		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"])).
+		Limit(queryOptions["limit"].(int)).
+		Find(&dbProjects).Error; err != nil {
+		return nil, nil, fmt.Errorf("프로젝트 조회 실패: %v", err)
+	}
+
+	projects := make([]entity.Project, len(dbProjects))
+	for i, dbProject := range dbProjects {
+		projects[i] = entity.Project{
+			ID:        dbProject.ID,
+			Name:      dbProject.Name,
+			CompanyID: dbProject.CompanyID,
+			StartDate: dbProject.StartDate,
+			EndDate:   dbProject.EndDate,
+			CreatedBy: dbProject.CreatedBy,
+			CreatedAt: dbProject.CreatedAt,
+			UpdatedAt: dbProject.UpdatedAt,
+		}
+	}
+
+	return &entity.ProjectMeta{
+		TotalCount: int(totalCount),
+		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
+		PrevPage:   queryOptions["page"].(int) - 1,
+		NextPage:   queryOptions["page"].(int) + 1,
+		PageSize:   queryOptions["limit"].(int),
+		HasMore:    totalCount > int64(queryOptions["page"].(int)*queryOptions["limit"].(int)),
+	}, projects, nil
 }
 
-func (p *ProjectPersistence) GetProjectsByUserID(userID uint) ([]entity.Project, error) {
-	var projects []entity.Project
-	err := p.db.
-		Select("projects.*, project_users.role").
-		Joins("LEFT JOIN project_users ON projects.id = project_users.project_id").
-		Where("project_users.user_id = ? OR projects.created_by = ?", userID, userID).
-		Find(&projects).Error
+func (p *ProjectPersistence) GetProjectsByUserID(userID uint, queryOptions map[string]interface{}) (*entity.ProjectMeta, []entity.Project, error) {
 
-	if err != nil {
-		return nil, err
+	var searchCondition string
+	var searchParams []interface{}
+
+	searchCondition = "project_users.user_id = ?"
+	searchParams = append(searchParams, userID)
+
+	if startDate, ok := queryOptions["start_date"].(string); ok {
+		searchCondition += " AND start_date >= ?"
+		searchParams = append(searchParams, startDate)
 	}
 
-	return projects, nil
+	if endDate, ok := queryOptions["end_date"].(string); ok {
+		searchCondition += " AND end_date <= ?"
+		searchParams = append(searchParams, endDate)
+	}
+
+	if cursor, ok := queryOptions["cursor"].(map[string]interface{}); ok {
+		if createdAt := cursor["created_at"]; createdAt != nil {
+			createdAtStr, ok := createdAt.(string)
+			if ok {
+				parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", createdAtStr, time.FixedZone("Asia/Seoul", 9*3600))
+				if err != nil {
+					return nil, nil, fmt.Errorf("created_at 시간 파싱 실패: %v", err)
+				}
+				if order, ok := queryOptions["order"].(string); ok {
+					if strings.ToUpper(order) == "ASC" {
+						searchCondition += " AND created_at > ?"
+					} else {
+						searchCondition += " AND created_at < ?"
+					}
+					searchParams = append(searchParams, parsedTime.UTC())
+				}
+			}
+		} else if id, ok := cursor["id"]; ok {
+			idUint, err := strconv.ParseUint(id.(string), 10, 64)
+			if err != nil {
+				log.Println("id가 uint 타입이 아닙니다")
+				return nil, nil, fmt.Errorf("id가 uint 타입이 아닙니다")
+			}
+			if order, ok := queryOptions["order"].(string); ok {
+				if strings.ToUpper(order) == "ASC" {
+					searchCondition += " AND id > ?"
+				} else {
+					searchCondition += " AND id < ?"
+				}
+				searchParams = append(searchParams, idUint)
+			}
+		}
+	}
+
+	var totalCount int64
+	countQuery := p.db.Table("projects").
+		Joins("LEFT JOIN project_users ON projects.id = project_users.project_id").
+		Where("project_users.user_id = ?", userID)
+	if err := countQuery.Count(&totalCount).Error; err != nil {
+		return nil, nil, fmt.Errorf("프로젝트 전체 개수 조회 실패: %v", err)
+	}
+
+	var dbProjects []model.Project
+	if err := p.db.Model(&model.Project{}).
+		Select("projects.*, project_users.*").
+		Joins("LEFT JOIN project_users ON projects.id = project_users.project_id").
+		Where(searchCondition, searchParams...).
+		Order(fmt.Sprintf("%s %s", queryOptions["sort"], queryOptions["order"])).
+		Limit(queryOptions["limit"].(int)).
+		Find(&dbProjects).Error; err != nil {
+		return nil, nil, fmt.Errorf("프로젝트 조회 실패: %v", err)
+	}
+
+	projects := make([]entity.Project, len(dbProjects))
+	for i, dbProject := range dbProjects {
+		projects[i] = entity.Project{
+			ID:        dbProject.ID,
+			Name:      dbProject.Name,
+			CompanyID: dbProject.CompanyID,
+			StartDate: dbProject.StartDate,
+			EndDate:   dbProject.EndDate,
+			CreatedBy: dbProject.CreatedBy,
+			CreatedAt: dbProject.CreatedAt,
+			UpdatedAt: dbProject.UpdatedAt,
+		}
+	}
+
+	var nextCursor string
+	if len(projects) > 0 {
+		nextCursor = projects[len(projects)-1].CreatedAt.Format("2006-01-02 15:04:05")
+	} else {
+		nextCursor = ""
+	}
+
+	return &entity.ProjectMeta{
+		NextCursor: nextCursor,
+		TotalCount: int(totalCount),
+		TotalPages: int(math.Ceil(float64(totalCount) / float64(queryOptions["limit"].(int)))),
+		PrevPage:   queryOptions["page"].(int) - 1,
+		NextPage:   queryOptions["page"].(int) + 1,
+		PageSize:   queryOptions["limit"].(int),
+		HasMore:    totalCount > int64(queryOptions["page"].(int)*queryOptions["limit"].(int)),
+	}, projects, nil
 }
 
 func (p *ProjectPersistence) GetProjectUsers(projectID uint) ([]entity.ProjectUser, error) {
@@ -104,6 +275,14 @@ func (p *ProjectPersistence) GetProjectUsers(projectID uint) ([]entity.ProjectUs
 	}
 
 	return projectUsers, nil
+}
+
+func (p *ProjectPersistence) InUserInProject(userID uint, projectID uint) (bool, error) {
+	var projectUser entity.ProjectUser
+	if err := p.db.Where("user_id = ? AND project_id = ?", userID, projectID).First(&projectUser).Error; err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (p *ProjectPersistence) InviteProject(senderID uint, receiverID uint, projectID uint) error {

@@ -29,3 +29,13 @@ type ProjectUser struct {
 	UserID    uint `json:"user_id"`
 	Role      int  `json:"role"`
 }
+
+type ProjectMeta struct {
+	NextCursor string `json:"next_cursor"`
+	HasMore    bool   `json:"has_more"`
+	TotalCount int    `json:"total_count"`
+	TotalPages int    `json:"total_pages"`
+	PageSize   int    `json:"page_size"`
+	PrevPage   int    `json:"prev_page"`
+	NextPage   int    `json:"next_page"`
+}

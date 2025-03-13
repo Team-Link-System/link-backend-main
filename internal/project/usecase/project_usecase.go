@@ -22,7 +22,7 @@ import (
 
 type ProjectUsecase interface {
 	CreateProject(userId uint, request *req.CreateProjectRequest) error
-	GetProjects(userId uint, category string) (*res.GetProjectsResponse, error)
+	GetProjects(userId uint, queryParams req.GetProjectsQueryParams) (*res.GetProjectsResponse, error)
 	GetProject(userId uint, projectID uint) (*res.GetProjectResponse, error)
 	GetProjectUsers(userId uint, projectID uint) (*res.GetProjectUsersResponse, error)
 	InviteProject(senderId uint, request *req.InviteProjectRequest) (*res.CreateNotificationResponse, error)
@@ -101,7 +101,7 @@ func (u *projectUsecase) CreateProject(userId uint, request *req.CreateProjectRe
 	return nil
 }
 
-func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProjectsResponse, error) {
+func (u *projectUsecase) GetProjects(userId uint, queryParams req.GetProjectsQueryParams) (*res.GetProjectsResponse, error) {
 	// 사용자 조회
 	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
@@ -110,11 +110,28 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 	}
 
 	// 카테고리 소문자로 변환
-	category = strings.ToLower(category)
-
+	category := strings.ToLower(queryParams.Category)
 	// 프로젝트 리스트 초기화
 	var projects []res.GetProjectResponse
+	var projectMeta *entity.ProjectMeta
 	var projectData []entity.Project // DB에서 가져올 프로젝트 리스트
+
+	queryOptions := map[string]interface{}{
+		"category": category,
+		"page":     queryParams.Page,
+		"limit":    queryParams.Limit,
+		"order":    queryParams.Order,
+		"sort":     queryParams.Sort,
+		"cursor":   map[string]interface{}{},
+	}
+
+	if queryParams.Cursor != nil {
+		if queryParams.Cursor.CreatedAt != "" {
+			queryOptions["cursor"].(map[string]interface{})["created_at"] = queryParams.Cursor.CreatedAt
+		} else if queryParams.Cursor.ID != "" {
+			queryOptions["cursor"].(map[string]interface{})["id"] = queryParams.Cursor.ID
+		}
+	}
 
 	switch category {
 	case "company":
@@ -122,9 +139,9 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 			log.Printf("회사가 없는 사용자입니다. : 사용자 ID : %v", user.ID)
 			return nil, common.NewError(http.StatusBadRequest, "회사가 없습니다", nil)
 		}
-		projectData, err = u.projectRepo.GetProjectsByCompanyID(*user.UserProfile.CompanyID)
+		projectMeta, projectData, err = u.projectRepo.GetProjectsByCompanyID(*user.UserProfile.CompanyID, queryOptions)
 	case "my":
-		projectData, err = u.projectRepo.GetProjectsByUserID(userId)
+		projectMeta, projectData, err = u.projectRepo.GetProjectsByUserID(userId, queryOptions)
 	default:
 		log.Printf("카테고리가 올바르지 않습니다. : 카테고리 : %v", category)
 		return nil, common.NewError(http.StatusBadRequest, "카테고리가 올바르지 않습니다", nil)
@@ -145,11 +162,22 @@ func (u *projectUsecase) GetProjects(userId uint, category string) (*res.GetProj
 			CreatedBy: project.CreatedBy,
 			CompanyID: project.CompanyID,
 			CreatedAt: project.CreatedAt,
+			UpdatedAt: project.UpdatedAt,
 		})
 	}
 
+	responseMeta := &res.ProjectPaginationMeta{
+		NextCursor: projectMeta.NextCursor,
+		HasMore:    &projectMeta.HasMore,
+		TotalCount: projectMeta.TotalCount,
+		TotalPages: projectMeta.TotalPages,
+		PageSize:   projectMeta.PageSize,
+		PrevPage:   projectMeta.PrevPage,
+		NextPage:   projectMeta.NextPage,
+	}
+
 	// 응답 객체 생성 후 반환
-	return &res.GetProjectsResponse{Projects: projects}, nil
+	return &res.GetProjectsResponse{Projects: projects, Meta: responseMeta}, nil
 }
 
 func (u *projectUsecase) GetProject(userId uint, projectID uint) (*res.GetProjectResponse, error) {
@@ -338,9 +366,13 @@ func (u *projectUsecase) UpdateProject(userId uint, request *req.UpdateProjectRe
 	}
 
 	//프로젝트에 속한 사용자인지 확인
-	_, err = u.projectRepo.GetProjectsByUserID(userId)
+	existUser, err := u.projectRepo.InUserInProject(userId, request.ProjectID)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "프로젝트 속한 사용자 확인 실패", err)
+	}
+
+	if !existUser {
+		return common.NewError(http.StatusBadRequest, "프로젝트에 속한 사용자가 아닙니다.", nil)
 	}
 
 	//권한 확인
