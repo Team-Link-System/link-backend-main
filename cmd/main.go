@@ -313,6 +313,7 @@ func startServer() {
 				board.PUT("/:boardid", boardHandler.UpdateBoard)
 				board.DELETE("/:boardid", boardHandler.DeleteBoard)
 				board.POST("/:projectid/:boardid/snapshots", boardHandler.AutoSaveBoard)
+				board.GET("/:boardid/all", boardHandler.GetKanbanBoard)
 			}
 
 			stat := protectedRoute.Group("stat")

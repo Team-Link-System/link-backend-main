@@ -167,6 +167,22 @@ func (p *BoardPersistence) GetBoardUsersByBoardID(boardID uint) ([]entity.BoardU
 	return boardUsersEntity, nil
 }
 
+func (p *BoardPersistence) GetCardAssignees(cardID uuid.UUID) ([]entity.CardAssignee, error) {
+	var cardAssignees []model.CardAssignee
+	if err := p.db.Where("card_id = ?", cardID).Find(&cardAssignees).Error; err != nil {
+		return nil, err
+	}
+
+	cardAssigneesEntity := make([]entity.CardAssignee, len(cardAssignees))
+	for i, cardAssignee := range cardAssignees {
+		cardAssigneesEntity[i] = entity.CardAssignee{
+			CardID: cardAssignee.CardID,
+			UserID: cardAssignee.UserID,
+		}
+	}
+	return cardAssigneesEntity, nil
+}
+
 // ! 컬럼 관련
 func (p *BoardPersistence) CreateBoardColumn(boardColumn *entity.BoardColumn) error {
 	//최대 포지션
@@ -200,6 +216,26 @@ func (p *BoardPersistence) CreateBoardColumn(boardColumn *entity.BoardColumn) er
 	boardColumn.ID = boardColumnModel.ID
 	boardColumn.Position = boardColumnModel.Position
 	return nil
+}
+
+func (p *BoardPersistence) GetBoardColumnsByBoardID(boardID uint) ([]entity.BoardColumn, error) {
+	var boardColumns []model.BoardColumn
+	if err := p.db.Where("board_id = ?", boardID).Find(&boardColumns).Error; err != nil {
+		return nil, err
+	}
+
+	boardColumnsEntity := make([]entity.BoardColumn, len(boardColumns))
+	for i, boardColumn := range boardColumns {
+		boardColumnsEntity[i] = entity.BoardColumn{
+			ID:        boardColumn.ID,
+			Name:      boardColumn.Name,
+			BoardID:   boardColumn.BoardID,
+			Position:  boardColumn.Position,
+			CreatedAt: boardColumn.CreatedAt,
+			UpdatedAt: boardColumn.UpdatedAt,
+		}
+	}
+	return boardColumnsEntity, nil
 }
 
 func (p *BoardPersistence) GetBoardColumnByID(columnID uuid.UUID) (*entity.BoardColumn, error) {
@@ -361,6 +397,31 @@ func (p *BoardPersistence) CreateBoardCard(boardCard *entity.BoardCard) error {
 
 	boardCard.ID = boardCardModel.ID
 	return tx.Commit().Error
+}
+
+func (p *BoardPersistence) GetBoardCardsByColumnID(columnID uuid.UUID) ([]entity.BoardCard, error) {
+	var boardCards []model.BoardCard
+	if err := p.db.Where("board_column_id = ?", columnID).Find(&boardCards).Error; err != nil {
+		return nil, err
+	}
+
+	boardCardsEntity := make([]entity.BoardCard, len(boardCards))
+	for i, boardCard := range boardCards {
+		boardCardsEntity[i] = entity.BoardCard{
+			ID:            boardCard.ID,
+			Name:          boardCard.Name,
+			Content:       boardCard.Content,
+			BoardID:       boardCard.BoardID,
+			BoardColumnID: boardCard.BoardColumnID,
+			Position:      boardCard.Position,
+			StartDate:     boardCard.StartDate,
+			EndDate:       boardCard.EndDate,
+			Version:       boardCard.Version,
+			CreatedAt:     boardCard.CreatedAt,
+			UpdatedAt:     boardCard.UpdatedAt,
+		}
+	}
+	return boardCardsEntity, nil
 }
 
 func (p *BoardPersistence) GetBoardCardByID(cardID uuid.UUID) (*entity.BoardCard, error) {

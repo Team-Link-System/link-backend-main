@@ -11,6 +11,7 @@ type BoardRepository interface {
 	CreateBoard(board *entity.Board, boardUsers []entity.BoardUser) error
 	GetBoardByID(boardID uint) (*entity.Board, error)
 	GetBoardsByProjectID(projectID uint) ([]entity.Board, error)
+
 	UpdateBoard(board *entity.Board) error
 	DeleteBoard(boardID uint) error
 	//보드 사용자 관련
@@ -20,12 +21,15 @@ type BoardRepository interface {
 	//컬럼 관련
 	CreateBoardColumn(boardColumn *entity.BoardColumn) error
 	GetBoardColumnByID(columnID uuid.UUID) (*entity.BoardColumn, error)
+	GetBoardColumnsByBoardID(boardID uint) ([]entity.BoardColumn, error)
+	GetCardAssignees(cardID uuid.UUID) ([]entity.CardAssignee, error)
 	UpdateBoardColumn(boardColumn *entity.BoardColumn) error
 	DeleteBoardColumn(columnID uuid.UUID) error
 	MoveBoardColumn(columnID uuid.UUID, position uint) error
 	//카드 관련
 	CreateBoardCard(boardCard *entity.BoardCard) error
 	GetBoardCardByID(cardID uuid.UUID) (*entity.BoardCard, error)
+	GetBoardCardsByColumnID(columnID uuid.UUID) ([]entity.BoardCard, error)
 	UpdateBoardCard(boardCard *entity.BoardCard) error
 	DeleteBoardCard(cardID uuid.UUID) error
 	MoveBoardCard(cardID uuid.UUID, toColumnID *uuid.UUID, newPosition *uint) error
