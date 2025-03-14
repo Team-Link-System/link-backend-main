@@ -346,56 +346,6 @@ func (h *WsHandler) HandleWebSocketConnection(c *gin.Context) {
 			chatRoomFromRedis = chatRoomFromDB
 		}
 
-		// // 1:1 채팅방에 두 사용자 참여 여부 확인 및 처리
-		// var senderInRoom, otherUserInRoom bool
-		// var otherUserId uint
-
-		// // 채팅방의 사용자를 순회하면서 현재 사용자와 상대방의 참여 상태 확인
-		// for i, user := range chatRoomFromRedis.Users {
-		// 	if *user.ID == message.SenderID {
-		// 		// 메시지 보낸 사람이 현재 채팅방에 참여 중인지 확인
-		// 		if chatRoomFromRedis.Users[i].AliasName != nil && chatRoomFromRedis.Users[i].JoinedAt != nil && chatRoomFromRedis.Users[i].LeftAt == nil {
-		// 			senderInRoom = true
-		// 		}
-		// 	} else {
-		// 		otherUserId = *user.ID
-		// 		if chatRoomFromRedis.Users[i].AliasName != nil && chatRoomFromRedis.Users[i].JoinedAt != nil && chatRoomFromRedis.Users[i].LeftAt == nil {
-		// 			otherUserInRoom = true
-		// 		}
-		// 	}
-		// }
-
-		// // 상황에 따른 처리
-		// // 메시지를 보낸 사용자가 채팅방에 참여하지 않았다면 추가
-		// if !senderInRoom {
-		// 	requestUserId := otherUserId
-		// 	joinedUserId := message.SenderID
-		// 	roomId := message.RoomID
-
-		// 	// NATS 이벤트 발행: 메시지를 보낸 사용자가 채팅방에 추가됨
-		// 	go func() {
-		// 		eventData := fmt.Sprintf(`{"requestUserId": %d, "joinedUserId": %d, "roomId": %d}`, requestUserId, joinedUserId, roomId)
-		// 		if err := h.natsPublisher.PublishEvent("chat_room.joined", []byte(eventData)); err != nil {
-		// 			log.Printf("NATS 이벤트 발행 오류: %v", err)
-		// 		}
-		// 	}()
-		// }
-
-		// // 상대방이 채팅방에 참여하지 않았다면 추가
-		// if !otherUserInRoom {
-		// 	requestUserId := message.SenderID
-		// 	joinedUserId := otherUserId
-		// 	roomId := message.RoomID
-
-		// 	// 상대방이 참여 중이지 않을 때만 NATS 이벤트 발행하여 추가 처리
-		// 	go func() {
-		// 		eventData := fmt.Sprintf(`{"requestUserId": %d, "joinedUserId": %d, "roomId": %d}`, requestUserId, joinedUserId, roomId)
-		// 		if err := h.natsPublisher.PublishEvent("chat_room.joined", []byte(eventData)); err != nil {
-		// 			log.Printf("NATS 이벤트 발행 오류: %v", err)
-		// 		}
-		// 	}()
-		// }
-
 		// 메시지 저장 -> nats pub으로 발행 저장 로직 처리
 		if _, err := h.chatUsecase.SaveMessage(message.SenderID, message.RoomID, message.Content); err != nil {
 			log.Printf("채팅 메시지 저장 실패: %v", err)
@@ -524,28 +474,6 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		}
 	}
 
-	// // 연결 종료 시 처리
-	// defer func() {
-	// 	log.Printf("사용자 %d의 웹소켓 연결 종료", userIdUint)
-	// 	h.hub.UnregisterClient(conn, uint(userIdUint), 0)
-
-	// 	// 남은 연결 확인
-	// 	if clientsMap, exists := h.hub.Clients.Load(uint(userIdUint)); exists {
-	// 		connsMap := clientsMap.(map[*websocket.Conn]bool)
-	// 		if len(connsMap) == 0 {
-	// 			// 모든 연결이 종료된 경우에만 오프라인으로 변경
-	// 			if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-	// 				log.Printf("유저 상태 업데이트 실패: %v", err)
-	// 			}
-	// 		}
-	// 	} else {
-	// 		// 연결 맵이 없는 경우도 오프라인으로 변경
-	// 		if err := h.userUsecase.UpdateUserOnlineStatus(uint(userIdUint), false); err != nil {
-	// 			log.Printf("유저 상태 업데이트 실패: %v", err)
-	// 		}
-	// 	}
-	// }()
-
 	// 메시지 처리 루프
 	for {
 		_, messageBytes, err := conn.ReadMessage()
@@ -673,6 +601,123 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 				log.Printf("웹소켓 에러: %v", err)
 			}
 			break
+		}
+	}
+}
+
+// HandleBoardWebSocket은 보드 웹소켓 연결을 처리합니다
+func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
+	// 쿼리 파라미터에서 토큰과 보드 ID 가져오기
+	token := c.Query("token")
+	boardIDStr := c.Query("boardId")
+
+	if token == "" || boardIDStr == "" {
+		c.JSON(http.StatusBadRequest, res.JsonResponse{
+			Success: false,
+			Message: "토큰과 보드 ID가 필요합니다",
+		})
+		return
+	}
+
+	// 보드 ID 파싱
+	boardID, err := strconv.ParseUint(boardIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, res.JsonResponse{
+			Success: false,
+			Message: "유효하지 않은 보드 ID입니다",
+		})
+		return
+	}
+
+	// 토큰 검증
+	claims, err := util.ValidateAccessToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, res.JsonResponse{
+			Success: false,
+			Message: "유효하지 않은 토큰입니다",
+		})
+		return
+	}
+
+	userID := claims.UserId
+
+	// 웹소켓 연결 업그레이드
+	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("웹소켓 연결 업그레이드 실패: %v", err)
+		return
+	}
+
+	// 연결 종료 시 정리
+	defer func() {
+		h.hub.UnregisterBoardClient(conn, userID, uint(boardID))
+		conn.Close()
+	}()
+
+	// 클라이언트 등록
+	h.hub.RegisterBoardClient(conn, userID, uint(boardID))
+
+	// 연결 성공 메시지 전송
+	conn.WriteJSON(res.JsonResponse{
+		Success: true,
+		Message: "보드 웹소켓 연결 성공",
+		Type:    "connection",
+		Payload: map[string]interface{}{
+			"board_id":     boardID,
+			"online_users": h.hub.GetBoardOnlineUsers(uint(boardID)),
+		},
+	})
+
+	// 핑 타이머 설정
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	// 클라이언트 메시지 처리
+	go func() {
+		for {
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Printf("웹소켓 오류: %v", err)
+				}
+				break
+			}
+
+			// 메시지 처리
+			var clientMsg map[string]interface{}
+			if err := json.Unmarshal(message, &clientMsg); err != nil {
+				log.Printf("메시지 파싱 오류: %v", err)
+				continue
+			}
+
+			// 메시지 타입에 따른 처리
+			msgType, ok := clientMsg["type"].(string)
+			if !ok {
+				continue
+			}
+
+			switch msgType {
+			case "ping":
+				// 핑 메시지 처리
+				conn.WriteJSON(res.JsonResponse{
+					Success: true,
+					Type:    "pong",
+				})
+
+				// 마지막 활동 시간 업데이트
+				if onlineUsersInterface, ok := h.hub.BoardOnlineUsers.Load(uint(boardID)); ok {
+					onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+					onlineUsers[userID] = time.Now()
+					h.hub.BoardOnlineUsers.Store(uint(boardID), onlineUsers)
+				}
+			}
+		}
+	}()
+
+	// 핑 타이머 처리
+	for range pingTicker.C {
+		if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(10*time.Second)); err != nil {
+			return
 		}
 	}
 }

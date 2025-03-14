@@ -14,22 +14,24 @@ import (
 
 const (
 	MaxConnectionsPerUser = 10
-
-	PingInterval  = 30 * time.Second
-	PongWait      = 60 * time.Second
-	WriteWait     = 10 * time.Second
-	CleanInterval = 10 * time.Minute
+	PingInterval          = 30 * time.Second
+	PongWait              = 60 * time.Second
+	WriteWait             = 10 * time.Second
+	CleanInterval         = 10 * time.Minute
 )
 
 // WebSocketHub는 클라이언트와 채팅방을 관리하고, 클라이언트의 온라인 상태 및 알림을 관리합니다.
 type WebSocketHub struct {
-	Clients        sync.Map // 전체 유저의 WebSocket 연결을 관리 (key: userId, value: WebSocket connection)
-	ChatRooms      sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
-	CompanyClients sync.Map // 회사 ID에 따라 유저를 관리 (key: companyId, value: WebSocket connection)
-	Register       chan ClientRegistration
-	Unregister     chan UnregisterInfo
-	OnlineClients  sync.Map // 전체 온라인 유저 (key: userId, value: true/false)
-	stopCleanup    chan struct{}
+	Clients          sync.Map // 전체 유저의 WebSocket 연결을 관리 (key: userId, value: WebSocket connection)
+	ChatRooms        sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
+	CompanyClients   sync.Map // 회사 ID에 따라 유저를 관리 (key: companyId, value: WebSocket connection)
+	BoardClients     sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: WebSocket connection)
+	Register         chan ClientRegistration
+	Unregister       chan UnregisterInfo
+	BoardOnlineUsers sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: true/false)
+	boardMutexes     sync.Map // 보드 ID에 따라 뮤텍스를 관리 (key: boardId, value: sync.Mutex)
+	OnlineClients    sync.Map // 전체 온라인 유저 (key: userId, value: true/false)
+	stopCleanup      chan struct{}
 }
 
 // ConnectionInfo는 연결 정보를 담는 구조체입니다.
@@ -88,6 +90,7 @@ func (hub *WebSocketHub) startCleanupRoutine() {
 		select {
 		case <-ticker.C:
 			hub.cleanupInactiveConnections()
+			hub.cleanupInactiveBoardUsers()
 		case <-hub.stopCleanup:
 			return
 		}
@@ -118,7 +121,6 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 			log.Printf("사용자 %d의 비활성 연결 제거됨", userID)
 		}
 
-		// 모든 연결이 제거되었는지 확인
 		if len(clientsMap) == 0 {
 			hub.Clients.Delete(userID)
 			hub.OnlineClients.Store(userID, false)
@@ -131,11 +133,9 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 		return true
 	})
 
-	// 회사 클라이언트 연결 정리
 	hub.CompanyClients.Range(func(companyID, clientsMapInterface interface{}) bool {
 		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
 
-		// 오래된 연결 찾기
 		var connsToRemove []*websocket.Conn
 		for conn, info := range clientsMap {
 			if now.Sub(info.LastPing) > PongWait*2 || !info.IsActive {
@@ -143,14 +143,12 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 			}
 		}
 
-		// 오래된 연결 제거
 		for _, conn := range connsToRemove {
 			delete(clientsMap, conn)
 			conn.Close()
 			log.Printf("회사 %d의 비활성 연결 제거됨", companyID)
 		}
 
-		// 모든 연결이 제거되었는지 확인
 		if len(clientsMap) == 0 {
 			hub.CompanyClients.Delete(companyID)
 			log.Printf("회사 %d의 모든 연결 제거됨", companyID)
@@ -164,24 +162,67 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 	log.Println("비활성 연결 정리 작업 완료")
 }
 
-// 클라이언트 등록
+// cleanupInactiveBoardUsers
+func (hub *WebSocketHub) cleanupInactiveBoardUsers() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			now := time.Now()
+			inactiveThreshold := 2 * time.Minute
+
+			hub.BoardOnlineUsers.Range(func(boardIDInterface, onlineUsersInterface interface{}) bool {
+				boardID := boardIDInterface.(uint)
+
+				mutex := hub.getBoardMutex(boardID)
+				mutex.Lock()
+				defer mutex.Unlock()
+
+				onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+
+				var inactiveUsers []uint
+				for userID, lastActive := range onlineUsers {
+					if now.Sub(lastActive) > inactiveThreshold {
+						inactiveUsers = append(inactiveUsers, userID)
+					}
+				}
+
+				for _, userID := range inactiveUsers {
+					delete(onlineUsers, userID)
+					hub.notifyBoardUserLeft(boardID, userID)
+					log.Printf("사용자 %d가 비활성으로 보드 %d에서 제거됨", userID, boardID)
+				}
+
+				if len(onlineUsers) == 0 {
+					hub.BoardOnlineUsers.Delete(boardID)
+				} else {
+					hub.BoardOnlineUsers.Store(boardID, onlineUsers)
+				}
+
+				return true
+			})
+		case <-hub.stopCleanup:
+			return
+		}
+	}
+}
+
 // 유저 상태 변경 시 메시지 전송
 func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomID uint) {
 	log.Printf("RegisterClient 호출: userID=%d, roomID=%d", userID, roomID)
 
-	// 채팅방에 클라이언트 추가
 	if roomID != 0 {
 		hub.AddToChatRoom(roomID, userID, conn)
 		return
 	}
 
-	// 일반 사용자 연결 처리
 	clientsMapInterface, _ := hub.Clients.LoadOrStore(userID, make(map[*websocket.Conn]*ConnectionInfo))
 	clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
 
-	// 최대 연결 수 제한 확인
 	if len(clientsMap) >= MaxConnectionsPerUser {
-		// 가장 오래된 연결 찾기
+
 		var oldestConn *websocket.Conn
 		oldestTime := time.Now()
 
@@ -192,20 +233,18 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 			}
 		}
 
-		// 가장 오래된 연결 제거
 		if oldestConn != nil {
 			delete(clientsMap, oldestConn)
 			oldestConn.WriteJSON(res.JsonResponse{
 				Success: false,
 				Message: "다른 기기에서 새로운 연결이 감지되어 연결이 종료됩니다.",
-				Type:    "connection_limit",
+				Type:    "close",
 			})
 			oldestConn.Close()
 			log.Printf("사용자 %d의 최대 연결 수 초과로 오래된 연결 제거됨", userID)
 		}
 	}
 
-	// 새 연결 설정
 	clientsMap[conn] = &ConnectionInfo{
 		Conn:     conn,
 		UserID:   userID,
@@ -213,7 +252,6 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		IsActive: true,
 	}
 
-	// Ping/Pong 핸들러 설정
 	conn.SetPingHandler(func(appData string) error {
 		if info, ok := clientsMap[conn]; ok {
 			info.LastPing = time.Now()
@@ -228,7 +266,6 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		return nil
 	})
 
-	// 읽기 타임아웃 설정
 	conn.SetReadDeadline(time.Now().Add(PongWait))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(PongWait))
@@ -245,7 +282,6 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		Type:    "connection",
 	})
 
-	// 첫 번째 연결일 때만 온라인 상태 변경
 	if len(clientsMap) == 1 {
 		oldStatus, _ := hub.OnlineClients.Load(userID)
 		if oldStatus == nil || oldStatus == false {
@@ -255,7 +291,6 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		}
 	}
 
-	// Ping 메시지 전송 고루틴 시작
 	go hub.startPingRoutine(conn, userID)
 }
 
@@ -468,6 +503,198 @@ func (hub *WebSocketHub) BroadcastToAllUsers(message interface{}) {
 	})
 }
 
+// ! 칸반보드 관련 웹소켓 hub
+func (hub *WebSocketHub) getBoardMutex(boardID uint) *sync.RWMutex {
+	mutex, _ := hub.boardMutexes.LoadOrStore(boardID, &sync.RWMutex{})
+	return mutex.(*sync.RWMutex)
+}
+
+func (hub *WebSocketHub) RegisterBoardClient(conn *websocket.Conn, userID uint, boardID uint) {
+	// 보드별 뮤텍스 획득
+	mutex := hub.getBoardMutex(boardID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	boardClientsInterface, _ := hub.BoardClients.LoadOrStore(boardID, make(map[uint]map[*websocket.Conn]*ConnectionInfo))
+	boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+
+	userConns, exists := boardClients[userID]
+	if !exists {
+		userConns = make(map[*websocket.Conn]*ConnectionInfo)
+		boardClients[userID] = userConns
+	}
+
+	connInfo := &ConnectionInfo{
+		Conn:     conn,
+		UserID:   userID,
+		LastPing: time.Now(),
+		IsActive: true,
+	}
+
+	userConns[conn] = connInfo
+
+	hub.BoardClients.Store(boardID, boardClients)
+
+	onlineUsersInterface, _ := hub.BoardOnlineUsers.LoadOrStore(boardID, make(map[uint]time.Time))
+	onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+	onlineUsers[userID] = time.Now()
+	hub.BoardOnlineUsers.Store(boardID, onlineUsers)
+
+	if !exists {
+		hub.notifyBoardUserJoined(boardID, userID)
+	}
+
+	log.Printf("사용자 %d가 보드 %d에 접속함", userID, boardID)
+}
+
+// UnregisterBoardClient는 보드 클라이언트 등록을 해제
+func (hub *WebSocketHub) UnregisterBoardClient(conn *websocket.Conn, userID uint, boardID uint) {
+	// 보드별 뮤텍스 획득
+	mutex := hub.getBoardMutex(boardID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	boardClientsInterface, ok := hub.BoardClients.Load(boardID)
+	if !ok {
+		return
+	}
+	boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+
+	userConns, ok := boardClients[userID]
+	if !ok {
+		return
+	}
+
+	// 연결 제거
+	delete(userConns, conn)
+
+	if len(userConns) == 0 {
+
+		delete(boardClients, userID)
+
+		if onlineUsersInterface, ok := hub.BoardOnlineUsers.Load(boardID); ok {
+			onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+			delete(onlineUsers, userID)
+			hub.BoardOnlineUsers.Store(boardID, onlineUsers)
+
+			hub.notifyBoardUserLeft(boardID, userID)
+		}
+	} else {
+		boardClients[userID] = userConns
+	}
+
+	if len(boardClients) == 0 {
+		hub.BoardClients.Delete(boardID)
+		hub.BoardOnlineUsers.Delete(boardID)
+		hub.boardMutexes.Delete(boardID)
+		log.Printf("보드 %d 연결 정보 삭제 (비어있음)", boardID)
+	} else {
+
+		hub.BoardClients.Store(boardID, boardClients)
+	}
+
+	log.Printf("사용자 %d가 보드 %d에서 연결 해제됨", userID, boardID)
+}
+
+func (hub *WebSocketHub) UpdateBoardUserActivity(boardID uint, userID uint) {
+
+	mutex := hub.getBoardMutex(boardID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if onlineUsersInterface, ok := hub.BoardOnlineUsers.Load(boardID); ok {
+		onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+		onlineUsers[userID] = time.Now()
+		hub.BoardOnlineUsers.Store(boardID, onlineUsers)
+	}
+}
+
+func (hub *WebSocketHub) GetBoardOnlineUsers(boardID uint) []uint {
+
+	mutex := hub.getBoardMutex(boardID)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var onlineUsers []uint
+
+	if onlineUsersInterface, ok := hub.BoardOnlineUsers.Load(boardID); ok {
+		onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+		result := make([]uint, 0, len(onlineUsers))
+
+		for userID := range onlineUsers {
+			result = append(result, userID)
+		}
+
+		return result
+	}
+
+	return onlineUsers
+}
+
+func (hub *WebSocketHub) notifyBoardUserJoined(boardID uint, userID uint) {
+	message := res.JsonResponse{
+		Success: true,
+		Type:    "board.user.joined",
+		Payload: map[string]interface{}{
+			"board_id": boardID,
+			"user_id":  userID,
+		},
+	}
+
+	hub.BroadcastToBoard(boardID, message)
+}
+
+func (hub *WebSocketHub) notifyBoardUserLeft(boardID uint, userID uint) {
+	message := res.JsonResponse{
+		Success: true,
+		Type:    "board.user.left",
+		Payload: map[string]interface{}{
+			"board_id": boardID,
+			"user_id":  userID,
+		},
+	}
+
+	hub.BroadcastToBoard(boardID, message)
+}
+
+func (hub *WebSocketHub) BroadcastToBoard(boardID uint, msg interface{}) {
+	// 보드별 뮤텍스 획득 (읽기 전용)
+	mutex := hub.getBoardMutex(boardID)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	if boardClientsInterface, ok := hub.BoardClients.Load(boardID); ok {
+		boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+
+		for _, userConns := range boardClients {
+			for conn := range userConns {
+				if err := conn.WriteJSON(msg); err != nil {
+					log.Printf("웹소켓 메시지 전송 실패: %v", err)
+				}
+			}
+		}
+	}
+}
+
+func (hub *WebSocketHub) SendMessageToBoardUser(boardID uint, userID uint, msg interface{}) {
+
+	mutex := hub.getBoardMutex(boardID)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	if boardClientsInterface, ok := hub.BoardClients.Load(boardID); ok {
+		boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+
+		if userConns, ok := boardClients[userID]; ok {
+			for conn := range userConns {
+				if err := conn.WriteJSON(msg); err != nil {
+					log.Printf("웹소켓 메시지 전송 실패: %v", err)
+				}
+			}
+		}
+	}
+}
+
 func (hub *WebSocketHub) Shutdown() {
 	close(hub.stopCleanup)
 
@@ -496,11 +723,8 @@ func (hub *WebSocketHub) Run() {
 	for {
 		select {
 		case registration := <-hub.Register:
-			// 클라이언트 등록
 			hub.RegisterClient(registration.Conn, registration.UserID, registration.RoomID)
-
 		case unregInfo := <-hub.Unregister:
-			// 클라이언트 연결 해제
 			hub.UnregisterClient(unregInfo.Conn, unregInfo.UserID, unregInfo.RoomID)
 		}
 	}
