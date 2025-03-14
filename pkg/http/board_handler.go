@@ -250,3 +250,35 @@ func (h *BoardHandler) AutoSaveBoard(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "보드 상태 자동 저장 성공", nil))
 }
+
+// 칸반보드 렌더링 조회
+func (h *BoardHandler) GetKanbanBoard(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		log.Printf("인증되지 않은 사용자입니다.")
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
+		return
+	}
+
+	boardID := c.Param("boardid")
+	if boardID == "" {
+		log.Printf("보드 ID가 없습니다.")
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
+		return
+	}
+
+	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
+	if err != nil {
+		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
+		return
+	}
+
+	board, err := h.boardUsecase.GetKanbanBoard(userId.(uint), uint(boardIDUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "칸반보드 렌더링 조회 실패", err))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "칸반보드 렌더링 조회 성공", board))
+}

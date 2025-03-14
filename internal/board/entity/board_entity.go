@@ -53,6 +53,11 @@ type BoardCard struct {
 	Assignees     []uint    `json:"assignees,omitempty"`
 }
 
+type CardAssignee struct {
+	CardID uuid.UUID `json:"card_id,omitempty"`
+	UserID uint      `json:"user_id,omitempty"`
+}
+
 // CardActivity 엔티티
 type CardActivity struct {
 	ID        string

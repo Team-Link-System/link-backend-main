@@ -5,6 +5,7 @@ import (
 	"link/internal/board/entity"
 	_boardRepo "link/internal/board/repository"
 	_projectRepo "link/internal/project/repository"
+	_userEntity "link/internal/user/entity"
 	_userRepo "link/internal/user/repository"
 
 	"link/pkg/common"
@@ -27,6 +28,7 @@ type BoardUsecase interface {
 	DeleteBoard(userId uint, boardID uint) error
 
 	AutoSaveBoard(userId uint, projectID uint, boardID uint, request *req.BoardStateUpdateReqeust) error
+	GetKanbanBoard(userId uint, boardID uint) (*res.GetKanbanBoardResponse, error)
 }
 
 type boardUsecase struct {
@@ -482,4 +484,144 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 	}
 
 	return nil
+}
+
+// 칸반보드 렌더링 조회
+func (u *boardUsecase) GetKanbanBoard(userId uint, boardID uint) (*res.GetKanbanBoardResponse, error) {
+	_, err := u.userRepo.GetUserByID(userId)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
+	}
+
+	board, err := u.boardRepo.GetBoardByID(boardID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 조회 실패", err)
+	}
+
+	userBoardRole, err := u.boardRepo.CheckBoardUserRole(boardID, userId)
+	if err != nil {
+		return nil, common.NewError(http.StatusForbidden, "해당 칸반보드에 접근할 수 없습니다.", err)
+	}
+
+	project, err := u.projectRepo.GetProjectByID(userId, board.ProjectID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "프로젝트 조회 실패", err)
+	}
+
+	columns, err := u.boardRepo.GetBoardColumnsByBoardID(boardID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 컬럼 조회 실패", err)
+	}
+
+	// 컬럼 응답 구성
+	columnsResponse := make([]res.GetKanbanBoardColumnResponse, len(columns))
+	for i, column := range columns {
+		// 컬럼의 카드 조회
+		cards, err := u.boardRepo.GetBoardCardsByColumnID(column.ID)
+		if err != nil {
+			return nil, common.NewError(http.StatusInternalServerError, "보드 카드 조회 실패", err)
+		}
+
+		// 컬럼에 속한 카드 응답 구성
+		cardsResponse := make([]res.GetKanbanBoardCardResponse, len(cards))
+		for j, card := range cards {
+			// 카드 할당자 조회
+			assignees, err := u.boardRepo.GetCardAssignees(card.ID)
+			if err != nil {
+				return nil, common.NewError(http.StatusInternalServerError, "카드 할당자 조회 실패", err)
+			}
+
+			cardsResponse[j] = res.GetKanbanBoardCardResponse{
+				ID:        card.ID,
+				Name:      card.Name,
+				Content:   card.Content,
+				Position:  card.Position,
+				StartDate: card.StartDate,
+				EndDate:   card.EndDate,
+				Version:   card.Version,
+				CreatedAt: card.CreatedAt,
+				UpdatedAt: card.UpdatedAt,
+			}
+
+			for _, assignee := range assignees {
+				cardsResponse[j].Assignees = append(cardsResponse[j].Assignees, assignee.UserID)
+			}
+		}
+
+		columnsResponse[i] = res.GetKanbanBoardColumnResponse{
+			ID:        column.ID,
+			Name:      column.Name,
+			Position:  column.Position,
+			Cards:     cardsResponse,
+			CreatedAt: column.CreatedAt,
+			UpdatedAt: column.UpdatedAt,
+		}
+	}
+
+	// 보드 사용자 조회
+	boardUsers, err := u.boardRepo.GetBoardUsersByBoardID(boardID)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "보드 사용자 조회 실패", err)
+	}
+
+	// 사용자 정보 조회
+	usersResponse := make([]res.GetKanbanBoardUserResponse, len(boardUsers))
+
+	userIds := make([]uint, len(boardUsers))
+	for i, boardUser := range boardUsers {
+		userIds[i] = boardUser.UserID
+	}
+
+	users, err := u.userRepo.GetUserByIds(userIds)
+	if err != nil {
+		return nil, common.NewError(http.StatusInternalServerError, "사용자 정보 조회 실패", err)
+	}
+
+	userMap := make(map[uint]_userEntity.User)
+	for _, user := range users {
+		userMap[*user.ID] = user
+	}
+
+	for i, boardUser := range boardUsers {
+		//! 아래 부분 db에 range로 조회하는 것이 더비효율적
+		// user, err := u.userRepo.GetUserByID(boardUser.UserID)
+		// if err != nil {
+		// 	return nil, common.NewError(http.StatusInternalServerError, "사용자 정보 조회 실패", err)
+		// }
+
+		user, ok := userMap[boardUser.UserID]
+		if !ok {
+			return nil, common.NewError(http.StatusInternalServerError, "사용자 정보 조회 실패", nil)
+		}
+
+		var profileImage string
+		if user.UserProfile != nil && user.UserProfile.Image != nil {
+			profileImage = *user.UserProfile.Image
+		} else {
+			profileImage = "" // 기본값 설정
+		}
+
+		usersResponse[i] = res.GetKanbanBoardUserResponse{
+			ID:           *user.ID,
+			Name:         *user.Name,
+			Email:        *user.Email,
+			ProfileImage: profileImage,
+			Role:         boardUser.Role,
+		}
+	}
+
+	// 최종 응답 구성
+	response := &res.GetKanbanBoardResponse{
+		BoardID:       board.ID,
+		Title:         board.Title,
+		ProjectID:     board.ProjectID,
+		ProjectName:   project.Name,
+		UserBoardRole: &userBoardRole,
+		CreatedAt:     board.CreatedAt,
+		UpdatedAt:     board.UpdatedAt,
+		Columns:       columnsResponse,
+		BoardUsers:    usersResponse,
+	}
+
+	return response, nil
 }
