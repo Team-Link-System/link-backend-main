@@ -605,9 +605,8 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 	}
 }
 
-// HandleBoardWebSocket은 보드 웹소켓 연결을 처리합니다
 func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
-	// 쿼리 파라미터에서 토큰과 보드 ID 가져오기
+
 	token := c.Query("token")
 	boardIDStr := c.Query("boardId")
 
