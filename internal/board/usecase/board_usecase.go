@@ -99,18 +99,21 @@ func (u *boardUsecase) CreateBoard(userId uint, request *req.CreateBoardRequest)
 	//TODO 더미로 생성 이후 삭제 필요
 	defaultColums := []entity.BoardColumn{ // 일단 더미로 생성
 		{
+			ID:        uuid.New(),
 			Name:      "To Do",
 			BoardID:   board.ID,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
+			ID:        uuid.New(),
 			Name:      "In Progress",
 			BoardID:   board.ID,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
+			ID:        uuid.New(),
 			Name:      "Done",
 			BoardID:   board.ID,
 			CreatedAt: time.Now(),
