@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,7 +23,8 @@ const (
 
 // WebSocketHub는 클라이언트와 채팅방을 관리하고, 클라이언트의 온라인 상태 및 알림을 관리합니다.
 type WebSocketHub struct {
-	Clients          sync.Map // 전체 유저의 WebSocket 연결을 관리 (key: userId, value: WebSocket connection)
+	clientMutex      sync.Mutex
+	Clients          map[uint]map[*websocket.Conn]*ConnectionInfo
 	ChatRooms        sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
 	CompanyClients   sync.Map // 회사 ID에 따라 유저를 관리 (key: companyId, value: WebSocket connection)
 	BoardClients     sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: WebSocket connection)
@@ -40,6 +42,7 @@ type ConnectionInfo struct {
 	UserID   uint
 	LastPing time.Time
 	IsActive bool
+	Cancel   context.CancelFunc
 }
 
 // ClientRegistration는 클라이언트와 관련된 정보를 담는 구조체입니다.
@@ -103,9 +106,10 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 	now := time.Now()
 
 	// 일반 사용자 연결 정리
-	hub.Clients.Range(func(userID, clientsMapInterface interface{}) bool {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	hub.clientMutex.Lock()
+	defer hub.clientMutex.Unlock()
 
+	for userID, clientsMap := range hub.Clients {
 		// 오래된 연결 찾기
 		var connsToRemove []*websocket.Conn
 		for conn, info := range clientsMap {
@@ -122,16 +126,16 @@ func (hub *WebSocketHub) cleanupInactiveConnections() {
 		}
 
 		if len(clientsMap) == 0 {
-			hub.Clients.Delete(userID)
+			delete(hub.Clients, userID)
 			hub.OnlineClients.Store(userID, false)
-			hub.BroadcastOnlineStatus(userID.(uint), false)
+			hub.BroadcastOnlineStatus(userID, false)
 			log.Printf("사용자 %d의 모든 연결 제거됨, 오프라인 상태로 변경", userID)
 		} else {
-			hub.Clients.Store(userID, clientsMap)
+			hub.Clients[userID] = clientsMap
 		}
 
-		return true
-	})
+		continue
+	}
 
 	hub.CompanyClients.Range(func(companyID, clientsMapInterface interface{}) bool {
 		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
@@ -218,8 +222,11 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		return
 	}
 
-	clientsMapInterface, _ := hub.Clients.LoadOrStore(userID, make(map[*websocket.Conn]*ConnectionInfo))
-	clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	clientsMap := hub.Clients[userID]
+	if clientsMap == nil {
+		clientsMap = make(map[*websocket.Conn]*ConnectionInfo)
+		hub.Clients[userID] = clientsMap
+	}
 
 	if len(clientsMap) >= MaxConnectionsPerUser {
 
@@ -245,11 +252,14 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	clientsMap[conn] = &ConnectionInfo{
 		Conn:     conn,
 		UserID:   userID,
 		LastPing: time.Now(),
 		IsActive: true,
+		Cancel:   cancel,
 	}
 
 	conn.SetPingHandler(func(appData string) error {
@@ -272,7 +282,7 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		return nil
 	})
 
-	hub.Clients.Store(userID, clientsMap)
+	hub.Clients[userID] = clientsMap
 
 	log.Printf("사용자 %d 연결 성공, 현재 연결 수: %d", userID, len(clientsMap))
 
@@ -291,37 +301,47 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 		}
 	}
 
-	go hub.startPingRoutine(conn, userID)
+	go hub.startPingRoutine(ctx, conn, userID)
 }
 
 // Ping 메시지 전송 루틴
-func (hub *WebSocketHub) startPingRoutine(conn *websocket.Conn, userID uint) {
+func (hub *WebSocketHub) startPingRoutine(ctx context.Context, conn *websocket.Conn, userID uint) {
 	ticker := time.NewTicker(PingInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		// 클라이언트가 여전히 등록되어 있는지 확인
-		clientsMapInterface, exists := hub.Clients.Load(userID)
-		if !exists {
-			return
-		}
+	for {
 
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
-		info, exists := clientsMap[conn]
-		if !exists || !info.IsActive {
+		select {
+		case <-ctx.Done():
 			return
-		}
+		case <-ticker.C:
+			// 클라이언트가 여전히 등록되어 있는지 확인
 
-		// Ping 메시지 전송
-		if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(WriteWait)); err != nil {
-			log.Printf("Ping 메시지 전송 실패: %v", err)
-			info.IsActive = false
-			hub.Unregister <- UnregisterInfo{
-				Conn:   conn,
-				UserID: userID,
-				RoomID: 0,
+			if ctx.Err() != nil {
+				return
 			}
-			return
+
+			clientsMap := hub.Clients[userID]
+			if clientsMap == nil {
+				return
+			}
+
+			info, exists := clientsMap[conn]
+			if !exists || !info.IsActive {
+				return
+			}
+
+			// Ping 메시지 전송
+			if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(WriteWait)); err != nil {
+				log.Printf("Ping 메시지 전송 실패: %v", err)
+				info.IsActive = false
+				hub.Unregister <- UnregisterInfo{
+					Conn:   conn,
+					UserID: userID,
+					RoomID: 0,
+				}
+				return
+			}
 		}
 	}
 }
@@ -336,28 +356,38 @@ func (hub *WebSocketHub) UnregisterClient(conn *websocket.Conn, userID uint, roo
 		return
 	}
 
-	// 일반 사용자 연결 해제 처리
-	if clientsMapInterface, exists := hub.Clients.Load(userID); exists {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
-		log.Printf("사용자 %d의 연결 해제 전 연결 수: %d", userID, len(clientsMap))
-
-		// 특정 연결 제거
-		delete(clientsMap, conn)
-
-		if len(clientsMap) > 0 {
-			hub.Clients.Store(userID, clientsMap)
-			log.Printf("사용자 %d의 연결 해제 후 연결 수: %d", userID, len(clientsMap))
-		} else {
-			hub.Clients.Delete(userID)
-			hub.OnlineClients.Store(userID, false)
-			hub.BroadcastOnlineStatus(userID, false)
-			log.Printf("사용자 %d의 모든 연결 해제됨, 오프라인 상태로 변경", userID)
-		}
-	} else {
+	// ✅ 동기화: Clients[userID] 조회 및 수정 보호
+	hub.clientMutex.Lock()
+	clientsMap, exists := hub.Clients[userID]
+	if !exists {
+		hub.clientMutex.Unlock()
 		log.Printf("사용자 %d의 연결 정보를 찾을 수 없음", userID)
+		return
 	}
 
-	// 안전하게 연결 닫기
+	log.Printf("사용자 %d의 연결 해제 전 연결 수: %d", userID, len(clientsMap))
+
+	// ✅ 해당 연결 정보 제거
+	if connInfo, ok := clientsMap[conn]; ok {
+		if connInfo.Cancel != nil {
+			connInfo.Cancel()
+		}
+	}
+	delete(clientsMap, conn)
+
+	if len(clientsMap) > 0 {
+		hub.Clients[userID] = clientsMap
+		hub.clientMutex.Unlock()
+		log.Printf("사용자 %d의 연결 해제 후 연결 수: %d", userID, len(clientsMap))
+	} else {
+		delete(hub.Clients, userID)
+		hub.clientMutex.Unlock()
+
+		hub.OnlineClients.Store(userID, false)
+		hub.BroadcastOnlineStatus(userID, false)
+		log.Printf("사용자 %d의 모든 연결 해제됨, 오프라인 상태로 변경", userID)
+	}
+
 	if conn != nil {
 		conn.Close()
 	}
@@ -410,11 +440,9 @@ func (hub *WebSocketHub) SendMessageToChatRoom(roomID uint, message res.JsonResp
 // 특정 유저에게 메시지 전송 -> 특정 유저에게 알람을 보낼 때,
 // 알림 같은거 보낼 때 사용
 func (hub *WebSocketHub) SendMessageToUser(userID uint, message res.JsonResponse) {
-	if clientsMapInterface, ok := hub.Clients.Load(userID); ok {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
-		for client := range clientsMap {
-			hub.sendMessageToClient(client, message)
-		}
+	clientsMap := hub.Clients[userID]
+	for client := range clientsMap {
+		hub.sendMessageToClient(client, message)
 	}
 }
 
@@ -429,7 +457,11 @@ func (hub *WebSocketHub) sendMessageToClient(client *websocket.Conn, message int
 // 회사 클라이언트 등록
 func (hub *WebSocketHub) RegisterCompanyClient(conn *websocket.Conn, companyID uint) {
 	clientsMapInterface, _ := hub.CompanyClients.LoadOrStore(companyID, make(map[*websocket.Conn]*ConnectionInfo))
-	clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	clientsMap, ok := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	if !ok {
+		log.Printf("CompanyClients의 타입 변환 실패 (companyID: %d)", companyID)
+		return
+	}
 
 	clientsMap[conn] = &ConnectionInfo{
 		Conn:     conn,
@@ -494,13 +526,14 @@ func (hub *WebSocketHub) BroadcastOnlineStatus(userID uint, online bool) {
 
 // TODO 이건 RoomID와는 관계 없음
 func (hub *WebSocketHub) BroadcastToAllUsers(message interface{}) {
-	hub.Clients.Range(func(id, clientsMapInterface interface{}) bool {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	hub.clientMutex.Lock()
+	defer hub.clientMutex.Unlock()
+
+	for _, clientsMap := range hub.Clients {
 		for conn := range clientsMap {
 			hub.sendMessageToClient(conn, message)
 		}
-		return true
-	})
+	}
 }
 
 // ! 칸반보드 관련 웹소켓 hub
@@ -699,13 +732,14 @@ func (hub *WebSocketHub) Shutdown() {
 	close(hub.stopCleanup)
 
 	// 모든 연결 종료
-	hub.Clients.Range(func(_, clientsMapInterface interface{}) bool {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	hub.clientMutex.Lock()
+	defer hub.clientMutex.Unlock()
+
+	for _, clientsMap := range hub.Clients {
 		for conn := range clientsMap {
 			conn.Close()
 		}
-		return true
-	})
+	}
 
 	hub.CompanyClients.Range(func(_, clientsMapInterface interface{}) bool {
 		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)

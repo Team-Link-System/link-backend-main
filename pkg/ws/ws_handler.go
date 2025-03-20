@@ -464,9 +464,8 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 	}()
 
 	// 첫 연결인 경우에만 상태 업데이트
-	clientsMapInterface, _ := h.hub.Clients.Load(uint(userIdUint))
-	if clientsMapInterface != nil {
-		clientsMap := clientsMapInterface.(map[*websocket.Conn]*ConnectionInfo)
+	clientsMap := h.hub.Clients[userIDUint]
+	if clientsMap != nil {
 		if len(clientsMap) == 1 {
 			if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
 				log.Printf("온라인 상태 업데이트 실패: %v", err)
