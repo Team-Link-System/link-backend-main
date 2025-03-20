@@ -42,79 +42,79 @@ Link 백엔드 서비스는 Go 언어로 작성된 백엔드 API 및 웹소켓 �
 
 프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 필요한 환경 변수를 설정합니다. 환경에 따라 적절하게 주석을 해제하여 사용하세요.
 
-#### 로컬 개발 환경용 `.env`
+#### 로컬 개발 환경용 `.env` 필수 변수
 
 ```
 # 프론트엔드 도메인
-LINK_UI_URL=http://localhost:3000,http://192.168.1.13:3000
+LINK_UI_URL=
 
 # PostgreSQL 설정
-POSTGRES_DSN=host=localhost user=postgres password=12341234 dbname=test_db port=5432 sslmode=disable
+POSTGRES_DSN=
 
 # Redis 설정
-REDIS_ADDR=localhost:6379
+REDIS_ADDR=
 REDIS_PASSWORD=
-REDIS_DB=0
+REDIS_DB=
 
 # MongoDB 설정
-MONGO_DSN=mongodb://localhost:27017
+MONGO_DSN=
 
 # Go 서버 설정
-GO_ENV=dev
-HTTP_PORT=8080
-WS_PORT=1884
-WS_PATH=/ws
-ACCESS_TOKEN_SECRET=access_secret_key
-REFRESH_TOKEN_SECRET=refresh_secret_key
+GO_ENV=
+HTTP_PORT=
+WS_PORT=
+WS_PATH=
+ACCESS_TOKEN_SECRET=
+REFRESH_TOKEN_SECRET=
 
 # 시스템 관리자 계정
-SYSTEM_ADMIN_EMAIL=admin@link.com
-SYSTEM_ADMIN_PASSWORD=@Link1234
+SYSTEM_ADMIN_EMAIL=
+SYSTEM_ADMIN_PASSWORD=
 
 # NATS 설정
-NATS_URL=nats://localhost:4222
-NATS_WS_URL=ws://localhost:4222
-NATS_JETSTREAM_URL=nats://localhost:4223
+NATS_URL=
+NATS_WS_URL=
+NATS_JETSTREAM_URL=
 ```
 
-#### 컨테이너 환경용 `.env`
+#### 컨테이너 환경용 `.env` 필수 변수
 
 ```
 # 프론트엔드 도메인
-LINK_UI_URL=http://localhost:3000,http://192.168.1.13:3000
+LINK_UI_URL=
 
 # PostgreSQL 설정
-POSTGRES_DSN=host=postgres user=postgres password=12341234 dbname=test_db port=5432 sslmode=disable
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=12341234
-POSTGRES_DB=test_db
+POSTGRES_DSN=
+POSTGRES_PORT=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
 
 # Redis 설정
-REDIS_ADDR=redis:6379
-REDIS_PORT=6379
+REDIS_ADDR=
+REDIS_PORT=
 REDIS_PASSWORD=
-REDIS_DB=0
+REDIS_DB=
 
 # MongoDB 설정
-MONGO_DSN=mongodb://mongo:27017
+MONGO_DSN=
 
 # Go 서버 설정
-GO_ENV=dev
-HTTP_PORT=8080
-WS_PORT=1884
-WS_PATH=/ws
-ACCESS_TOKEN_SECRET=access_secret_key
-REFRESH_TOKEN_SECRET=refresh_secret_key
+GO_ENV=
+HTTP_PORT=
+WS_PORT=
+WS_PATH=
+ACCESS_TOKEN_SECRET=
+REFRESH_TOKEN_SECRET=
 
 # 시스템 관리자 계정
-SYSTEM_ADMIN_EMAIL=admin@link.com
-SYSTEM_ADMIN_PASSWORD=@Link1234
+SYSTEM_ADMIN_EMAIL=
+SYSTEM_ADMIN_PASSWORD=
 
 # NATS 설정
-NATS_URL=nats://nats:4222
-NATS_WS_URL=ws://nats:4222
-NATS_JETSTREAM_URL=nats://nats_jetstream:4223
+NATS_URL=
+NATS_WS_URL=
+NATS_JETSTREAM_URL=
 ```
 
 ## 📦 로컬 개발 환경 설정
