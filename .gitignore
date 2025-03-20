@@ -1,3 +1,5 @@
+# 빌드 파일
+/build
 tmp/*
 /vendor/
 

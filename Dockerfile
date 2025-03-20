@@ -1,26 +1,18 @@
-# Go가 포함된 알파인 이미지 사용
-FROM golang:1.23-alpine
+FROM alpine:latest
 
-# 필요한 도구 설치
-RUN apk add --no-cache git bash curl
+RUN apk --no-cache add ca-certificates tzdata
 
-# 작업 디렉토리 설정
 WORKDIR /app
 
-# Air 설치 (코드 변경 감지 도구)
-RUN go install github.com/air-verse/air@latest
+COPY build/link-backend_linux_amd64 ./link-backend
 
-# 의존성 설치를 위한 go.mod와 go.sum 복사
-COPY go.mod go.sum ./
+EXPOSE 8080 1884
 
-# 의존성 다운로드
-RUN go mod download
+# 비루트 사용자로 실행 (보안 강화)
+RUN adduser -D -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
 
-# 소스 코드 복사
-COPY . .
+RUN chmod +x ./link-backend
 
-# 포트 노출
-EXPOSE 8080
-
-# Air로 애플리케이션 실행
-CMD ["air", "-c", "/app/.air.toml"]
+CMD ["./link-backend"]

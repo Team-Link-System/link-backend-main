@@ -13,9 +13,9 @@
 - [소개](#-소개)
 - [시스템 요구사항](#-시스템-요구사항)
 - [환경 설정](#-환경-설정)
+- [주요 명령어](#-주요-명령어)
 - [로컬 개발 환경 설정](#-로컬-개발-환경-설정)
-- [Docker를 사용한 실행](#-docker를-사용한-실행)
-- [배포](#-배포)
+- [Docker 이미지 빌드 및 푸시](#-docker-이미지-빌드-및-푸시)
 - [트러블슈팅](#-트러블슈팅)
 
 ## 🚀 소개
@@ -25,24 +25,13 @@ Link 백엔드 서비스는 Go 언어로 작성된 백엔드 API 및 웹소켓 �
 ## 💻 시스템 요구사항
 
 - Go 1.23 이상
-- Docker 및 Docker Compose (선택 사항)
+- Docker
 - Git
-- PostgreSQL
-- Redis
-- MongoDB
-- NATS 메시징 서버
+- Air (개발용 핫 리로드)
 
 ## 🔧 환경 설정
 
-프로젝트는 두 가지 환경 설정 방식을 지원합니다:
-1. **로컬 개발 환경**: 로컬 머신에 필요한 서비스를 직접 설치하여 실행
-2. **컨테이너 환경**: Docker를 사용하여 모든 서비스를 컨테이너로 실행
-
-### 환경 변수 설정
-
-프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 필요한 환경 변수를 설정합니다. 환경에 따라 적절하게 주석을 해제하여 사용하세요.
-
-#### 로컬 개발 환경용 `.env` 필수 변수
+프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 필요한 환경 변수를 설정합니다.
 
 ```
 # 프론트엔드 도메인
@@ -77,45 +66,35 @@ NATS_WS_URL=
 NATS_JETSTREAM_URL=
 ```
 
-#### 컨테이너 환경용 `.env` 필수 변수
+## 🛠 주요 명령어
 
-```
-# 프론트엔드 도메인
-LINK_UI_URL=
+### Makefile 명령어
 
-# PostgreSQL 설정
-POSTGRES_DSN=
-POSTGRES_PORT=
-POSTGRES_USER=
-POSTGRES_PASSWORD=
-POSTGRES_DB=
+| 명령어 | 설명 |
+|--------|------|
+| `make build` | Go 애플리케이션 빌드 |
+| `make test` | 테스트 실행 |
+| `make clean` | 빌드 디렉토리 정리 |
+| `make docker-build` | 프로덕션용 Docker 이미지 빌드 |
+| `make docker-build-dev` | 개발용 Docker 이미지 빌드 |
+| `make push` | 프로덕션용 이미지 Harbor에 푸시 |
+| `make push-dev` | 개발용 이미지 Harbor에 푸시 |
+| `make local-dev` | 로컬 개발 서버 실행 (Air) |
+| `make local-prod` | 로컬 프로덕션 서버 실행 |
+| `make build-push` | 빌드, Docker 이미지 생성, Harbor 푸시 (프로덕션) |
+| `make build-push-dev` | 빌드, Docker 이미지 생성, Harbor 푸시 (개발) |
 
-# Redis 설정
-REDIS_ADDR=
-REDIS_PORT=
-REDIS_PASSWORD=
-REDIS_DB=
+### build.sh 스크립트 옵션
 
-# MongoDB 설정
-MONGO_DSN=
-
-# Go 서버 설정
-GO_ENV=
-HTTP_PORT=
-WS_PORT=
-WS_PATH=
-ACCESS_TOKEN_SECRET=
-REFRESH_TOKEN_SECRET=
-
-# 시스템 관리자 계정
-SYSTEM_ADMIN_EMAIL=
-SYSTEM_ADMIN_PASSWORD=
-
-# NATS 설정
-NATS_URL=
-NATS_WS_URL=
-NATS_JETSTREAM_URL=
-```
+| 옵션 | 설명 |
+|------|------|
+| `--skip-tests` | 테스트 실행 단계 건너뛰기 |
+| `--linux-only` | Linux 플랫폼만 빌드 |
+| `--darwin-only` | macOS 플랫폼만 빌드 |
+| `--windows-only` | Windows 플랫폼만 빌드 |
+| `--docker` | 프로덕션용 Docker 이미지 빌드 |
+| `--docker-dev` | 개발용 Docker 이미지 빌드 |
+| `--push` | Docker 이미지를 Harbor에 푸시 |
 
 ## 📦 로컬 개발 환경 설정
 
@@ -126,162 +105,95 @@ git clone https://github.com/your-username/link-backend.git
 cd link-backend
 ```
 
-### 2. 필요한 서비스 설치
-
-#### PostgreSQL 설치 및 실행
-
-```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib
-
-# macOS (Homebrew)
-brew install postgresql
-brew services start postgresql
-```
-
-#### Redis 설치 및 실행
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install redis-server
-sudo systemctl start redis-server
-
-# macOS (Homebrew)
-brew install redis
-brew services start redis
-```
-
-#### MongoDB 설치 및 실행
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install mongodb
-sudo systemctl start mongodb
-
-# macOS (Homebrew)
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
-```
-
-#### NATS 설치 및 실행
-
-```bash
-# Go로 설치
-go install github.com/nats-io/nats-server/v2@latest
-
-# 실행
-nats-server
-```
-
-### 3. 의존성 설치
+### 2. 의존성 설치
 
 ```bash
 go mod download
 ```
 
-### 4. 데이터베이스 초기화 (필요한 경우)
+### 3. 로컬 개발 서버 실행 (Air)
 
-```bash
-# PostgreSQL 데이터베이스 생성
-psql -U postgres -c "CREATE DATABASE test_db;"
-
-# 마이그레이션 실행 (필요한 경우)
-go run cmd/migration/main.go
-```
-
-### 5. 개발 서버 실행
-
-#### Air를 사용한 실행 (핫 리로드)
+Air를 사용하면 코드 변경 시 자동으로 서버가 재시작됩니다.
 
 ```bash
 # Air 설치 (처음 한 번만)
 go install github.com/air-verse/air@latest
 
-# Air로 실행
-air
+# Air로 개발 서버 실행
+make local-dev
 ```
 
-#### 일반 실행
+### 4. 테스트 실행
 
 ```bash
-go run main.go
+# 모든 테스트 실행
+make test
 ```
 
-## 🐳 Docker를 사용한 실행
+## 🐳 Docker 이미지 빌드 및 푸시
 
-### 1. Docker 이미지 빌드 및 푸시
-
-#### 개발 환경용
+### 프로덕션 환경용
 
 ```bash
-# 빌드 및 푸시
+# 한 번에 빌드 및 푸시
+make build-push
+
+# 또는 단계별로 실행
+make build
+make docker-build
+make push
+```
+
+### 개발 환경용
+
+```bash
+# 한 번에 빌드 및 푸시
+make build-push-dev
+
+# 또는 단계별로 실행
+make build
+make docker-build-dev
+make push-dev
+```
+
+### build.sh 스크립트 사용
+
+더 많은 옵션이 필요한 경우 build.sh 스크립트를 직접 사용할 수 있습니다.
+
+```bash
+# 테스트 건너뛰고 Linux 플랫폼만 빌드
+./build.sh --skip-tests --linux-only
+
+# 테스트 건너뛰고 프로덕션 Docker 이미지 빌드 및 푸시
+./build.sh --skip-tests --docker --push
+
+# 개발용 Docker 이미지 빌드 및 푸시
 ./build.sh --docker-dev --push
-
-# 또는 Makefile 사용
-make docker-dev push-dev
 ```
 
-#### 프로덕션 환경용
+## 📄 프로젝트 구조
 
-```bash
-# 빌드 및 푸시
-./build.sh --docker --push
-
-# 또는 Makefile 사용
-make docker push
 ```
-
-### 2. Docker Compose로 전체 스택 실행
-
-```bash
-# 환경 변수 파일 복사 (.env.dev를 .env로)
-cp .env.dev .env
-
-# Docker Compose 실행
-docker-compose up -d
-```
-
-### 3. 실행 확인
-
-```bash
-# 컨테이너 상태 확인
-docker-compose ps
-
-# 로그 확인
-docker-compose logs -f link-backend
-```
-
-## 🚢 배포
-
-### 개발 환경 배포
-
-```bash
-# 개발 환경에 배포
-./deploy.sh development
-
-# 또는 Makefile 사용
-make deploy-dev
-```
-
-### 프로덕션 환경 배포
-
-```bash
-# 프로덕션 환경에 배포
-./deploy.sh production
-
-# 또는 Makefile 사용
-make deploy
+/
+├── cmd/                # 메인 애플리케이션 코드
+│   └── main.go         # 애플리케이션 진입점
+├── internal/           # 내부 패키지
+├── pkg/                # 외부에서 사용 가능한 패키지
+├── build/              # 빌드 산출물
+├── .air.toml           # Air 설정
+├── Dockerfile          # 프로덕션용 Dockerfile
+├── Dockerfile.dev      # 개발용 Dockerfile
+├── build.sh            # 빌드 스크립트
+├── Makefile            # 빌드 자동화
+└── go.mod              # Go 모듈 정의
 ```
 
 ## 🔄 CI/CD 파이프라인
 
-이 프로젝트는 GitOps 방식의 CI/CD 파이프라인을 사용합니다:
+로컬에서 빌드하고 Harbor에 푸시한 이미지는 Kubernetes를 통해 배포될 수 있습니다:
 
-1. 코드 변경 사항을 Git 저장소에 푸시합니다.
-2. CI 시스템이 테스트를 실행하고 Docker 이미지를 빌드합니다.
-3. CD 시스템이 새 버전을 Kubernetes 클러스터에 배포합니다.
+1. `make build-push` 또는 `make build-push-dev`로 이미지 빌드 및 푸시
+2. Kubernetes에서 해당 이미지를 사용하여 배포
 
 ## 🛠️ 트러블슈팅
 
@@ -299,15 +211,22 @@ make deploy
 - 데이터베이스 서버가 실행 중인지 확인
 - 네트워크 연결 및 방화벽 설정 확인
 
-### NATS 연결 문제
+### 도커 빌드 문제
 
-NATS 연결 문제가 발생하면 다음을 확인하세요:
-- NATS 서버가 실행 중인지 확인
-- 환경 변수가 올바르게 설정되었는지 확인 (`NATS_URL`, `NATS_WS_URL`, `NATS_JETSTREAM_URL`)
-- 로그에서 연결 오류 메시지 확인
+도커 빌드에 문제가 있다면 다음을 확인하세요:
+- `Dockerfile`과 `Dockerfile.dev`가 올바르게 설정되었는지 확인
+- 빌드 전에 `make build`로 바이너리가 생성되었는지 확인
+- Docker 데몬이 실행 중인지 확인
+
+### Harbor 푸시 문제
+
+Harbor 레지스트리에 푸시할 때 문제가 발생하면 다음을 확인하세요:
+- Docker가 Harbor 레지스트리에 로그인되어 있는지 확인 (`docker login harbor.jongjong2.site:30443`)
+- 적절한 네임스페이스와 태그를 사용하고 있는지 확인
+- Harbor 레지스트리 연결 상태 확인
 
 ---
 
 <div align="center">
-  <p>❤️ Link 팀에서 제작하였습니다 ❤️</p>
+  <p> Link 팀에서 제작하였습니다 </p>
 </div>
