@@ -75,10 +75,13 @@ var Upgrader = websocket.Upgrader{
 // NewWebSocketHub는 새로운 WebSocketHub를 생성합니다.
 func NewWebSocketHub() *WebSocketHub {
 	hub := &WebSocketHub{
-		Register:   make(chan ClientRegistration),
-		Unregister: make(chan UnregisterInfo),
+		Register:    make(chan ClientRegistration),
+		Unregister:  make(chan UnregisterInfo),
+		Clients:     make(map[uint]map[*websocket.Conn]*ConnectionInfo),
+		stopCleanup: make(chan struct{}),
 	}
 
+	go hub.Run()
 	go hub.startCleanupRoutine()
 
 	return hub
@@ -286,12 +289,26 @@ func (hub *WebSocketHub) RegisterClient(conn *websocket.Conn, userID uint, roomI
 
 	log.Printf("사용자 %d 연결 성공, 현재 연결 수: %d", userID, len(clientsMap))
 
-	conn.WriteJSON(res.JsonResponse{
-		Success: true,
-		Message: fmt.Sprintf("User %d 연결 성공", userID),
-		Type:    "connection",
-	})
+	// 추가: 기존 온라인 유저 정보 전송
+	if roomID == 0 {
+		onlineUsersMap := make(map[uint]bool)
+		hub.OnlineClients.Range(func(key, value interface{}) bool {
+			uid := key.(uint)
+			status := value.(bool)
+			if status {
+				onlineUsersMap[uid] = true
+			}
+			return true
+		})
 
+		conn.WriteJSON(res.JsonResponse{
+			Success: true,
+			Message: fmt.Sprintf("User %d 연결 성공", userID),
+			Type:    "connection",
+		})
+	}
+
+	// 자신의 온라인 상태가 변경된 경우 다른 사용자에게 알림
 	if len(clientsMap) == 1 {
 		oldStatus, _ := hub.OnlineClients.Load(userID)
 		if oldStatus == nil || oldStatus == false {
