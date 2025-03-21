@@ -22,14 +22,14 @@ clean:
 	@echo "Cleaning..."
 	@rm -rf $(BUILD_DIR)
 
-# 프로덕션용 도커 이미지 빌드
+# 프로덕션용 도커 이미지 빌드 (멀티 스테이징 사용)
 docker-build:
-	@echo "Building Docker image for production..."
+	@echo "Building Docker image for production using multi-stage build..."
 	@docker build -f Dockerfile -t $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):latest .
 
-# 개발용 도커 이미지 빌드
+# 개발용 도커 이미지 빌드 (멀티 스테이징 사용)
 docker-build-dev:
-	@echo "Building Docker image for development..."
+	@echo "Building Docker image for development using multi-stage build..."
 	@docker build -f Dockerfile.dev -t $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):dev .
 
 # 프로덕션용 이미지 Harbor 푸시
@@ -52,10 +52,3 @@ local-prod:
 	@chmod +x ./build/link-backend
 	@./build/link-backend
 
-# 빠른 빌드-푸시 (프로덕션)
-build-push: build docker-build push
-	@echo "Build and push completed for production"
-
-# 빠른 빌드-푸시 (개발)
-build-push-dev: build docker-build-dev push-dev
-	@echo "Build and push completed for development"

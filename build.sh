@@ -73,8 +73,8 @@ if [[ "$*" == *"--docker"* ]] || [[ "$*" == *"--docker-dev"* ]]; then
         DOCKERFILE="Dockerfile.dev"
     fi
     
-    echo "🐳 Docker 이미지 빌드 중... (환경: $ENV)"
-    # 로컬 빌드된 바이너리 활용
+    echo "🐳 Docker 이미지 빌드 중... (환경: $ENV, 멀티 스테이지 빌드 사용)"
+    # 멀티 스테이지 빌드 사용 - 로컬 빌드 바이너리 사용하지 않음
     docker build -f $DOCKERFILE -t "$DOCKER_REGISTRY:$TAG" .
     if [ $? -ne 0 ]; then
         echo "❌ Docker 이미지 빌드 실패"
