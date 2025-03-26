@@ -1,22 +1,26 @@
 package persistence
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"link/infrastructure/model"
 	"link/internal/board/entity"
 	"link/internal/board/repository"
 	"strings"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type BoardPersistence struct {
-	db *gorm.DB
+	db          *gorm.DB
+	redisClient *redis.Client
 }
 
-func NewBoardPersistence(db *gorm.DB) repository.BoardRepository {
-	return &BoardPersistence{db: db}
+func NewBoardPersistence(db *gorm.DB, redisClient *redis.Client) repository.BoardRepository {
+	return &BoardPersistence{db: db, redisClient: redisClient}
 }
 
 // ! 보드 관련
@@ -161,6 +165,29 @@ func (p *BoardPersistence) GetBoardUsersByBoardID(boardID uint) ([]entity.BoardU
 			BoardID: boardUser.BoardID,
 			UserID:  boardUser.UserID,
 			Role:    boardUser.Role,
+			Online:  false,
+		}
+	}
+
+	//redis 에서 조회
+	onlineUsers, err := p.redisClient.SMembers(context.Background(), fmt.Sprintf("board:%d:online_users", boardID)).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var onlineUsersList []uint
+	if len(onlineUsers) > 0 {
+		combinedJSON := "[" + strings.Join(onlineUsers, ",") + "]"
+		if err := json.Unmarshal([]byte(combinedJSON), &onlineUsersList); err != nil {
+			return nil, err
+		}
+	}
+
+	for _, onlineUser := range onlineUsersList {
+		for i, boardUser := range boardUsersEntity {
+			if boardUser.UserID == onlineUser {
+				boardUsersEntity[i].Online = true
+			}
 		}
 	}
 

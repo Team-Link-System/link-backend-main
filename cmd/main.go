@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -94,8 +96,8 @@ func startServer() {
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
-	// allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
-	allowedOrigins := []string{"http://localhost:3000", "http://192.168.1.13:3000"}
+	allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
+	// allowedOrigins := []string{"http://localhost:3000", "http://192.168.1.13:3000"}
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
@@ -146,6 +148,7 @@ func startServer() {
 			wsGroup.GET("/chat", wsHandler.HandleWebSocketConnection)
 			wsGroup.GET("/user", wsHandler.HandleUserWebSocketConnection)
 			wsGroup.GET("/company", wsHandler.HandleCompanyEvent)
+			wsGroup.GET("/board", wsHandler.HandleBoardWebSocket)
 		}
 
 		api := r.Group("/api")

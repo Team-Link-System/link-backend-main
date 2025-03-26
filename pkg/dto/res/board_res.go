@@ -58,6 +58,7 @@ type GetKanbanBoardUserResponse struct {
 	ID           uint   `json:"id"`
 	Name         string `json:"name"`
 	Email        string `json:"email"`
-	ProfileImage string `json:"profile_image"`
-	Role         int    `json:"role"`
+	ProfileImage string `json:"profile_image,omitempty"`
+	BoardRole    int    `json:"board_role"`
+	Online       bool   `json:"online"`
 }

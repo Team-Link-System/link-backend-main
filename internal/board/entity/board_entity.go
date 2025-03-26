@@ -26,6 +26,7 @@ type BoardUser struct {
 	BoardID uint `json:"board_id"`
 	UserID  uint `json:"user_id"`
 	Role    int  `json:"role"`
+	Online  bool `json:"online"`
 }
 
 type BoardColumn struct {
