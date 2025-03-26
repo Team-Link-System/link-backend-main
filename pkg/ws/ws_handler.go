@@ -701,11 +701,43 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 
 	// 클라이언트 등록
 	h.hub.RegisterBoardClient(conn, uint(userID), uint(boardID))
+	natsData := map[string]interface{}{
+		"topic": "link.event.board.user.joined",
+		"payload": map[string]interface{}{
+			"board_id":  boardID,
+			"user_id":   userID,
+			"timestamp": time.Now(),
+		},
+	}
 
+	jsonData, err := json.Marshal(natsData)
+	if err != nil {
+		log.Printf("NATS 데이터 직렬화 실패: %v", err)
+		return
+	}
+
+	h.natsPublisher.PublishEvent("link.event.board.user.joined", jsonData)
 	// 연결 종료 시 정리
 	defer func() {
 		log.Printf("보드 ID %d에서 사용자 ID %d 연결 종료", boardID, userID)
 		h.hub.UnregisterBoardClient(conn, uint(userID), uint(boardID))
+
+		natsData := map[string]interface{}{
+			"topic": "link.event.board.user.left",
+			"payload": map[string]interface{}{
+				"board_id":  boardID,
+				"user_id":   userID,
+				"timestamp": time.Now(),
+			},
+		}
+
+		jsonData, err := json.Marshal(natsData)
+		if err != nil {
+			log.Printf("NATS 데이터 직렬화 실패: %v", err)
+			return
+		}
+
+		h.natsPublisher.PublishEvent("link.event.board.user.left", jsonData)
 		conn.Close()
 	}()
 
@@ -717,6 +749,7 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 
 		for {
 			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
+
 			_, message, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
@@ -727,8 +760,6 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 				break
 			}
 
-			log.Printf("메시지 수신: %s", string(message))
-
 			// 메시지 처리
 			var clientMsg map[string]interface{}
 			if err := json.Unmarshal(message, &clientMsg); err != nil {
@@ -736,44 +767,16 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 				continue
 			}
 
+			log.Printf("asdasdasdas 수신: %s", string(message))
+
 			// 메시지 타입에 따른 처리
 			msgType, ok := clientMsg["type"].(string)
 			if !ok {
+				log.Printf("메시지 타입 추출 실패: %v", clientMsg)
 				continue
 			}
 
 			switch msgType {
-			case "link.event.board.user.joined":
-				// 핑 메시지 처리
-				natsData := map[string]interface{}{
-					"topic":   "link.event.board.user.joined",
-					"payload": clientMsg["payload"],
-				}
-
-				jsonData, err := json.Marshal(natsData)
-				if err != nil {
-					log.Printf("NATS 데이터 직렬화 실패: %v", err)
-					continue
-				}
-
-				h.natsPublisher.PublishEvent("link.event.board.user.joined", jsonData)
-
-			case "link.event.board.user.left":
-				// 핑 메시지 처리
-				h.hub.notifyBoardUserLeft(uint(boardID), uint(userID))
-
-				natsData := map[string]interface{}{
-					"topic":   "link.event.board.user.left",
-					"payload": clientMsg["payload"],
-				}
-
-				jsonData, err := json.Marshal(natsData)
-				if err != nil {
-					log.Printf("NATS 데이터 직렬화 실패: %v", err)
-					continue
-				}
-
-				h.natsPublisher.PublishEvent("link.event.board.user.left", jsonData)
 
 			case "ping":
 				// 핑 메시지 처리
@@ -788,7 +791,6 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 		}
 	}()
 
-	// 핑 타이머 처리
 	for range pingTicker.C {
 		if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(10*time.Second)); err != nil {
 			return

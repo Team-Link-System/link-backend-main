@@ -175,17 +175,17 @@ func (p *BoardPersistence) GetBoardUsersByBoardID(boardID uint) ([]entity.BoardU
 		return nil, err
 	}
 
-	var onlineUsersEntity []entity.BoardUser
+	var onlineUsersList []uint
 	if len(onlineUsers) > 0 {
 		combinedJSON := "[" + strings.Join(onlineUsers, ",") + "]"
-		if err := json.Unmarshal([]byte(combinedJSON), &onlineUsersEntity); err != nil {
+		if err := json.Unmarshal([]byte(combinedJSON), &onlineUsersList); err != nil {
 			return nil, err
 		}
 	}
 
-	for _, onlineUser := range onlineUsersEntity {
+	for _, onlineUser := range onlineUsersList {
 		for i, boardUser := range boardUsersEntity {
-			if boardUser.UserID == onlineUser.UserID {
+			if boardUser.UserID == onlineUser {
 				boardUsersEntity[i].Online = true
 			}
 		}

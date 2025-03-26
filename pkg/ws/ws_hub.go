@@ -572,6 +572,7 @@ func (hub *WebSocketHub) RegisterBoardClient(conn *websocket.Conn, userID uint, 
 	userConns, exists := boardClients[userID]
 	if !exists {
 		userConns = make(map[*websocket.Conn]*ConnectionInfo)
+
 	}
 
 	_, cancel := context.WithCancel(context.Background())
@@ -612,6 +613,7 @@ func (hub *WebSocketHub) RegisterBoardClient(conn *websocket.Conn, userID uint, 
 		log.Printf("사용자 %d가 보드 %d에 이미 접속해 있음", userID, boardID)
 		hub.notifyBoardUserJoined(boardID, userID)
 	}
+
 }
 
 // UnregisterBoardClient는 보드 클라이언트 등록을 해제
@@ -771,7 +773,6 @@ func (hub *WebSocketHub) BroadcastToBoard(boardID uint, msg interface{}) {
 				continue
 			}
 
-			// 직접 메시지 전송
 			err := conn.WriteJSON(msg)
 			if err != nil {
 				log.Printf("메시지 전송 실패 (사용자 %d): %v", userID, err)
