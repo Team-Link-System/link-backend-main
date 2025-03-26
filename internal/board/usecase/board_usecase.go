@@ -332,7 +332,7 @@ func (u *boardUsecase) DeleteBoard(userId uint, boardID uint) error {
 }
 
 func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, request *req.BoardStateUpdateReqeust) error {
-	_, err := u.userRepo.GetUserByID(userId)
+	user, err := u.userRepo.GetUserByID(userId)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "사용자 조회 실패", err)
 	}
@@ -381,6 +381,28 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 				if err := u.boardRepo.CreateBoardColumn(&newColumn); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 컬럼 생성 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "COLUMN",
+						"target_id":   *change.ColumnID,
+						"action":      "CREATE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
+
 			} else if change.Action == "update" {
 				// 컬럼 이름 변경
 				column, err := u.boardRepo.GetBoardColumnByID(*change.ColumnID)
@@ -393,17 +415,82 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 				if err := u.boardRepo.UpdateBoardColumn(column); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 컬럼 업데이트 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "COLUMN",
+						"target_id":   *change.ColumnID,
+						"action":      "UPDATE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
+
 			} else if change.Action == "delete" {
 				// 컬럼 삭제
 				if err := u.boardRepo.DeleteBoardColumn(*change.ColumnID); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 컬럼 삭제 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "COLUMN",
+						"target_id":   *change.ColumnID,
+						"action":      "DELETE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
+
 			} else if change.Action == "move" {
 				// 컬럼 이동
 				if change.Position != nil {
 					if err := u.boardRepo.MoveBoardColumn(*change.ColumnID, *change.Position); err != nil {
 						return common.NewError(http.StatusInternalServerError, "보드 컬럼 이동 실패", err)
 					}
+
+					natsData := map[string]interface{}{
+						"topic": "link.event.board.state.update",
+						"payload": map[string]interface{}{
+							"user_id":     userId,
+							"user_name":   *user.Name,
+							"project_id":  projectID,
+							"board_id":    boardID,
+							"target_type": "COLUMN",
+							"target_id":   *change.ColumnID,
+							"action":      "MOVE",
+							"timestamp":   time.Now(),
+						},
+					}
+
+					jsonData, err := json.Marshal(natsData)
+					if err != nil {
+						return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+					}
+
+					go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
 				}
 			}
 		case "card":
@@ -428,6 +515,27 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 				if err := u.boardRepo.CreateBoardCard(&newCard); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 카드 생성 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "CARD",
+						"target_id":   change.CardID,
+						"action":      "CREATE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
 			} else if change.Action == "update" {
 				// 카드 업데이트
 				card, err := u.boardRepo.GetBoardCardByID(change.CardID)
@@ -473,15 +581,80 @@ func (u *boardUsecase) AutoSaveBoard(userId uint, projectID uint, boardID uint, 
 				if err := u.boardRepo.UpdateBoardCard(card); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 카드 업데이트 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "CARD",
+						"target_id":   change.CardID,
+						"action":      "UPDATE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
+
 			} else if change.Action == "delete" {
 				// 카드 삭제
 				if err := u.boardRepo.DeleteBoardCard(change.CardID); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 카드 삭제 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "CARD",
+						"target_id":   change.CardID,
+						"action":      "DELETE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
+
 			} else if change.Action == "move" {
 				if err := u.boardRepo.MoveBoardCard(change.CardID, change.ColumnID, change.Position); err != nil {
 					return common.NewError(http.StatusInternalServerError, "보드 카드 이동 실패", err)
 				}
+
+				natsData := map[string]interface{}{
+					"topic": "link.event.board.state.update",
+					"payload": map[string]interface{}{
+						"user_id":     userId,
+						"user_name":   *user.Name,
+						"project_id":  projectID,
+						"board_id":    boardID,
+						"target_type": "CARD",
+						"target_id":   change.CardID,
+						"action":      "MOVE",
+						"timestamp":   time.Now(),
+					},
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					return common.NewError(http.StatusInternalServerError, "NATS 데이터 직렬화 실패", err)
+				}
+
+				go u.natsPublisher.PublishEvent("link.event.board.state.update", jsonData)
 			}
 		}
 	}
@@ -609,7 +782,8 @@ func (u *boardUsecase) GetKanbanBoard(userId uint, boardID uint) (*res.GetKanban
 			Name:         *user.Name,
 			Email:        *user.Email,
 			ProfileImage: profileImage,
-			Role:         boardUser.Role,
+			BoardRole:    boardUser.Role,
+			Online:       boardUser.Online,
 		}
 	}
 

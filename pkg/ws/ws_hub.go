@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,9 +29,9 @@ type WebSocketHub struct {
 	ChatRooms        sync.Map // 채팅방 ID에 따라 유저를 관리 (key: roomId, value: map[userId]*websocket.Conn)
 	CompanyClients   sync.Map // 회사 ID에 따라 유저를 관리 (key: companyId, value: WebSocket connection)
 	BoardClients     sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: WebSocket connection)
+	BoardOnlineUsers sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: true/false)
 	Register         chan ClientRegistration
 	Unregister       chan UnregisterInfo
-	BoardOnlineUsers sync.Map // 보드 ID에 따라 유저를 관리 (key: boardId, value: true/false)
 	boardMutexes     sync.Map // 보드 ID에 따라 뮤텍스를 관리 (key: boardId, value: sync.Mutex)
 	OnlineClients    sync.Map // 전체 온라인 유저 (key: userId, value: true/false)
 	stopCleanup      chan struct{}
@@ -571,30 +572,46 @@ func (hub *WebSocketHub) RegisterBoardClient(conn *websocket.Conn, userID uint, 
 	userConns, exists := boardClients[userID]
 	if !exists {
 		userConns = make(map[*websocket.Conn]*ConnectionInfo)
-		boardClients[userID] = userConns
 	}
 
+	_, cancel := context.WithCancel(context.Background())
 	connInfo := &ConnectionInfo{
 		Conn:     conn,
 		UserID:   userID,
 		LastPing: time.Now(),
 		IsActive: true,
+		Cancel:   cancel,
 	}
 
 	userConns[conn] = connInfo
+	boardClients[userID] = userConns
 
 	hub.BoardClients.Store(boardID, boardClients)
 
-	onlineUsersInterface, _ := hub.BoardOnlineUsers.LoadOrStore(boardID, make(map[uint]time.Time))
-	onlineUsers := onlineUsersInterface.(map[uint]time.Time)
+	// 온라인 사용자 목록 업데이트
+	var onlineUsers map[uint]time.Time
+	onlineUsersInterface, loaded := hub.BoardOnlineUsers.Load(boardID)
+
+	if !loaded {
+		onlineUsers = make(map[uint]time.Time)
+	} else {
+		var ok bool
+		onlineUsers, ok = onlineUsersInterface.(map[uint]time.Time)
+		if !ok {
+			onlineUsers = make(map[uint]time.Time)
+		}
+	}
+
+	_, userExists := onlineUsers[userID]
 	onlineUsers[userID] = time.Now()
 	hub.BoardOnlineUsers.Store(boardID, onlineUsers)
 
-	if !exists {
+	if !exists && !userExists {
+		hub.notifyBoardUserJoined(boardID, userID)
+	} else {
+		log.Printf("사용자 %d가 보드 %d에 이미 접속해 있음", userID, boardID)
 		hub.notifyBoardUserJoined(boardID, userID)
 	}
-
-	log.Printf("사용자 %d가 보드 %d에 접속함", userID, boardID)
 }
 
 // UnregisterBoardClient는 보드 클라이언트 등록을 해제
@@ -608,11 +625,29 @@ func (hub *WebSocketHub) UnregisterBoardClient(conn *websocket.Conn, userID uint
 	if !ok {
 		return
 	}
-	boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
-
-	userConns, ok := boardClients[userID]
+	boardClients, ok := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
 	if !ok {
+		log.Printf("보드 클라이언트 맵 타입 변환 실패: %T", boardClientsInterface)
 		return
+	}
+
+	// 사용자별 연결 맵 가져오기
+	userConns, exists := boardClients[userID]
+	if !exists {
+		log.Printf("사용자 ID %d의 연결 정보를 찾을 수 없음", userID)
+		return
+	}
+
+	// 연결 정보 가져오기
+	connInfo, exists := userConns[conn]
+	if !exists {
+		log.Printf("사용자 ID %d의 특정 연결 정보를 찾을 수 없음", userID)
+		return
+	}
+
+	// 컨텍스트 취소
+	if connInfo.Cancel != nil {
+		connInfo.Cancel()
 	}
 
 	// 연결 제거
@@ -661,10 +696,6 @@ func (hub *WebSocketHub) UpdateBoardUserActivity(boardID uint, userID uint) {
 
 func (hub *WebSocketHub) GetBoardOnlineUsers(boardID uint) []uint {
 
-	mutex := hub.getBoardMutex(boardID)
-	mutex.RLock()
-	defer mutex.RUnlock()
-
 	var onlineUsers []uint
 
 	if onlineUsersInterface, ok := hub.BoardOnlineUsers.Load(boardID); ok {
@@ -682,12 +713,15 @@ func (hub *WebSocketHub) GetBoardOnlineUsers(boardID uint) []uint {
 }
 
 func (hub *WebSocketHub) notifyBoardUserJoined(boardID uint, userID uint) {
+
 	message := res.JsonResponse{
 		Success: true,
-		Type:    "board.user.joined",
+		Type:    "link.event.board.user.joined",
+		Message: fmt.Sprintf("사용자 %d가 보드 %d에 접속함", userID, boardID),
 		Payload: map[string]interface{}{
-			"board_id": boardID,
-			"user_id":  userID,
+			"board_id":  boardID,
+			"user_id":   userID,
+			"timestamp": time.Now(),
 		},
 	}
 
@@ -697,30 +731,53 @@ func (hub *WebSocketHub) notifyBoardUserJoined(boardID uint, userID uint) {
 func (hub *WebSocketHub) notifyBoardUserLeft(boardID uint, userID uint) {
 	message := res.JsonResponse{
 		Success: true,
-		Type:    "board.user.left",
+		Type:    "link.event.board.user.left",
 		Payload: map[string]interface{}{
-			"board_id": boardID,
-			"user_id":  userID,
+			"board_id":  boardID,
+			"user_id":   userID,
+			"timestamp": time.Now(),
 		},
 	}
 
 	hub.BroadcastToBoard(boardID, message)
 }
 
+// BroadcastToBoard 함수 수정 - 문제 해결 시도
 func (hub *WebSocketHub) BroadcastToBoard(boardID uint, msg interface{}) {
 	// 보드별 뮤텍스 획득 (읽기 전용)
-	mutex := hub.getBoardMutex(boardID)
-	mutex.RLock()
-	defer mutex.RUnlock()
 
-	if boardClientsInterface, ok := hub.BoardClients.Load(boardID); ok {
-		boardClients := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+	log.Printf("BroadcastToBoard 호출: boardID=%d", boardID)
 
-		for _, userConns := range boardClients {
-			for conn := range userConns {
-				if err := conn.WriteJSON(msg); err != nil {
-					log.Printf("웹소켓 메시지 전송 실패: %v", err)
-				}
+	// 디버깅: 메시지 내용 출력
+	jsonBytes, _ := json.Marshal(msg)
+	log.Printf("전송할 메시지: %s", string(jsonBytes))
+
+	boardClientsInterface, ok := hub.BoardClients.Load(boardID)
+	if !ok {
+		log.Printf("보드 ID %d에 연결된 클라이언트가 없음", boardID)
+		return
+	}
+
+	boardClients, ok := boardClientsInterface.(map[uint]map[*websocket.Conn]*ConnectionInfo)
+	if !ok {
+		log.Printf("타입 변환 실패: %T", boardClientsInterface)
+		return
+	}
+
+	// 각 사용자의 모든 연결에 직접 메시지 전송
+	for userID, userConns := range boardClients {
+		for conn, connInfo := range userConns {
+			if connInfo == nil || !connInfo.IsActive {
+				continue
+			}
+
+			// 직접 메시지 전송
+			err := conn.WriteJSON(msg)
+			if err != nil {
+				log.Printf("메시지 전송 실패 (사용자 %d): %v", userID, err)
+				connInfo.IsActive = false
+			} else {
+				log.Printf("메시지 전송 성공 (사용자 %d)", userID)
 			}
 		}
 	}

@@ -63,7 +63,8 @@ func (h *WsHandler) setUpNatsSubscriber() {
 	h.subscribeToLikes()
 	// 알림 관련
 	h.subscribeToNotifications()
-	// 이벤트 관련
+	//칸반보드 관련
+	h.subscribeToBoard()
 }
 
 func (h *WsHandler) subscribeToChat() {
@@ -128,6 +129,45 @@ func (h *WsHandler) subscribeToNotifications() {
 			Type:    "notification",
 			Payload: notification,
 		})
+	})
+}
+
+func (h *WsHandler) subscribeToBoard() {
+	h.natsSubscriber.SubscribeEvent("link.event.board.state.update", func(msg *nats.Msg) {
+		var event map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			log.Printf("이벤트 파싱 오류: %v", err)
+			return
+		}
+		// 이벤트 처리
+		payload, ok := event["payload"].(map[string]interface{})
+		if !ok {
+			log.Printf("페이로드 추출 실패: %v", event)
+			return
+		}
+
+		boardIDFloat, ok := payload["board_id"].(float64)
+		if !ok {
+			log.Printf("보드 ID 추출 실패: %v", event)
+			return
+		}
+
+		fmt.Println("이벤트 수신: ", event)
+
+		boardID := uint(boardIDFloat)
+
+		// 웹소켓 메시지 준비
+		wsMessage := res.JsonResponse{
+			Success: true,
+			Type:    "link.event.board.state.update",
+			Message: "보드 업데이트 이벤트 수신",
+			Payload: payload, // 원본 페이로드 사용
+		}
+
+		log.Printf("보드 %d에 업데이트 이벤트 브로드캐스팅", boardID)
+
+		// 해당 보드의 모든 클라이언트에게 이벤트 전달
+		h.hub.BroadcastToBoard(boardID, wsMessage)
 	})
 }
 
@@ -604,15 +644,17 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 	}
 }
 
+// TODO 칸반보드 웹소켓 연결 핸들러
 func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 
 	token := c.Query("token")
 	boardIDStr := c.Query("boardId")
+	userIdStr := c.Query("userId")
 
-	if token == "" || boardIDStr == "" {
+	if token == "" || boardIDStr == "" || userIdStr == "" {
 		c.JSON(http.StatusBadRequest, res.JsonResponse{
 			Success: false,
-			Message: "토큰과 보드 ID가 필요합니다",
+			Message: "토큰과 보드 ID와 사용자 ID가 필요합니다",
 		})
 		return
 	}
@@ -628,7 +670,7 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 	}
 
 	// 토큰 검증
-	claims, err := util.ValidateAccessToken(token)
+	_, err = util.ValidateAccessToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, res.JsonResponse{
 			Success: false,
@@ -637,7 +679,14 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 		return
 	}
 
-	userID := claims.UserId
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, res.JsonResponse{
+			Success: false,
+			Message: "유효하지 않은 사용자 ID입니다",
+		})
+		return
+	}
 
 	// 웹소켓 연결 업그레이드
 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -646,40 +695,39 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 		return
 	}
 
+	// 연결 타임아웃 설정 (5분)
+	conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
+	conn.SetWriteDeadline(time.Now().Add(5 * time.Minute))
+
+	// 클라이언트 등록
+	h.hub.RegisterBoardClient(conn, uint(userID), uint(boardID))
+
 	// 연결 종료 시 정리
 	defer func() {
-		h.hub.UnregisterBoardClient(conn, userID, uint(boardID))
+		log.Printf("보드 ID %d에서 사용자 ID %d 연결 종료", boardID, userID)
+		h.hub.UnregisterBoardClient(conn, uint(userID), uint(boardID))
 		conn.Close()
 	}()
 
-	// 클라이언트 등록
-	h.hub.RegisterBoardClient(conn, userID, uint(boardID))
-
-	// 연결 성공 메시지 전송
-	conn.WriteJSON(res.JsonResponse{
-		Success: true,
-		Message: "보드 웹소켓 연결 성공",
-		Type:    "connection",
-		Payload: map[string]interface{}{
-			"board_id":     boardID,
-			"online_users": h.hub.GetBoardOnlineUsers(uint(boardID)),
-		},
-	})
-
-	// 핑 타이머 설정
 	pingTicker := time.NewTicker(30 * time.Second)
 	defer pingTicker.Stop()
 
 	// 클라이언트 메시지 처리
 	go func() {
+
 		for {
+			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 			_, message, err := conn.ReadMessage()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					log.Printf("웹소켓 연결 정상 종료: boardID=%d, userID=%d", boardID, userID)
+				} else {
 					log.Printf("웹소켓 오류: %v", err)
 				}
 				break
 			}
+
+			log.Printf("메시지 수신: %s", string(message))
 
 			// 메시지 처리
 			var clientMsg map[string]interface{}
@@ -695,6 +743,38 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 			}
 
 			switch msgType {
+			case "link.event.board.user.joined":
+				// 핑 메시지 처리
+				natsData := map[string]interface{}{
+					"topic":   "link.event.board.user.joined",
+					"payload": clientMsg["payload"],
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					log.Printf("NATS 데이터 직렬화 실패: %v", err)
+					continue
+				}
+
+				h.natsPublisher.PublishEvent("link.event.board.user.joined", jsonData)
+
+			case "link.event.board.user.left":
+				// 핑 메시지 처리
+				h.hub.notifyBoardUserLeft(uint(boardID), uint(userID))
+
+				natsData := map[string]interface{}{
+					"topic":   "link.event.board.user.left",
+					"payload": clientMsg["payload"],
+				}
+
+				jsonData, err := json.Marshal(natsData)
+				if err != nil {
+					log.Printf("NATS 데이터 직렬화 실패: %v", err)
+					continue
+				}
+
+				h.natsPublisher.PublishEvent("link.event.board.user.left", jsonData)
+
 			case "ping":
 				// 핑 메시지 처리
 				conn.WriteJSON(res.JsonResponse{
@@ -703,11 +783,7 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 				})
 
 				// 마지막 활동 시간 업데이트
-				if onlineUsersInterface, ok := h.hub.BoardOnlineUsers.Load(uint(boardID)); ok {
-					onlineUsers := onlineUsersInterface.(map[uint]time.Time)
-					onlineUsers[userID] = time.Now()
-					h.hub.BoardOnlineUsers.Store(uint(boardID), onlineUsers)
-				}
+				h.hub.UpdateBoardUserActivity(uint(boardID), uint(userID))
 			}
 		}
 	}()
@@ -718,4 +794,5 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 			return
 		}
 	}
+
 }
