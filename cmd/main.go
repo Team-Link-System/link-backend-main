@@ -88,6 +88,7 @@ func startServer() {
 
 	// Gin 라우터 설정
 	r := gin.Default()
+	r.Use(middleware.RequestLogger()) // 로깅 미들웨어 추가
 
 	//TODO 이미지 정적 파일 제공
 
