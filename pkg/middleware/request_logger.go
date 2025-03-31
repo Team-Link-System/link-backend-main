@@ -21,7 +21,6 @@ func (w responseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// RequestLogger는 요청/응답 로깅을 위한 미들웨어입니다
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 시작 시간 기록
