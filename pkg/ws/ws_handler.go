@@ -18,6 +18,7 @@ import (
 	_userUsecase "link/internal/user/usecase"
 	"link/pkg/dto/req"
 	"link/pkg/dto/res"
+	"link/pkg/logger"
 	_nats "link/pkg/nats"
 	"link/pkg/util"
 )
@@ -437,6 +438,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			Message: "Token 과 userId 이 필수입니다",
 			Type:    "error",
 		})
+		logger.LogError("Token 과 userId 이 필수입니다")
 		return
 	}
 
@@ -449,6 +451,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			Message: "웹소켓 연결 실패",
 			Type:    "error",
 		})
+		logger.LogError("웹소켓 연결 실패")
 		return
 	}
 
@@ -461,6 +464,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			Message: "Unauthorized",
 			Type:    "error",
 		})
+		logger.LogError("토큰 검증 실패")
 		conn.Close()
 		return
 	}
@@ -474,6 +478,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			Message: "userId 형식이 올바르지 않습니다",
 			Type:    "error",
 		})
+		logger.LogError("userId 변환 실패")
 		conn.Close()
 		return
 	}
@@ -490,6 +495,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 			Message: "사용자 조회에 실패했습니다",
 			Type:    "error",
 		})
+		logger.LogError("사용자 조회에 실패했습니다")
 		conn.Close()
 		return
 	}
@@ -509,6 +515,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		if len(clientsMap) == 1 {
 			if err := h.userUsecase.UpdateUserOnlineStatus(*user.ID, true); err != nil {
 				log.Printf("온라인 상태 업데이트 실패: %v", err)
+				logger.LogError("온라인 상태 업데이트 실패")
 			}
 		}
 	}
@@ -519,6 +526,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("예기치 않은 WebSocket 종료: %v", err)
+				logger.LogError("예기치 않은 WebSocket 종료")
 			}
 			break
 		}
@@ -532,6 +540,7 @@ func (h *WsHandler) HandleUserWebSocketConnection(c *gin.Context) {
 				Message: "메시지 형식이 올바르지 않습니다",
 				Type:    "notification",
 			})
+			logger.LogError("메시지 디코딩 실패")
 			continue
 		}
 
@@ -548,6 +557,7 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 			Message: "companyId가 필수입니다",
 			Type:    "error",
 		})
+		logger.LogError("companyId가 필수입니다")
 		return
 	}
 
@@ -560,6 +570,7 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 			Message: "웹소켓 연결 실패",
 			Type:    "error",
 		})
+		logger.LogError("웹소켓 연결 실패")
 		return
 	}
 
@@ -571,6 +582,7 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 			Message: "companyId 형식이 올바르지 않습니다",
 			Type:    "error",
 		})
+		logger.LogError("companyId 변환 실패")
 		conn.Close()
 		return
 	}
@@ -589,6 +601,8 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 			Message: "회사 조회 실패",
 			Type:    "error",
 		})
+		logger.LogError("회사 조회 실패")
+		conn.Close()
 		return
 	}
 
@@ -600,6 +614,7 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 		var event map[string]interface{}
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			log.Printf("회사 이벤트 파싱 오류: %v", err)
+			logger.LogError("회사 이벤트 파싱 오류")
 			return
 		}
 
@@ -607,12 +622,14 @@ func (h *WsHandler) HandleCompanyEvent(c *gin.Context) {
 		payload, ok := event["payload"].(map[string]interface{})
 		if !ok {
 			log.Printf("payload 변환 오류: %v", event["payload"])
+			logger.LogError("payload 변환 오류")
 			return
 		}
 
 		userIdFloat, ok := payload["user_id"].(float64)
 		if !ok {
 			log.Printf("user_id 변환 오류: %v", payload["user_id"])
+			logger.LogError("user_id 변환 오류")
 			return
 		}
 
