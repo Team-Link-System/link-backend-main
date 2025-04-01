@@ -33,6 +33,8 @@ func (r *Response) SuccessResponse() interface{} {
 
 func NewResponse(status int, message string, payload interface{}) Response {
 
+	logger.LogSuccess(fmt.Sprintf("[status: %d] [message: %s] [payload: %v]", status, message, payload))
+
 	return Response{
 		StatusCode: status,
 		Message:    message,
