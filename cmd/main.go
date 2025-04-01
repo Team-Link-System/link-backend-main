@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
@@ -101,16 +100,16 @@ func startServer() {
 
 	// CORS 설정 - 개발 환경에서는 모든 오리진을 쿠키 허용
 	//TODO 배포 환경에서 특정도메인 허용
-	allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
-	// allowedOrigins := []string{"http://localhost:3000", "http://192.168.1.13:3000"}
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	// allowedOrigins := strings.Split(os.Getenv("LINK_UI_URL"), ",")
+	// // allowedOrigins := []string{"http://localhost:3000", "http://192.168.1.13:3000"}
+	// r.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     allowedOrigins,
+	// 	AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+	// 	AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+	// 	ExposeHeaders:    []string{"Content-Length", "Authorization", "Set-Cookie"},
+	// 	AllowCredentials: true,
+	// 	MaxAge:           12 * time.Hour,
+	// }))
 
 	r.Use(cors.Default()) //! 개발환경 모든 도메인 허용
 
@@ -357,5 +356,6 @@ func startServer() {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
 	startServer()
 }
