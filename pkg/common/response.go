@@ -33,6 +33,7 @@ func (r *Response) SuccessResponse() interface{} {
 
 func NewResponse(status int, message string, payload interface{}) Response {
 
+	// 파일 기반 로그
 	logger.LogSuccess(fmt.Sprintf("[status: %d] [message: %s] [payload: %v]", status, message, payload))
 
 	return Response{
@@ -58,6 +59,8 @@ func NewError(status int, message string, err error) *AppError {
 		Message:    message,
 	}
 
-	logger.LogError(fmt.Sprintf("[%d] %s: %v", appErr.StatusCode, appErr.Message, appErr.Err))
+	// 파일 기반 로그
+	_ = logger.LogError(fmt.Sprintf("[%d] %s: %v", appErr.StatusCode, appErr.Message, appErr.Err))
+
 	return appErr
 }
