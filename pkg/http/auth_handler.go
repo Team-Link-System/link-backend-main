@@ -25,7 +25,6 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	var request req.LoginRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -33,10 +32,8 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	response, token, err := h.authUsecase.SignIn(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("로그인 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("로그인 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -53,7 +50,6 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 	// userId를 가져옵니다.
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -61,7 +57,6 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 	// email을 가져옵니다.
 	email, exists := c.Get("email")
 	if !exists {
-		fmt.Printf("이메일 가져오기 중 오류가 발생했습니다")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -70,10 +65,8 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 	err := h.authUsecase.SignOut(userId.(uint), email.(string))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("로그아웃 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("로그아웃 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -90,26 +83,21 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("유저 ID 가져오기 중 오류가 발생했습니다")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	email, exists := c.Get("email")
 	if !exists {
-		fmt.Printf("이메일 가져오기 중 오류가 발생했습니다")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	refreshToken, err := h.authUsecase.GetRefreshToken(userId.(uint), email.(string))
 	if err != nil {
-		fmt.Printf("리프레시 토큰 가져오기 중 오류가 발생했습니다: %v", err)
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("리프레시 토큰 가져오기 중 오류가 발생했습니다: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("리프레시 토큰 가져오기 중 오류가 발생했습니다: %v", err)
 			c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		}
 		return
@@ -120,10 +108,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	if err != nil {
 		log.Printf("리프레시 토큰 검증 중 오류가 발생했습니다: %v", err)
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("리프레시 토큰 검증 중 오류가 발생했습니다: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("리프레시 토큰 검증 중 오류가 발생했습니다: %v", err)
 			c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		}
 		return
@@ -133,10 +119,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	if err != nil {
 		log.Printf("액세스 토큰 재발급 중 오류가 발생했습니다: %v", err)
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("액세스 토큰 재발급 중 오류가 발생했습니다: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("액세스 토큰 재발급 중 오류가 발생했습니다: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		c.Abort()

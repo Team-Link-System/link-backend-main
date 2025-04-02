@@ -32,7 +32,6 @@ func NewStatHandler(
 func (h *StatHandler) GetTodayPostStat(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
@@ -56,7 +55,6 @@ func (h *StatHandler) GetTodayPostStat(c *gin.Context) {
 func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
@@ -64,10 +62,10 @@ func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
 	response, err := h.statUsecase.GetCurrentOnlineUsers(userId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("현재 접속중인 사용자 수 조회 실패: %v", appError.Err)
+
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("현재 접속중인 사용자 수 조회 실패: %v", err)
+
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "현재 접속중인 사용자 수 조회 실패", err))
 		}
 		return
@@ -80,7 +78,6 @@ func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
 func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
 	_, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
@@ -105,7 +102,6 @@ func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
 func (h *StatHandler) GetPopularPostStat(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}

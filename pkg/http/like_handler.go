@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"link/internal/like/usecase"
 	"link/pkg/common"
 	"link/pkg/dto/req"
@@ -23,14 +22,12 @@ func NewLikeHandler(likeUsecase usecase.LikeUsecase) *LikeHandler {
 func (h *LikeHandler) CreatePostLike(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.LikePostRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("요청 바인딩 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "요청 바인딩 실패", err))
 		return
 	}
@@ -52,14 +49,12 @@ func (h *LikeHandler) CreatePostLike(c *gin.Context) {
 func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 ID 조회 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 ID 조회 실패", err))
 		return
 	}
@@ -81,21 +76,18 @@ func (h *LikeHandler) GetPostLikeList(c *gin.Context) {
 func (h *LikeHandler) DeletePostLike(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 ID 조회 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 ID 조회 실패", err))
 		return
 	}
 
 	emojiId, err := strconv.Atoi(c.Param("emojiid"))
 	if err != nil {
-		fmt.Printf("이모지 ID 조회 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이모지 ID 조회 실패", err))
 		return
 	}
@@ -117,14 +109,12 @@ func (h *LikeHandler) DeletePostLike(c *gin.Context) {
 func (h *LikeHandler) CreateCommentLike(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	commentId, err := strconv.Atoi(c.Param("commentid"))
 	if err != nil {
-		fmt.Printf("댓글 ID 조회 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "댓글 ID 조회 실패", err))
 		return
 	}
@@ -132,10 +122,8 @@ func (h *LikeHandler) CreateCommentLike(c *gin.Context) {
 	err = h.likeUsecase.CreateCommentLike(requestUserId.(uint), uint(commentId))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("좋아요 생성 실패: %v", appError)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("좋아요 생성 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "좋아요 생성 실패", err))
 		}
 		return
@@ -148,14 +136,12 @@ func (h *LikeHandler) CreateCommentLike(c *gin.Context) {
 func (h *LikeHandler) DeleteCommentLike(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	commentId, err := strconv.Atoi(c.Param("commentid"))
 	if err != nil {
-		fmt.Printf("댓글 ID 조회 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "댓글 ID 조회 실패", err))
 		return
 	}

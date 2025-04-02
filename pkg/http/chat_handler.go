@@ -33,21 +33,18 @@ func NewChatHandler(
 func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	requestUserId, ok := userId.(uint)
 	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
 		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
 
 	var request req.CreateChatRoomRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -55,10 +52,8 @@ func (h *ChatHandler) CreateChatRoom(c *gin.Context) {
 	response, err := h.chatUsecase.CreateChatRoom(requestUserId, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅방 생성 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅방 생성 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -72,14 +67,12 @@ func (h *ChatHandler) GetChatRoomById(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	_, ok := userId.(uint)
 	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
 		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
@@ -88,7 +81,6 @@ func (h *ChatHandler) GetChatRoomById(c *gin.Context) {
 
 	chatRoomIdUint, err := strconv.ParseUint(chatRoomId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 채팅방 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다", err))
 		return
 	}
@@ -96,10 +88,8 @@ func (h *ChatHandler) GetChatRoomById(c *gin.Context) {
 	chat, err := h.chatUsecase.GetChatRoomById(uint(chatRoomIdUint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅방 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅방 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -112,14 +102,12 @@ func (h *ChatHandler) GetChatRoomById(c *gin.Context) {
 func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
 
 	requestUserId, ok := userId.(uint)
 	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
 		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
@@ -127,10 +115,8 @@ func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 	chatRooms, err := h.chatUsecase.GetChatRoomList(requestUserId)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅방 리스트 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅방 리스트 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -143,7 +129,6 @@ func (h *ChatHandler) GetChatRoomList(c *gin.Context) {
 func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -152,7 +137,6 @@ func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 
 	chatRoomIdUint, err := strconv.ParseUint(chatRoomId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 채팅방 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다", err))
 		return
 	}
@@ -160,10 +144,8 @@ func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 	err = h.chatUsecase.LeaveChatRoom(userId.(uint), uint(chatRoomIdUint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅방 나가기 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅방 나가기 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -180,7 +162,6 @@ func (h *ChatHandler) LeaveChatRoom(c *gin.Context) {
 func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -188,7 +169,6 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 	chatRoomId := c.Param("chatroomid")
 	targetChatRoomId, err := strconv.ParseUint(chatRoomId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 채팅방 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 채팅방 ID입니다", err))
 		return
 	}
@@ -211,7 +191,6 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 		cursor = nil
 	} else {
 		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
-			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
 			return
 		}
@@ -227,10 +206,8 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 	responses, err := h.chatUsecase.GetChatMessages(userId.(uint), uint(targetChatRoomId), &queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅 내용 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅 내용 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -243,14 +220,12 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 func (h *ChatHandler) DeleteChatMessage(c *gin.Context) {
 	senderId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
 
 	var request req.DeleteChatMessageRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -259,10 +234,8 @@ func (h *ChatHandler) DeleteChatMessage(c *gin.Context) {
 	err := h.chatUsecase.DeleteChatMessage(senderId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("채팅 메시지 삭제 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("채팅 메시지 삭제 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
