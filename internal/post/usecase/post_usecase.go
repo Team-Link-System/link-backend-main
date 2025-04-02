@@ -170,11 +170,6 @@ func (uc *postUsecase) GetPosts(requestUserId uint, queryParams req.GetPostQuery
 
 		if queryParams.Sort == "created_at" {
 			nextCursor = _util.ParseKst(lastPost.CreatedAt).Format(time.DateTime)
-			// } else if queryParams.Sort == "like_count" {
-			// 	nextCursor = strconv.Itoa(int(lastPost.LikeCount))
-			// } else if queryParams.Sort == "comments_count" {
-			// 	nextCursor = strconv.Itoa(int(lastPost.CommentsCount))
-			//TODO 추후 좋아요 댓글순 추가
 		} else if queryParams.Sort == "id" {
 			nextCursor = strconv.Itoa(int(lastPost.ID))
 		}
