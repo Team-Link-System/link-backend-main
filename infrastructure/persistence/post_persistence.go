@@ -594,7 +594,7 @@ func (r *postPersistence) GetPostViewCount(postId uint) (int, error) {
 		}
 
 		count = post.Views
-		_ = r.redis.Set(ctx, viewCountKey, count, 5*time.Minute).Err()
+		_ = r.redis.Set(ctx, viewCountKey, count, 2*time.Minute).Err()
 	}
 
 	// Redis에서 증가량(`diff`) 가져오기
