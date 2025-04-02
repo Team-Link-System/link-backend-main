@@ -2,11 +2,10 @@ package middleware
 
 import (
 	"bytes"
-	"io"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type responseWriter struct {
@@ -19,55 +18,50 @@ func (w responseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-func RequestLogger(logger *zap.Logger) gin.HandlerFunc {
+func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		start := time.Now()
 		path := c.Request.URL.Path
 		method := c.Request.Method
 
-		var requestBody []byte
-		if c.Request.Body != nil {
-			requestBody, _ = io.ReadAll(c.Request.Body)
-			// 바디를 다시 설정
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
-		}
+		rw := &responseWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
+		c.Writer = rw
 
-		w := &responseWriter{
-			ResponseWriter: c.Writer,
-			body:           bytes.NewBufferString(""),
-		}
-		c.Writer = w
-
+		// 요청 처리
 		c.Next()
 
+		// 응답 정보 로깅
 		duration := time.Since(start)
 		statusCode := c.Writer.Status()
-		clientIP := c.ClientIP()
-		userID, exists := c.Get("userId")
 
-		// zap 로거 필드 구성
-		fields := []zap.Field{
-			zap.String("method", method),
-			zap.String("path", path),
-			zap.Int("status", statusCode),
-			zap.String("ip", clientIP),
-			zap.Duration("duration", duration),
-			zap.Int64("duration_ms", duration.Milliseconds()),
-		}
-
+		// 사용자 ID 가져오기 (있는 경우)
+		var userId interface{}
+		userIdValue, exists := c.Get("userId")
 		if exists {
-			fields = append(fields, zap.Any("user_id", userID))
+			userId = userIdValue
 		}
 
-		// 상태 코드에 따른 로그 레벨 설정
-		switch {
-		case statusCode >= 500:
-			logger.Error("API 요청 실패", fields...)
-		case statusCode >= 400:
-			logger.Warn("API 요청 오류", fields...)
-		default:
-			logger.Info("API 요청 성공", fields...)
-		}
+		// Loki에 맞는 JSON 형식으로 출력
+		jsonLog := fmt.Sprintf(`{"level":"%s","timestamp":%d,"method":"%s","path":"%s","statusCode":%d,"durationMs":%d,"userId":%v}`,
+			getLogLevel(statusCode),
+			time.Now().Unix(),
+			method,
+			path,
+			statusCode,
+			duration.Milliseconds(),
+			userId,
+		)
+		fmt.Println(jsonLog)
+	}
+}
+
+func getLogLevel(statusCode int) string {
+	switch {
+	case statusCode >= 500:
+		return "error"
+	case statusCode >= 400:
+		return "warn"
+	default:
+		return "info"
 	}
 }
