@@ -29,28 +29,23 @@ func NewProjectHandler(projectUsecase usecase.ProjectUsecase, hub *ws.WebSocketH
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.CreateProjectRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	if request.Name == "" {
-		fmt.Printf("프로젝트 이름이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 이름이 없습니다.", nil))
 		return
 	} else if request.StartDate == nil {
-		fmt.Printf("시작일이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "시작일이 없습니다.", nil))
 		return
 	} else if request.EndDate == nil {
-		fmt.Printf("종료일이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "종료일이 없습니다.", nil))
 		return
 	}
@@ -74,7 +69,6 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -153,7 +147,6 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -183,24 +176,20 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 func (h *ProjectHandler) InviteProject(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.InviteProjectRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 	response, err := h.projectUsecase.InviteProject(userId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("프로젝트 초대 실패: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("프로젝트 초대 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -232,7 +221,6 @@ func (h *ProjectHandler) InviteProject(c *gin.Context) {
 func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -260,7 +248,6 @@ func (h *ProjectHandler) GetProjectUsers(c *gin.Context) {
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -274,7 +261,6 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 
 	var request req.UpdateProjectRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -297,7 +283,6 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	// projectUsecase.DeleteProject(c)
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -326,7 +311,6 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 func (h *ProjectHandler) UpdateProjectUserRole(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}

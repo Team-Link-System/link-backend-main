@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,24 +26,20 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	//TODO 게시물 생성
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.CreatePostRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
 	if request.Title == "" {
-		fmt.Printf("제목이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "제목이 없습니다.", nil))
 		return
 	} else if request.Content == "" {
-		fmt.Printf("내용이 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "내용이 없습니다.", nil))
 		return
 	}
@@ -53,7 +48,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	if exists {
 		imageUrls, ok := postImageUrls.([]string)
 		if !ok {
-			fmt.Printf("이미지 처리 실패")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이미지 처리 실패", nil))
 			return
 		}
@@ -84,7 +78,6 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	// 인증된 사용자 확인
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
@@ -129,7 +122,6 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	} else if strings.ToLower(viewType) == "infinite" {
 		var tempCursor req.Cursor
 		if err := json.Unmarshal([]byte(cursorParam), &tempCursor); err != nil {
-			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
 			return
 		}
@@ -137,19 +129,15 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		//            "next_cursor": "2024-11-20 11:36:59",
 
 		if sort == "created_at" && tempCursor.CreatedAt == "" {
-			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
 			return
 		} else if sort == "like_count" && tempCursor.LikeCount == "" {
-			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
 			return
 		} else if sort == "comments_count" && tempCursor.CommentsCount == "" {
-			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
 			return
 		} else if sort == "id" && tempCursor.ID == "" {
-			fmt.Printf("커서는 sort와 같은 값이 있어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "커서는 sort와 같은 값이 있어야 합니다.", nil))
 			return
 		}
@@ -157,7 +145,6 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		cursor = &tempCursor
 
 	} else if strings.ToLower(viewType) == "pagination" && cursorParam != "" {
-		fmt.Printf("페이지네이션 타입인데 커서가 있습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "페이지네이션 타입인데 커서가 있습니다.", nil))
 		return
 	}
@@ -169,20 +156,17 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	departmentId = uint(departmentIdValue)
 	if strings.ToLower(category) == "company" {
 		if companyId == 0 {
-			fmt.Printf("회사 게시물 조회 시 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "회사 게시물 조회 시 company_id가 필요합니다.", nil))
 			return
 		}
 	} else if strings.ToLower(category) == "department" {
 
 		if departmentId == 0 || companyId == 0 {
-			fmt.Printf("부서 게시물 조회 시 department_id와 company_id가 필요합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 게시물 조회 시 department_id와 company_id가 필요합니다.", nil))
 			return
 		}
 	} else if strings.ToLower(category) == "public" {
 		if companyId != 0 || departmentId != 0 {
-			fmt.Printf("PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "PUBLIC 게시물은 company_id와 department_id가 없어야 합니다.", nil))
 			return
 		}
@@ -204,10 +188,8 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	posts, err := h.postUsecase.GetPosts(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("게시물 조회 실패: %v", err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 조회 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -220,14 +202,12 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 func (h *PostHandler) GetPost(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
 		return
 	}
@@ -235,10 +215,8 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 	post, err := h.postUsecase.GetPost(userId.(uint), uint(postId))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("게시물 조회 실패: %v", err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 조회 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -254,14 +232,12 @@ func (h *PostHandler) IncreasePostViewCount(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
 		return
 	}
@@ -271,7 +247,6 @@ func (h *PostHandler) IncreasePostViewCount(c *gin.Context) {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 조회수 증가 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -285,14 +260,12 @@ func (h *PostHandler) GetPostViewCount(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
 		return
 	}
@@ -302,7 +275,6 @@ func (h *PostHandler) GetPostViewCount(c *gin.Context) {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 조회수 증가 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -315,21 +287,18 @@ func (h *PostHandler) GetPostViewCount(c *gin.Context) {
 func (h *PostHandler) UpdatePost(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
 		return
 	}
 
 	var request req.UpdatePostRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -338,7 +307,6 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	if exists {
 		imageUrls, ok := postImageUrls.([]string)
 		if !ok {
-			fmt.Printf("이미지 처리 실패")
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이미지 처리 실패", nil))
 			return
 		}
@@ -350,10 +318,8 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	err = h.postUsecase.UpdatePost(userId.(uint), uint(postId), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("게시물 수정 실패: %v", err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 수정 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -366,14 +332,12 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postid"))
 	if err != nil {
-		fmt.Printf("게시물 아이디 처리 실패: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "게시물 아이디 처리 실패", err))
 		return
 	}
@@ -383,7 +347,6 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("게시물 삭제 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return

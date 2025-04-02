@@ -30,7 +30,6 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 
 	// 요청 바디 검증
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("회원가입 요청 바디 검증 오류: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
 	}
@@ -38,10 +37,8 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 	response, err := h.userUsecase.RegisterUser(&request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("회원가입 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("회원가입 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -57,7 +54,6 @@ func (h *UserHandler) ValidateEmail(c *gin.Context) {
 
 	// 이메일 파라미터가 없는 경우, 잘못된 요청 처리
 	if email == "" {
-		fmt.Printf("이메일이 입력되지 않았습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "이메일이 입력되지 않았습니다.", nil))
 		return
 	}
@@ -65,10 +61,8 @@ func (h *UserHandler) ValidateEmail(c *gin.Context) {
 	// 이메일 유효성 검증 처리
 	if err := h.userUsecase.ValidateEmail(email); err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("이메일 유효성 검증 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("이메일 유효성 검증 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -83,7 +77,6 @@ func (h *UserHandler) ValidateNickname(c *gin.Context) {
 	nickname := c.Query("nickname")
 
 	if nickname == "" {
-		fmt.Printf("닉네임이 입력되지 않았습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "닉네임이 입력되지 않았습니다", nil))
 		return
 	}
@@ -91,10 +84,8 @@ func (h *UserHandler) ValidateNickname(c *gin.Context) {
 	err := h.userUsecase.ValidateNickname(nickname)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("닉네임 중복확인 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("닉네임 중복확인 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -109,14 +100,12 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	targetUserId := c.Param("id")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
 
 	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 사용자 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 사용자 ID입니다", err))
 		return
 	}
@@ -124,10 +113,8 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	response, err := h.userUsecase.GetUserInfo(userId.(uint), uint(targetUserIdUint), "user")
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("사용자 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("사용자 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -139,7 +126,6 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -147,14 +133,12 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	targetUserId := c.Param("id")
 	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 사용자 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 사용자 ID입니다", err))
 		return
 	}
 
 	var request req.UpdateUserRequest
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -170,10 +154,8 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	err = h.userUsecase.UpdateUserInfo(uint(targetUserIdUint), requestUserId.(uint), &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("사용자 정보 수정 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("사용자 정보 수정 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -186,7 +168,6 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -194,7 +175,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	targetUserId := c.Param("id")
 	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 사용자 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 사용자 ID입니다", err))
 		return
 	}
@@ -202,10 +182,8 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	err = h.userUsecase.DeleteUser(uint(targetUserIdUint), requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("사용자 정보 삭제 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("사용자 정보 삭제 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -219,7 +197,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 func (h *UserHandler) SearchUser(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -228,7 +205,6 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	searchTerm := c.Query("searchTerm")
 	decodedSearchTerm, err := url.QueryUnescape(searchTerm)
 	if err != nil {
-		fmt.Printf("검색어 인코딩 오류: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "검색어 인코딩 오류", err))
 		return
 	}
@@ -238,10 +214,8 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 	users, err := h.userUsecase.SearchUser(requestUserId.(uint), decodedSearchTerm)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("사용자 검색 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("사용자 검색 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -254,7 +228,6 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
 		return
 	}
@@ -267,10 +240,8 @@ func (h *UserHandler) GetUserByCompany(c *gin.Context) {
 	response, err := h.userUsecase.GetUsersByCompany(requestUserId.(uint), &queryOptions)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("회사 사용자 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("회사 사용자 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -287,7 +258,6 @@ func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 
 	departmentIdUint, err := strconv.ParseUint(departmentId, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 부서 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 부서 ID입니다", err))
 		return
 	}
@@ -295,10 +265,8 @@ func (h *UserHandler) GetUsersByDepartment(c *gin.Context) {
 	users, err := h.userUsecase.GetUsersByDepartment(uint(departmentIdUint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 사용자 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 사용자 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return

@@ -3,7 +3,6 @@ package http
 import (
 	"link/pkg/common"
 	"link/pkg/dto/req"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -25,14 +24,12 @@ func NewBoardHandler(boardUsecase _boardUsecase.BoardUsecase) *BoardHandler {
 func (h *BoardHandler) CreateBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	var request req.CreateBoardRequest
 	if err := c.ShouldBind(&request); err != nil {
-		log.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -53,21 +50,18 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 func (h *BoardHandler) GetBoards(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	projectID := c.Param("projectid")
 	if projectID == "" {
-		log.Printf("프로젝트 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 없습니다.", nil))
 		return
 	}
 
 	projectIDUint, err := strconv.ParseUint(projectID, 10, 64)
 	if err != nil {
-		log.Printf("프로젝트 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 유효하지 않습니다.", err))
 		return
 	}
@@ -84,21 +78,18 @@ func (h *BoardHandler) GetBoards(c *gin.Context) {
 func (h *BoardHandler) GetBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	boardID := c.Param("boardid")
 	if boardID == "" {
-		log.Printf("보드 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
 		return
 	}
 
 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
 	if err != nil {
-		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
 		return
 	}
@@ -120,28 +111,24 @@ func (h *BoardHandler) GetBoard(c *gin.Context) {
 func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	boardID := c.Param("boardid")
 	if boardID == "" {
-		log.Printf("보드 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
 		return
 	}
 
 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
 	if err != nil {
-		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
 		return
 	}
 
 	var request req.UpdateBoardRequest
 	if err := c.ShouldBind(&request); err != nil {
-		log.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -162,21 +149,18 @@ func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	boardID := c.Param("boardid")
 	if boardID == "" {
-		log.Printf("보드 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
 		return
 	}
 
 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
 	if err != nil {
-		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
 		return
 	}
@@ -197,42 +181,36 @@ func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 func (h *BoardHandler) AutoSaveBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	projectID := c.Param("projectid")
 	if projectID == "" {
-		log.Printf("프로젝트 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 없습니다.", nil))
 		return
 	}
 
 	projectIDUint, err := strconv.ParseUint(projectID, 10, 64)
 	if err != nil {
-		log.Printf("프로젝트 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "프로젝트 ID가 유효하지 않습니다.", err))
 		return
 	}
 
 	boardID := c.Param("boardid")
 	if boardID == "" {
-		log.Printf("보드 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
 		return
 	}
 
 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
 	if err != nil {
-		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
 		return
 	}
 
 	var request req.BoardStateUpdateReqeust
 	if err := c.ShouldBind(&request); err != nil {
-		log.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -255,21 +233,18 @@ func (h *BoardHandler) AutoSaveBoard(c *gin.Context) {
 func (h *BoardHandler) GetKanbanBoard(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		log.Printf("인증되지 않은 사용자입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 사용자입니다.", nil))
 		return
 	}
 
 	boardID := c.Param("boardid")
 	if boardID == "" {
-		log.Printf("보드 ID가 없습니다.")
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 없습니다.", nil))
 		return
 	}
 
 	boardIDUint, err := strconv.ParseUint(boardID, 10, 64)
 	if err != nil {
-		log.Printf("보드 ID가 유효하지 않습니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "보드 ID가 유효하지 않습니다.", err))
 		return
 	}

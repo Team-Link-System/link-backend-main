@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"link/internal/department/entity"
 
 	_departmentUsecase "link/internal/department/usecase"
@@ -33,14 +32,12 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	requestUserId, ok := userId.(uint)
 	if !ok {
-		fmt.Printf("사용자 ID 형식이 잘못되었습니다.")
 		c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 ID 형식이 잘못되었습니다", nil))
 		return
 	}
@@ -48,7 +45,6 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 	var request req.CreateDepartmentRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -65,10 +61,8 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 	createdDepartment, err := h.departmentUsecase.CreateDepartment(department, requestUserId)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 생성 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 생성 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -81,7 +75,6 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
@@ -89,10 +82,8 @@ func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 	departments, err := h.departmentUsecase.GetDepartments(requestUserId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 목록 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 목록 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -104,7 +95,6 @@ func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
@@ -113,7 +103,6 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 
 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 부서 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 부서 ID입니다", err))
 		return
 	}
@@ -121,10 +110,8 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 	department, err := h.departmentUsecase.GetDepartment(requestUserId.(uint), uint(targetDepartmentID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 상세 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 상세 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -138,21 +125,18 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 	departmentID := c.Param("id")
 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 부서 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 부서 ID입니다", err))
 		return
 	}
 
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	var request req.UpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -160,10 +144,8 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 	updatedDepartment, err := h.departmentUsecase.UpdateDepartment(requestUserId.(uint), uint(targetDepartmentID), request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 수정 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 수정 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -177,14 +159,12 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 	departmentID := c.Param("id")
 	targetDepartmentID, err := strconv.ParseUint(departmentID, 10, 64)
 	if err != nil {
-		fmt.Printf("유효하지 않은 부서 ID입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 부서 ID입니다", err))
 		return
 	}
 
 	requestUserId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
@@ -192,10 +172,8 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 	err = h.departmentUsecase.DeleteDepartment(requestUserId.(uint), uint(targetDepartmentID))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 삭제 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 삭제 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -208,14 +186,12 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 func (h *DepartmentHandler) InviteUserToDepartment(c *gin.Context) {
 	_, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	var request req.NotificationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("부서 초대 요청 바디 검증 오류: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -226,10 +202,8 @@ func (h *DepartmentHandler) InviteUserToDepartment(c *gin.Context) {
 	response, err := h.notificationUsecase.CreateInvite(request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("부서 초대 알림 저장 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("부서 초대 알림 저장 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return

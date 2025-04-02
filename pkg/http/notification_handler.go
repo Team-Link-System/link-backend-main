@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,14 +30,12 @@ func NewNotificationHandler(
 func (h *NotificationHandler) SendMentionNotification(c *gin.Context) {
 	_, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	var request req.SendMentionNotificationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -46,10 +43,8 @@ func (h *NotificationHandler) SendMentionNotification(c *gin.Context) {
 	response, err := h.notificationUsecase.CreateMention(request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("언급 실패: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("언급 실패: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -81,7 +76,6 @@ func (h *NotificationHandler) SendMentionNotification(c *gin.Context) {
 func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
@@ -111,7 +105,6 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 		cursor = nil
 	} else {
 		if err := json.Unmarshal([]byte(cursorParam), &cursor); err != nil {
-			fmt.Printf("커서 파싱 실패: %v", err)
 			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 커서 값입니다.", err))
 			return
 		}
@@ -128,10 +121,8 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	notifications, err := h.notificationUsecase.GetNotifications(userId.(uint), queryParams)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("알림 조회 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("알림 조회 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -145,14 +136,12 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
 
 	var request req.UpdateNotificationStatusRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		fmt.Printf("잘못된 요청입니다: %v", err)
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
@@ -160,10 +149,8 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 	notification, err := h.notificationUsecase.UpdateInviteNotificationStatus(userId.(uint), request.DocID, request.Status)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("알림 상태 수정 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("알림 상태 수정 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
@@ -190,7 +177,6 @@ func (h *NotificationHandler) UpdateInviteNotificationStatus(c *gin.Context) {
 func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		fmt.Printf("인증되지 않은 요청입니다.")
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다.", nil))
 		return
 	}
@@ -200,10 +186,8 @@ func (h *NotificationHandler) UpdateNotificationReadStatus(c *gin.Context) {
 	notification, err := h.notificationUsecase.UpdateNotificationReadStatus(userId.(uint), docId)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
-			fmt.Printf("알림 읽음 처리 오류: %v", appError.Err)
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
 		} else {
-			fmt.Printf("알림 읽음 처리 오류: %v", err)
 			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
 		}
 		return
