@@ -16,8 +16,8 @@ import (
 
 type StatUsecase interface {
 	//user관련
-	GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrentOnlineUsersResponse, error)
-
+	GetCurrentCompanyOnlineUsers(requestUserId uint) (*res.GetCurrentCompanyOnlineUsersResponse, error)
+	GetAllUsersOnlineCount(requestUserId uint) (*res.GetAllUsersOnlineCountResponse, error)
 	GetTodayPostStat(companyId uint) (*res.GetTodayPostStatResponse, error)
 
 	GetPopularPostStat(companyId uint, period string, visibility string) (*res.GetPopularPostStatResponse, error)
@@ -37,8 +37,8 @@ func NewStatUsecase(
 	return &statUsecase{userRepo: userRepo, postRepo: postRepo, statRepo: statRepo}
 }
 
-// TODO 현재 접속중인 사용자 수
-func (u *statUsecase) GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrentOnlineUsersResponse, error) {
+// TODO 현재 회사 접속중인 사용자 수
+func (u *statUsecase) GetCurrentCompanyOnlineUsers(requestUserId uint) (*res.GetCurrentCompanyOnlineUsersResponse, error) {
 
 	user, err := u.userRepo.GetUserByID(requestUserId)
 	if err != nil {
@@ -70,9 +70,55 @@ func (u *statUsecase) GetCurrentOnlineUsers(requestUserId uint) (*res.GetCurrent
 		}
 	}
 
-	return &res.GetCurrentOnlineUsersResponse{
+	return &res.GetCurrentCompanyOnlineUsersResponse{
 		OnlineUsers:      onlineCount,
 		TotalCompanyUser: len(userIds),
+	}, nil
+}
+
+// TODO 전체 사용자 온라인 수 -> (관리자용)
+func (u *statUsecase) GetAllUsersOnlineCount(requestUserId uint) (*res.GetAllUsersOnlineCountResponse, error) {
+	requestUser, err := u.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자 조회에 실패했습니다", err)
+	}
+
+	if requestUser.Role != 1 && requestUser.Role != 2 {
+		fmt.Printf("권한이 없는 사용자가 전체 사용자 온라인 수를 조회하려 했습니다: 요청자 ID %d", requestUserId)
+		return nil, common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	users, err := u.userRepo.GetAllUsers(requestUserId)
+	if err != nil {
+		fmt.Printf("모든 사용자 ID 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "모든 사용자 ID 조회에 실패했습니다", err)
+	}
+	usersId := make([]uint, len(users))
+	for i, user := range users {
+		usersId[i] = *user.ID
+	}
+
+	onlineStatusMap, err := u.userRepo.GetCacheUsers(usersId, []string{"is_online"})
+	if err != nil {
+		fmt.Printf("온라인 상태 조회에 실패했습니다: %v", err)
+		return nil, common.NewError(http.StatusNotFound, "온라인 상태 조회에 실패했습니다", err)
+	}
+
+	onlineCount := 0
+	for _, user := range onlineStatusMap {
+		if status, exists := user["is_online"]; exists {
+			if strStatus, ok := status.(string); ok {
+				if boolStatus, err := strconv.ParseBool(strStatus); err == nil && boolStatus {
+					onlineCount++
+				}
+			}
+		}
+	}
+
+	return &res.GetAllUsersOnlineCountResponse{
+		OnlineUsers: onlineCount,
+		TotalUsers:  len(usersId),
 	}, nil
 }
 

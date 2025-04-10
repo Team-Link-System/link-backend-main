@@ -51,15 +51,15 @@ func (h *StatHandler) GetTodayPostStat(c *gin.Context) {
 
 //TODO 사용자별 댓글 조회
 
-// TODO 현재 접속중인 사용자 수
-func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
+// TODO 현재 회사 접속중인 사용자 수
+func (h *StatHandler) GetCurrentCompanyOnlineUsers(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
 		return
 	}
 
-	response, err := h.statUsecase.GetCurrentOnlineUsers(userId.(uint))
+	response, err := h.statUsecase.GetCurrentCompanyOnlineUsers(userId.(uint))
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 
@@ -72,6 +72,27 @@ func (h *StatHandler) GetCurrentOnlineUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "현재 접속중인 사용자 수 조회 성공", response))
+}
+
+// TODO 전체 사용자 온라인 수
+func (h *StatHandler) GetAllUsersOnlineCount(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
+		return
+	}
+
+	response, err := h.statUsecase.GetAllUsersOnlineCount(userId.(uint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "전체 사용자 온라인 수 조회 실패", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "전체 사용자 온라인 수 조회 성공", response))
 }
 
 // TODO 시스템 리소스 정보 반환
