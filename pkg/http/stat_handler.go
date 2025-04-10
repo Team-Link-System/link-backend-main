@@ -91,10 +91,15 @@ func (h *StatHandler) GetSystemResourceInfo(c *gin.Context) {
 
 	// JSON 응답 반환
 	c.JSON(http.StatusOK, gin.H{
-		"CPU 사용량(%)": fmt.Sprintf("%.2f%%", cpuUsage[0]),
-		"총 메모리(GB)":  fmt.Sprintf("%.2f GB", float64(vmStat.Total)/(1024*1024*1024)),
-		"사용 메모리(GB)": fmt.Sprintf("%.2f GB", float64(vmStat.Used)/(1024*1024*1024)),
-		"메모리 사용률(%)": fmt.Sprintf("%.2f%%", vmStat.UsedPercent),
+		"statusCode": 200,
+		"message":    "시스템 리소스 정보 조회 성공",
+		"success":    true,
+		"payload": gin.H{
+			"cpu_usage":    fmt.Sprintf("%.2f%%", cpuUsage[0]),
+			"total_memory": fmt.Sprintf("%.2f GB", float64(vmStat.Total)/(1024*1024*1024)),
+			"used_memory":  fmt.Sprintf("%.2f GB", float64(vmStat.Used)/(1024*1024*1024)),
+			"memory_usage": fmt.Sprintf("%.2f%%", vmStat.UsedPercent),
+		},
 	})
 }
 
