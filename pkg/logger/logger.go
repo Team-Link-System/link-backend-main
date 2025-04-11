@@ -6,14 +6,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 type Logger struct {
 	errorFile   *os.File
 	successFile *os.File
-	zapLogger   *zap.Logger
 }
 
 var logger *Logger
@@ -59,15 +56,12 @@ func LogError(message string) error {
 
 	_, file, line, _ := runtime.Caller(2)
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-
 	jsonLog := fmt.Sprintf(`{"level":"error","timestamp":"%s","file":"%s","line":%d,"message":"%s"}`,
 		timestamp, filepath.Base(file), line, message)
-
 	logEntry := fmt.Sprintf("%s\n", jsonLog)
 	_, err := logger.errorFile.WriteString(logEntry)
 
-	// stdout에 JSON 형식으로 출력
-	fmt.Println(logEntry) // 줄바꿈이 자동으로 추가됨
+	fmt.Println(jsonLog) // 줄바꿈이 자동으로 추가됨
 
 	return err
 }

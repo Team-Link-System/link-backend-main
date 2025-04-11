@@ -12,7 +12,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/dig"
-	"go.uber.org/zap"
 
 	"link/config"
 	handlerHttp "link/pkg/http"
@@ -86,12 +85,9 @@ func startServer() {
 	// dig 컨테이너 생성 및 의존성 주입
 	container := config.BuildContainer(cfg.DB, cfg.Redis, cfg.Mongo, cfg.Nats)
 
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-
 	// Gin 라우터 설정
 	r := gin.Default()
-	r.Use(middleware.RequestLogger(logger)) // 로깅 미들웨어 추가
+	r.Use(middleware.RequestLogger()) // 로깅 미들웨어 추가
 
 	//TODO 이미지 정적 파일 제공
 
@@ -326,7 +322,8 @@ func startServer() {
 			stat := protectedRoute.Group("stat")
 			{
 				stat.GET("/post/today", statHandler.GetTodayPostStat)
-				stat.GET("/user/online", statHandler.GetCurrentOnlineUsers)
+				stat.GET("/company/user/online", statHandler.GetCurrentCompanyOnlineUsers)
+				stat.GET("/user/online", statHandler.GetAllUsersOnlineCount)
 				stat.GET("/system/resource", statHandler.GetSystemResourceInfo)
 				//회사의 월별 게시글 (월별 게시글 수, 월별 좋아요 수, 월별 댓글 수)
 				stat.GET("/post/popular", statHandler.GetPopularPostStat)

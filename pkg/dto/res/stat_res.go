@@ -2,9 +2,14 @@ package res
 
 import "time"
 
-type GetCurrentOnlineUsersResponse struct {
+type GetCurrentCompanyOnlineUsersResponse struct {
 	OnlineUsers      int `json:"online_users"`
 	TotalCompanyUser int `json:"total_company_user"`
+}
+
+type GetAllUsersOnlineCountResponse struct {
+	OnlineUsers int `json:"online_users"`
+	TotalUsers  int `json:"total_users"`
 }
 
 type DepartmentPostStat struct {
