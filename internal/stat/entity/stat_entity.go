@@ -2,6 +2,15 @@ package entity
 
 import "time"
 
+type UserRoleStat struct {
+	RoleStats []RoleStat `json:"role_stats"`
+}
+
+type RoleStat struct {
+	Role      int `json:"role"`
+	UserCount int `json:"user_count"`
+}
+
 type TodayPostStat struct {
 	TotalCompanyPostCount    int                  `json:"total_company_post_count"`    // 회사 전체 게시물 수
 	TotalDepartmentPostCount int                  `json:"total_department_post_count"` // 부서 전체 게시물 수

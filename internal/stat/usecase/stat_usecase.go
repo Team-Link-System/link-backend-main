@@ -19,6 +19,7 @@ type StatUsecase interface {
 	GetCurrentCompanyOnlineUsers(requestUserId uint) (*res.GetCurrentCompanyOnlineUsersResponse, error)
 	GetAllUsersOnlineCount(requestUserId uint) (*res.GetAllUsersOnlineCountResponse, error)
 	GetTodayPostStat(companyId uint) (*res.GetTodayPostStatResponse, error)
+	GetUserRoleStat(requestUserId uint) (*res.GetUserRoleStatResponse, error)
 
 	GetPopularPostStat(companyId uint, period string, visibility string) (*res.GetPopularPostStatResponse, error)
 }
@@ -120,6 +121,32 @@ func (u *statUsecase) GetAllUsersOnlineCount(requestUserId uint) (*res.GetAllUse
 		OnlineUsers: onlineCount,
 		TotalUsers:  len(usersId),
 	}, nil
+}
+
+func (uc *statUsecase) GetUserRoleStat(requestUserId uint) (*res.GetUserRoleStatResponse, error) {
+	_, err := uc.userRepo.GetUserByID(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자가 없습니다", err)
+	}
+
+	response := &res.GetUserRoleStatResponse{
+		UserRoleStat: []res.UserRoleStat{},
+	}
+
+	userRoleStat, err := uc.statRepo.GetUserRoleStat(requestUserId)
+	if err != nil {
+		fmt.Printf("사용자 role 별 사용자 수 조회 실패: %v", err)
+		return nil, common.NewError(http.StatusBadRequest, "사용자 role 별 사용자 수 조회 실패", err)
+	}
+
+	for _, roleStat := range userRoleStat.RoleStats {
+		response.UserRoleStat = append(response.UserRoleStat, res.UserRoleStat{
+			Role:      roleStat.Role,
+			UserCount: roleStat.UserCount,
+		})
+	}
+	return response, nil
 }
 
 func (uc *statUsecase) GetTodayPostStat(requestUserId uint) (*res.GetTodayPostStatResponse, error) {

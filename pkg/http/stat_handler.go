@@ -22,9 +22,26 @@ func NewStatHandler(
 	return &StatHandler{statUsecase: statUsecase}
 }
 
-//TODO 대시보드에 사용할 api 핸들러
+// TODO 사용자 role 별 사용자 수 조회
+func (h *StatHandler) GetUserRoleStat(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", fmt.Errorf("userId가 없습니다")))
+		return
+	}
 
-//TODO 각 사용자별 일자별 통계
+	response, err := h.statUsecase.GetUserRoleStat(userId.(uint))
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "사용자 role 별 사용자 수 조회 실패", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 role 별 사용자 수 조회 성공", response))
+}
 
 //TODO 출퇴근 데이터 조회
 

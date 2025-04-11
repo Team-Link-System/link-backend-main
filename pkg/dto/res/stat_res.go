@@ -12,6 +12,15 @@ type GetAllUsersOnlineCountResponse struct {
 	TotalUsers  int `json:"total_users"`
 }
 
+type UserRoleStat struct {
+	Role      int `json:"role"`
+	UserCount int `json:"user_count"`
+}
+
+type GetUserRoleStatResponse struct {
+	UserRoleStat []UserRoleStat `json:"user_role_stat"`
+}
+
 type DepartmentPostStat struct {
 	DepartmentId   int    `json:"department_id"`
 	DepartmentName string `json:"department_name"`
