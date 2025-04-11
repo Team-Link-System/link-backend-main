@@ -24,6 +24,7 @@ type GetUserByIdResponse struct {
 	IsOnline        bool                     `json:"is_online"`
 	IsSubscribed    bool                     `json:"is_subscribed"`
 	Role            uint                     `json:"role,omitempty"`
+	Status          string                   `json:"status,omitempty"`
 	Image           string                   `json:"image,omitempty"`
 	Birthday        string                   `json:"birthday,omitempty"`
 	CompanyID       uint                     `json:"company_id,omitempty"`
@@ -48,6 +49,7 @@ type SearchUserResponse struct {
 	Nickname        string     `json:"nickname,omitempty"`
 	IsOnline        bool       `json:"is_online,omitempty"`
 	Role            uint       `json:"role,omitempty"`
+	Status          string     `json:"status,omitempty"`
 	Image           *string    `json:"image,omitempty"`
 	Birthday        string     `json:"birthday,omitempty"`
 	CompanyID       uint       `json:"company_id,omitempty"`
@@ -73,6 +75,7 @@ type GetOrganizationUserInfoResponse struct {
 	Nickname        string     `json:"nickname,omitempty"`
 	IsSubscribed    bool       `json:"is_subscribed"`
 	Role            uint       `json:"role,omitempty"`
+	Status          string     `json:"status,omitempty"`
 	Image           string     `json:"image,omitempty"`
 	Birthday        string     `json:"birthday,omitempty"`
 	CompanyID       uint       `json:"company_id,omitempty"`

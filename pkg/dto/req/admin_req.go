@@ -73,3 +73,7 @@ type AdminUpdateDepartmentRequest struct {
 	Name               string `json:"name,omitempty"`
 	DepartmentLeaderID int    `json:"department_leader_id,omitempty"`
 }
+
+type AdminUpdateUserStatusRequest struct {
+	Status string `json:"status" binding:"required"`
+}

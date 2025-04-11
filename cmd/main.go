@@ -267,6 +267,7 @@ func startServer() {
 				admin.PUT("/user/role", adminHandler.AdminUpdateUserRole)
 				admin.PUT("/user/:userid", adminHandler.AdminUpdateUser)
 				admin.DELETE("/user/:userid", adminHandler.AdminRemoveUserFromCompany) //TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
+				admin.PUT("/user/:userid/status", adminHandler.AdminUpdateUserStatus)
 
 				//TODO 부서 관련 핸들러
 				admin.POST("/department", adminHandler.AdminCreateDepartment)

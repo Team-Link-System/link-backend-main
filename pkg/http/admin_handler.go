@@ -102,6 +102,7 @@ func (h *AdminHandler) AdminGetAllUsers(c *gin.Context) {
 			Email:           *user.Email, // 민감 정보 포함할지 여부에 따라 처리
 			Phone:           *user.Phone,
 			Role:            uint(user.Role),
+			Status:          *user.Status,
 			Image:           user.UserProfile.Image,
 			Birthday:        user.UserProfile.Birthday,
 			CompanyID:       util.GetValueOrDefault(user.UserProfile.CompanyID, 0),
@@ -579,4 +580,37 @@ func (h *AdminHandler) AdminGetReportsByUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "리포트 조회에 성공하였습니다.", reports))
+}
+
+// TODO 사용자 상태 수정
+func (h *AdminHandler) AdminUpdateUserStatus(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	targetUserId, err := strconv.Atoi(c.Param("userid"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	var request req.AdminUpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	err = h.adminUsecase.AdminUpdateUserStatus(adminUserId.(uint), uint(targetUserId), request.Status)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 상태 수정에 성공하였습니다.", nil))
 }

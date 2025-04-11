@@ -27,6 +27,7 @@ type AdminUsecase interface {
 	AdminGetUsersByCompany(adminUserId uint, companyID uint, query *req.UserQuery) ([]res.AdminGetUserByIdResponse, error)
 	AdminSearchUser(adminUserId uint, searchTerm string) ([]res.AdminGetUserByIdResponse, error)
 	AdminUpdateUser(adminUserId uint, targetUserId uint, request *req.AdminUpdateUserRequest) error
+	AdminUpdateUserStatus(adminUserId uint, targetUserId uint, status string) error
 
 	AdminUpdateUserRole(adminUserId uint, targetUserId uint, role uint) error
 	AdminRemoveUserFromCompany(adminUserId uint, targetUserId uint) error
@@ -843,7 +844,33 @@ func (u *adminUsecase) AdminGetReportsByUser(adminUserId uint, targetUserId uint
 	}, nil
 }
 
-// TODO 사용자 제재
-// func (u *adminUsecase) AdminBanUser(adminUserId uint, targetUserId uint) error {
+// TODO 사용자 상태 수정
+func (u *adminUsecase) AdminUpdateUserStatus(adminUserId uint, targetUserId uint, status string) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
 
-// }
+	if adminUser.Role > _userEntity.RoleSubAdmin {
+		log.Printf("권한이 없는 사용자가 사용자 상태를 수정하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	_, err = u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("해당 사용자는 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "해당 사용자는 존재하지 않습니다", err)
+	}
+
+	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{
+		"status": status,
+	}, map[string]interface{}{})
+
+	if err != nil {
+		log.Printf("사용자 상태 수정 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 상태 수정 중 오류 발생", err)
+	}
+
+	return nil
+}

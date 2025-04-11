@@ -26,7 +26,6 @@ type UserRepository interface {
 
 	//관리자 관련
 	AdminSearchUser(searchTerm string) ([]entity.User, error)
-
 	//TODO 부서
 	CreateUserDepartment(userId uint, departmentId uint) error
 	GetUsersByDepartment(departmentId uint) ([]entity.User, error)

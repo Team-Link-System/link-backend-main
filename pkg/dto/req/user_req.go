@@ -31,6 +31,7 @@ type UpdateUserRequest struct {
 	PositionID   *uint   `form:"position_id,omitempty" json:"position_id,omitempty"`
 	EntryDate    *string `form:"entry_date,omitempty" json:"entry_date,omitempty"`
 	Image        *string `form:"image,omitempty" json:"image,omitempty"`
+	Status       *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 type SearchUserRequest struct {
