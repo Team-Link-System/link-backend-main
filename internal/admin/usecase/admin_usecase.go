@@ -308,6 +308,9 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 	if request.Nickname != "" {
 		updateData["nickname"] = request.Nickname
 	}
+	if request.Status != nil {
+		updateData["status"] = request.Status
+	}
 	if request.Image != nil {
 		userProfileUpdateData["image"] = request.Image
 	}

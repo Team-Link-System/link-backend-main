@@ -21,6 +21,7 @@ type AdminUpdateUserRequest struct {
 	CompanyID     int     `json:"company_id,omitempty"`
 	DepartmentIDs []uint  `json:"department_ids,omitempty"`
 	PositionID    int     `json:"position_id,omitempty"`
+	Status        *string `json:"status,omitempty"`
 }
 
 type AdminCreateCompanyRequest struct {

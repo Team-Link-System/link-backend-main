@@ -245,6 +245,9 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	if request.Phone != nil {
 		userUpdates["phone"] = *request.Phone
 	}
+	if request.Status != nil {
+		userUpdates["status"] = *request.Status
+	}
 	if request.Birthday != nil {
 		profileUpdates["birthday"] = *request.Birthday
 	}
@@ -265,9 +268,6 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	}
 	if request.Image != nil {
 		profileUpdates["image"] = *request.Image
-	}
-	if request.Status != nil {
-		profileUpdates["status"] = *request.Status
 	}
 	//TODO db 업데이트 하고
 	err = u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
