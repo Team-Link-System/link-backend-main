@@ -510,9 +510,10 @@ func (u *adminUsecase) AdminSearchUser(adminUserId uint, searchTerm string) ([]r
 			Phone:     *user.Phone,
 			Nickname:  *user.Nickname,
 			EntryDate: user.UserProfile.EntryDate,
+			Role:      uint(user.Role),
+			Status:    *user.Status,
 			CreatedAt: *user.CreatedAt,
 			UpdatedAt: *user.UpdatedAt,
-			Role:      uint(user.Role),
 		}
 
 		// Company가 nil이 아닌 경우에만 설정
