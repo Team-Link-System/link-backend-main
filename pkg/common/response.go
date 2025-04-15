@@ -60,6 +60,7 @@ func NewError(status int, message string, err error) *AppError {
 	}
 
 	// 파일 기반 로그
+	_ = logger.LogError(fmt.Sprintf("[error] : %v", err))
 	_ = logger.LogError(fmt.Sprintf("[%d] %s: %v", appErr.StatusCode, appErr.Message, appErr.Err))
 
 	return appErr

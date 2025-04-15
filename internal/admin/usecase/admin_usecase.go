@@ -149,16 +149,22 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다", err)
 	}
 
+	var cpLogo string
+	if request.CpLogo != nil {
+		cpLogo = *request.CpLogo
+	}
+
 	company := &_companyEntity.Company{
 		CpName:                    request.CpName,
-		CpNumber:                  *request.CpNumber,
-		CpLogo:                    *request.CpLogo,
-		RepresentativeName:        *request.RepresentativeName,
-		RepresentativePhoneNumber: *request.RepresentativePhoneNumber,
-		RepresentativeEmail:       *request.RepresentativeEmail,
-		RepresentativeAddress:     *request.RepresentativeAddress,
-		RepresentativePostalCode:  *request.RepresentativePostalCode,
+		CpNumber:                  request.CpNumber,
+		CpLogo:                    cpLogo,
+		RepresentativeName:        request.RepresentativeName,
+		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
+		RepresentativeEmail:       request.RepresentativeEmail,
+		RepresentativeAddress:     request.RepresentativeAddress,
+		RepresentativePostalCode:  request.RepresentativePostalCode,
 		IsVerified:                true,
+		Grade:                     request.Grade,
 	}
 
 	createdCompany, err := c.companyRepository.CreateCompany(company)
