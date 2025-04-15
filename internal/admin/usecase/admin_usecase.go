@@ -148,20 +148,16 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 		log.Printf("권한이 없는 사용자가 회사를 등록하려 했습니다: 요청자 ID %d", requestUserID)
 		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다", err)
 	}
-	if request.Grade == 0 {
-		request.Grade = 1
-	}
 
 	company := &_companyEntity.Company{
 		CpName:                    request.CpName,
-		CpNumber:                  request.CpNumber,
-		CpLogo:                    request.CpLogo,
-		RepresentativeName:        request.RepresentativeName,
-		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
-		RepresentativeEmail:       request.RepresentativeEmail,
-		RepresentativeAddress:     request.RepresentativeAddress,
-		RepresentativePostalCode:  request.RepresentativePostalCode,
-		Grade:                     request.Grade,
+		CpNumber:                  *request.CpNumber,
+		CpLogo:                    *request.CpLogo,
+		RepresentativeName:        *request.RepresentativeName,
+		RepresentativePhoneNumber: *request.RepresentativePhoneNumber,
+		RepresentativeEmail:       *request.RepresentativeEmail,
+		RepresentativeAddress:     *request.RepresentativeAddress,
+		RepresentativePostalCode:  *request.RepresentativePostalCode,
 		IsVerified:                true,
 	}
 

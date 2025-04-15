@@ -175,13 +175,13 @@ func (h *AdminHandler) AdminCreateCompany(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("request.CpLogo", request.CpLogo)
-
 	companyImageUrl, exists := c.Get("company_image_url")
 	if exists {
 		imageURL := companyImageUrl.(string)
-		request.CpLogo = imageURL
+		request.CpLogo = &imageURL
 	}
+
+	fmt.Println("request", request)
 
 	company, err := h.adminUsecase.AdminCreateCompany(requestUserID, &request)
 	if err != nil {
