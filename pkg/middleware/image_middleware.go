@@ -124,3 +124,39 @@ func (i *ImageUploadMiddleware) PostImageUploadMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func (i *ImageUploadMiddleware) CompanyImageUploadMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.Next()
+			return
+		}
+
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+			fmt.Printf("허용되지 않는 파일 형식입니다: %s", ext)
+			c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "허용되지 않는 파일 형식입니다", nil))
+			c.Abort()
+			return
+		}
+
+		now := time.Now().Format("2006-01-02")
+		folderPath := filepath.Join(i.directory, now)
+
+		uniqueFileName := uuid.New().String()[:15]
+		fileName := uniqueFileName + ext
+		filePath := filepath.Join(folderPath, fileName)
+
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			fmt.Printf("파일 저장 실패: %v", err)
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "파일 저장 실패", err))
+			c.Abort()
+			return
+		}
+
+		imageUrl := fmt.Sprintf("%s/%s/%s", i.staticPrefix, now, fileName)
+		c.Set("company_image_url", imageUrl)
+		c.Next()
+	}
+}

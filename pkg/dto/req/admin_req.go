@@ -25,14 +25,15 @@ type AdminUpdateUserRequest struct {
 }
 
 type AdminCreateCompanyRequest struct {
-	CpName                    string `json:"cp_name" binding:"required"`
-	CpNumber                  string `json:"cp_number,omitempty"`
-	RepresentativeName        string `json:"representative_name,omitempty"`
-	RepresentativePhoneNumber string `json:"representative_phone_number,omitempty"`
-	RepresentativeEmail       string `json:"representative_email,omitempty"`
-	RepresentativeAddress     string `json:"representative_address,omitempty"`
-	RepresentativePostalCode  string `json:"representative_postal_code,omitempty"`
-	Grade                     int    `json:"grade,omitempty"`
+	CpName                    string `form:"cp_name" json:"cp_name" binding:"required"`
+	CpNumber                  string `form:"cp_number,omitempty" json:"cp_number,omitempty"`
+	CpLogo                    string `form:"cp_logo,omitempty" json:"cp_logo,omitempty"`
+	RepresentativeName        string `form:"representative_name,omitempty" json:"representative_name,omitempty"`
+	RepresentativePhoneNumber string `form:"representative_phone_number,omitempty" json:"representative_phone_number,omitempty"`
+	RepresentativeEmail       string `form:"representative_email,omitempty" json:"representative_email,omitempty"`
+	RepresentativeAddress     string `form:"representative_address,omitempty" json:"representative_address,omitempty"`
+	RepresentativePostalCode  string `form:"representative_postal_code,omitempty" json:"representative_postal_code,omitempty"`
+	Grade                     int    `form:"grade,omitempty" json:"grade,omitempty"`
 }
 
 type AdminAddUserToCompanyRequest struct {

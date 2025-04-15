@@ -8,6 +8,10 @@ type GetCompanyInfoResponse struct {
 	RepresentativeTel     string `json:"representative_phone_number,omitempty"`
 	RepresentativeEmail   string `json:"representative_email,omitempty"`
 	RepresentativeAddress string `json:"representative_address,omitempty"`
+	IsVerified            bool   `json:"is_verified"`
+	Grade                 int    `json:"grade,omitempty"`
+	CreatedAt             string `json:"created_at"`
+	UpdatedAt             string `json:"updated_at"`
 }
 
 type OrganizationResponse struct {

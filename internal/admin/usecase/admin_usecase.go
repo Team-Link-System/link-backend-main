@@ -155,6 +155,7 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 	company := &_companyEntity.Company{
 		CpName:                    request.CpName,
 		CpNumber:                  request.CpNumber,
+		CpLogo:                    request.CpLogo,
 		RepresentativeName:        request.RepresentativeName,
 		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
 		RepresentativeEmail:       request.RepresentativeEmail,

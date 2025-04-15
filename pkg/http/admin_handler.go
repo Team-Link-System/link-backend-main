@@ -170,9 +170,17 @@ func (h *AdminHandler) AdminCreateCompany(c *gin.Context) {
 	}
 
 	var request req.AdminCreateCompanyRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err := c.ShouldBind(&request); err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
 		return
+	}
+
+	fmt.Println("request.CpLogo", request.CpLogo)
+
+	companyImageUrl, exists := c.Get("company_image_url")
+	if exists {
+		imageURL := companyImageUrl.(string)
+		request.CpLogo = imageURL
 	}
 
 	company, err := h.adminUsecase.AdminCreateCompany(requestUserID, &request)

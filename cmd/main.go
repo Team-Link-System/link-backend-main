@@ -257,7 +257,7 @@ func startServer() {
 			admin := protectedRoute.Group("admin")
 			{
 				admin.POST("/signup", adminHandler.AdminCreateAdmin)
-				admin.POST("/company", adminHandler.AdminCreateCompany)
+				admin.POST("/company", params.ProfileImageMiddleware.CompanyImageUploadMiddleware(), adminHandler.AdminCreateCompany)
 				admin.PUT("/company", adminHandler.AdminUpdateCompany)
 				admin.DELETE("/company/:companyid", adminHandler.AdminDeleteCompany)
 				admin.GET("/user/list", adminHandler.AdminGetAllUsers)                     //TODO 전체 사용자 조회

@@ -165,6 +165,10 @@ func (r *companyPersistence) GetAllCompanies() ([]entity.Company, error) {
 			RepresentativePhoneNumber: company.RepresentativePhoneNumber,
 			RepresentativeEmail:       company.RepresentativeEmail,
 			RepresentativeAddress:     company.RepresentativeAddress,
+			IsVerified:                company.IsVerified,
+			Grade:                     int(company.Grade),
+			CreatedAt:                 company.CreatedAt,
+			UpdatedAt:                 company.UpdatedAt,
 		}
 	}
 
