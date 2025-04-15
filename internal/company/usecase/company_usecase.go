@@ -54,10 +54,14 @@ func (u *companyUsecase) GetAllCompanies() ([]res.GetCompanyInfoResponse, error)
 			ID:                    company.ID,
 			CpName:                company.CpName,
 			CpLogo:                company.CpLogo,
+			IsVerified:            company.IsVerified,
+			Grade:                 company.Grade,
 			RepresentativeName:    company.RepresentativeName,
 			RepresentativeTel:     company.RepresentativePhoneNumber,
 			RepresentativeEmail:   company.RepresentativeEmail,
 			RepresentativeAddress: company.RepresentativeAddress,
+			CreatedAt:             _util.ParseKst(company.CreatedAt).Format(time.DateTime),
+			UpdatedAt:             _util.ParseKst(company.UpdatedAt).Format(time.DateTime),
 		}
 	}
 

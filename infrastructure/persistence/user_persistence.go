@@ -210,6 +210,7 @@ func (r *userPersistence) GetUserByEmail(email string) (*entity.User, error) {
 		Nickname: &user.Nickname,
 		Name:     &user.Name,
 		Role:     entity.UserRole(user.Role),
+		Status:   &user.Status,
 		Password: &user.Password,
 		UserProfile: &entity.UserProfile{
 			CompanyID:   user.UserProfile.CompanyID,
@@ -252,7 +253,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		//TODO 온라인 상태가 없다면 그냥 false로 줘야함
 
 		id := uint(userID)
-		email, nickname, name, phone := userData["email"], userData["nickname"], userData["name"], userData["phone"]
+		email, nickname, name, phone, status := userData["email"], userData["nickname"], userData["name"], userData["phone"], userData["status"]
 		cid, pid := uint(companyID), uint(positionID)
 		image, birthday := userData["image"], userData["birthday"]
 		parsedEntryDate, _ := time.Parse(time.RFC3339, userData["entry_date"])
@@ -272,6 +273,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			Nickname: &nickname,
 			Name:     &name,
 			Phone:    &phone,
+			Status:   &status,
 			Role:     entity.UserRole(role),
 			IsOnline: &isOnline,
 			UserProfile: &entity.UserProfile{
@@ -339,6 +341,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 		Name:     &user.Name,
 		Phone:    &user.Phone,
 		Role:     entity.UserRole(user.Role),
+		Status:   &user.Status,
 		IsOnline: &isOnline,
 		UserProfile: &entity.UserProfile{
 			Image:        user.UserProfile.Image,
@@ -365,6 +368,7 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			"nickname": *entityUser.Nickname,
 			"name":     *entityUser.Name,
 			"role":     entityUser.Role,
+			"status":   *entityUser.Status,
 		}
 
 		// Optional fields
@@ -464,6 +468,7 @@ func (r *userPersistence) GetUserByIds(ids []uint) ([]entity.User, error) {
 			Nickname: &user.Nickname,
 			Name:     &user.Name,
 			Role:     entity.UserRole(user.Role),
+			Status:   &user.Status,
 			UserProfile: &entity.UserProfile{
 				UserId:       user.ID,
 				CompanyID:    user.UserProfile.CompanyID,
@@ -559,6 +564,7 @@ func (r *userPersistence) SearchUser(companyId uint, searchTerm string) ([]entit
 			Nickname:  &user.Nickname,
 			Name:      &user.Name,
 			Role:      entity.UserRole(user.Role),
+			Status:    &user.Status,
 			Phone:     &user.Phone,
 			CreatedAt: &user.CreatedAt,
 			UpdatedAt: &user.UpdatedAt,
@@ -578,7 +584,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 	// UserProfile의 company_id 필드를 사용하여 조건을 설정
 	dbQuery := r.db.
 		Table("users").
-		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.created_at", "users.updated_at",
+		Select("users.id", "users.name", "users.email", "users.nickname", "users.role", "users.phone", "users.status", "users.created_at", "users.updated_at",
 			"user_profiles.birthday", "user_profiles.is_subscribed", "user_profiles.entry_date", "user_profiles.image",
 			"companies.id as company_id", "companies.cp_name as company_name",
 			"departments.id as department_id", "departments.name as department_name",
@@ -624,7 +630,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 
 		// 데이터베이스에서 조회된 데이터를 변수에 스캔
 		if err := rows.Scan(
-			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.CreatedAt, &user.UpdatedAt,
+			&userID, &user.Name, &user.Email, &user.Nickname, &user.Role, &user.Phone, &user.Status, &user.CreatedAt, &user.UpdatedAt,
 			&birthday, &isSubscribed, &entryDate, &image,
 			&companyID, &companyName, &departmentID, &departmentName, &positionID, &positionName,
 		); err != nil {
@@ -834,6 +840,7 @@ func (r *userPersistence) GetAllUsers(requestUserId uint) ([]entity.User, error)
 			Nickname: &user.Nickname,
 			Phone:    &user.Phone,
 			Role:     entity.UserRole(user.Role),
+			Status:   &user.Status,
 			UserProfile: &entity.UserProfile{
 				Image:        user.UserProfile.Image,
 				Birthday:     user.UserProfile.Birthday,
@@ -879,6 +886,7 @@ func (r *userPersistence) AdminSearchUser(searchTerm string) ([]entity.User, err
 			Nickname: &user.Nickname,
 			Name:     &user.Name,
 			Phone:    &user.Phone,
+			Status:   &user.Status,
 			Role:     entity.UserRole(user.Role),
 			UserProfile: &entity.UserProfile{
 				Image:        user.UserProfile.Image,
@@ -1062,7 +1070,7 @@ func (r *userPersistence) GetCacheUsers(userIds []uint, fields []string) (map[ui
 // ! 캐시 데이터가 완전한지 확인하는 헬퍼 함수
 func (r *userPersistence) IsUserCacheComplete(userData map[string]string) bool {
 	requiredFields := []string{
-		"id", "name", "email", "nickname", "role",
+		"id", "name", "email", "nickname", "role", "status",
 		"image", "company_id", "departments",
 		"birthday", "is_subscribed",
 		"created_at", "updated_at", "entry_date",

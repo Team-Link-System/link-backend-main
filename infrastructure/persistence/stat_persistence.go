@@ -25,6 +25,40 @@ func NewStatPersistence(db *gorm.DB, mongoDB *mongo.Client) repository.StatRepos
 	}
 }
 
+func (r *StatPersistence) GetUserRoleStat(requestUserId uint) (*entity.UserRoleStat, error) {
+	var stats []struct {
+		Role      int `gorm:"column:role"`
+		UserCount int `gorm:"column:user_count"`
+	}
+
+	query := `
+	SELECT 
+			role,
+			COUNT(*) AS user_count
+	FROM users
+	GROUP BY role
+	ORDER BY role;
+	`
+
+	if err := r.db.Raw(query).Scan(&stats).Error; err != nil {
+		log.Printf("사용자 role 별 사용자 수 조회 실패: %v", err)
+		return nil, fmt.Errorf("사용자 role 별 사용자 수 조회 실패: %w", err)
+	}
+
+	result := &entity.UserRoleStat{
+		RoleStats: make([]entity.RoleStat, 0),
+	}
+
+	for _, stat := range stats {
+		result.RoleStats = append(result.RoleStats, entity.RoleStat{
+			Role:      stat.Role,
+			UserCount: stat.UserCount,
+		})
+	}
+
+	return result, nil
+}
+
 // TODO post관련 stat 데이터 조회
 func (r *StatPersistence) GetTodayPostStat(companyId uint) (*entity.TodayPostStat, error) {
 	var todayPostStat entity.TodayPostStat

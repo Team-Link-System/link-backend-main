@@ -35,6 +35,7 @@ type GetAllUsersResponse struct {
 	IsOnline        bool      `json:"is_online,omitempty"`
 	Phone           string    `json:"phone,omitempty"`
 	Role            uint      `json:"role,omitempty"`
+	Status          string    `json:"status,omitempty"`
 	Image           *string   `json:"image,omitempty"`
 	Birthday        string    `json:"birthday,omitempty"`
 	CompanyID       uint      `json:"company_id,omitempty"`
@@ -72,6 +73,7 @@ type AdminGetUserByIdResponse struct {
 	CreatedAt    time.Time                    `json:"created_at,omitempty"`
 	UpdatedAt    time.Time                    `json:"updated_at,omitempty"`
 	Role         uint                         `json:"role,omitempty"`
+	Status       string                       `json:"status,omitempty"`
 }
 
 type AdminGetReportsResponse struct {

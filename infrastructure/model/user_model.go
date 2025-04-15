@@ -23,6 +23,7 @@ type User struct {
 	Password       string         `json:"password" gorm:"not null"`
 	Phone          string         `json:"phone"`
 	Role           UserRole       `json:"role" binding:"required" gorm:"not null;default:5"`
+	Status         string         `json:"status" gorm:"not null;default:active"`
 	UserProfile    *UserProfile   `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;OnUpdate:CASCADE"` // 1:1 관계 설정
 	CreatedAt      time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time      `json:"updated_at"`

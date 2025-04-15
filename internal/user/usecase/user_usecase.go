@@ -154,6 +154,7 @@ func (u *userUsecase) GetUserInfo(requestUserId, targetUserId uint, role string)
 		Phone:        _utils.GetValueOrDefault(targetUser.Phone, ""),
 		Nickname:     _utils.GetValueOrDefault(targetUser.Nickname, ""),
 		Role:         uint(_utils.GetValueOrDefault(&targetUser.Role, entity.RoleUser)),
+		Status:       _utils.GetValueOrDefault(targetUser.Status, ""),
 		Image:        _utils.GetValueOrDefault(targetUser.UserProfile.Image, ""),
 		Birthday:     _utils.GetValueOrDefault(&targetUser.UserProfile.Birthday, ""),
 		IsOnline:     _utils.GetValueOrDefault(targetUser.IsOnline, false),
@@ -244,6 +245,9 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	if request.Phone != nil {
 		userUpdates["phone"] = *request.Phone
 	}
+	if request.Status != nil {
+		userUpdates["status"] = *request.Status
+	}
 	if request.Birthday != nil {
 		profileUpdates["birthday"] = *request.Birthday
 	}
@@ -265,7 +269,6 @@ func (u *userUsecase) UpdateUserInfo(targetUserId, requestUserId uint, request *
 	if request.Image != nil {
 		profileUpdates["image"] = *request.Image
 	}
-
 	//TODO db 업데이트 하고
 	err = u.userRepo.UpdateUser(targetUserId, userUpdates, profileUpdates)
 	if err != nil {
@@ -421,6 +424,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 			Nickname:        _utils.GetValueOrDefault(user.Nickname, ""),
 			Phone:           _utils.GetValueOrDefault(user.Phone, ""),
 			Role:            uint(_utils.GetValueOrDefault(&user.Role, entity.RoleUser)),
+			Status:          _utils.GetValueOrDefault(user.Status, ""),
 			IsOnline:        isOnline,
 			IsSubscribed:    _utils.GetValueOrDefault(&user.UserProfile.IsSubscribed, false),
 			Image:           _utils.GetValueOrDefault(user.UserProfile.Image, ""),
