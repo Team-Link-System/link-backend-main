@@ -594,7 +594,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		Joins("LEFT JOIN user_profile_departments ON user_profile_departments.user_profile_user_id = users.id").
 		Joins("LEFT JOIN departments ON departments.id = user_profile_departments.department_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
-		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
+		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleSubAdmin, entity.RoleUser)
 
 	if queryOptions == nil {
 		queryOptions = &entity.UserQueryOptions{

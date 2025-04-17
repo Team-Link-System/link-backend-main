@@ -178,7 +178,6 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 	var unassignedUsers []res.GetOrganizationUserInfoResponse
 
 	for _, user := range users {
-		// 각 사용자의 Position 정보 가져오기
 		positionName := ""
 		if user.UserProfile.Position != nil {
 			if posName, ok := (*user.UserProfile.Position)["name"].(string); ok {
