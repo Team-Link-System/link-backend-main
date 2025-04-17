@@ -78,6 +78,7 @@ func startServer() {
 	// config.UpdateAllUserOffline(cfg.DB)
 	config.EnsureDirectory("static/profiles")
 	config.EnsureDirectory("static/posts")
+	config.EnsureDirectory("static/company")
 
 	// TODO: Gin 모드 설정 (프로덕션일 경우)
 	// gin.SetMode(gin.ReleaseMode)

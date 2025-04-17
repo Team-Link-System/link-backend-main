@@ -758,11 +758,20 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 		conn.Close()
 	}()
 
-	pingTicker := time.NewTicker(30 * time.Second)
-	defer pingTicker.Stop()
+	// 종료 신호를 위한 채널 추가
+	done := make(chan struct{})
+	defer close(done)
 
 	// 클라이언트 메시지 처리
 	go func() {
+		defer func() {
+			select {
+			case <-done:
+				return
+			default:
+				close(done)
+			}
+		}()
 
 		for {
 			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
@@ -774,7 +783,7 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 				} else {
 					log.Printf("웹소켓 오류: %v", err)
 				}
-				break
+				return
 			}
 
 			// 메시지 처리
@@ -784,34 +793,24 @@ func (h *WsHandler) HandleBoardWebSocket(c *gin.Context) {
 				continue
 			}
 
-			log.Printf("asdasdasdas 수신: %s", string(message))
-
-			// 메시지 타입에 따른 처리
-			msgType, ok := clientMsg["type"].(string)
-			if !ok {
-				log.Printf("메시지 타입 추출 실패: %v", clientMsg)
-				continue
-			}
-
-			switch msgType {
-
-			case "ping":
-				// 핑 메시지 처리
-				conn.WriteJSON(res.JsonResponse{
-					Success: true,
-					Type:    "pong",
-				})
-
-				// 마지막 활동 시간 업데이트
-				h.hub.UpdateBoardUserActivity(uint(boardID), uint(userID))
-			}
+			// 모든 메시지 수신 시 활동 시간 업데이트
+			h.hub.UpdateBoardUserActivity(uint(boardID), uint(userID))
 		}
 	}()
 
-	for range pingTicker.C {
-		if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(10*time.Second)); err != nil {
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	// Ping 처리 루프
+	for {
+		select {
+		case <-done:
 			return
+		case <-pingTicker.C:
+			if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(10*time.Second)); err != nil {
+				log.Printf("Ping 전송 실패: %v", err)
+				return
+			}
 		}
 	}
-
 }

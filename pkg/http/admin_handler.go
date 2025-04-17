@@ -181,8 +181,6 @@ func (h *AdminHandler) AdminCreateCompany(c *gin.Context) {
 		request.CpLogo = &imageURL
 	}
 
-	fmt.Println("request", request)
-
 	company, err := h.adminUsecase.AdminCreateCompany(requestUserID, &request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {

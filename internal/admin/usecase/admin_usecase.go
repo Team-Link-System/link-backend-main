@@ -149,16 +149,22 @@ func (c *adminUsecase) AdminCreateCompany(requestUserID uint, request *req.Admin
 		return nil, common.NewError(http.StatusForbidden, "관리자 계정이 아닙니다", err)
 	}
 
+	var cpLogo string
+	if request.CpLogo != nil {
+		cpLogo = *request.CpLogo
+	}
+
 	company := &_companyEntity.Company{
 		CpName:                    request.CpName,
-		CpNumber:                  *request.CpNumber,
-		CpLogo:                    *request.CpLogo,
-		RepresentativeName:        *request.RepresentativeName,
-		RepresentativePhoneNumber: *request.RepresentativePhoneNumber,
-		RepresentativeEmail:       *request.RepresentativeEmail,
-		RepresentativeAddress:     *request.RepresentativeAddress,
-		RepresentativePostalCode:  *request.RepresentativePostalCode,
+		CpNumber:                  request.CpNumber,
+		CpLogo:                    cpLogo,
+		RepresentativeName:        request.RepresentativeName,
+		RepresentativePhoneNumber: request.RepresentativePhoneNumber,
+		RepresentativeEmail:       request.RepresentativeEmail,
+		RepresentativeAddress:     request.RepresentativeAddress,
+		RepresentativePostalCode:  request.RepresentativePostalCode,
 		IsVerified:                true,
+		Grade:                     request.Grade,
 	}
 
 	createdCompany, err := c.companyRepository.CreateCompany(company)
@@ -504,9 +510,10 @@ func (u *adminUsecase) AdminSearchUser(adminUserId uint, searchTerm string) ([]r
 			Phone:     *user.Phone,
 			Nickname:  *user.Nickname,
 			EntryDate: user.UserProfile.EntryDate,
+			Role:      uint(user.Role),
+			Status:    *user.Status,
 			CreatedAt: *user.CreatedAt,
 			UpdatedAt: *user.UpdatedAt,
-			Role:      uint(user.Role),
 		}
 
 		// Company가 nil이 아닌 경우에만 설정
@@ -553,6 +560,11 @@ func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, 
 		return common.NewError(http.StatusBadRequest, "자기보다 권한 낮은 사람만 수정할 수 있습니다", err)
 	}
 
+	if adminUser.Role >= _userEntity.UserRole(role) {
+		log.Printf("자기보다 낮은 권한만 줄 수 있습니다.: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
+		return common.NewError(http.StatusBadRequest, "자기보다 낮은 권한만 줄 수 있습니다.", err)
+	}
+
 	if role == 1 {
 		log.Printf("루트 운영자 권한은 줄 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
 		return common.NewError(http.StatusBadRequest, "루트 운영자 권한은 줄 수 없습니다", err)
@@ -562,12 +574,6 @@ func (u *adminUsecase) AdminUpdateUserRole(adminUserId uint, targetUserId uint, 
 	if (role == uint(_userEntity.RoleCompanyManager) || role == uint(_userEntity.RoleCompanySubManager)) && targetUser.UserProfile.CompanyID == nil {
 		log.Printf("회사에 소속되어 있지 않은 사람은 권한 회사 관리자 권한을 받을 수 없습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
 		return common.NewError(http.StatusBadRequest, "회사에 소속되어 있지 않은 사람은 권한 회사 관리자 권한을 받을 수 없습니다", err)
-	}
-
-	//TODO 회사 소속되어있는 사람은 권한 3,4,5만 줄 수 있음
-	if targetUser.UserProfile.CompanyID != nil && (role == uint(_userEntity.RoleAdmin) || role == uint(_userEntity.RoleSubAdmin)) {
-		log.Printf("회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다: 요청자 ID %d, 대상자 ID %d", adminUserId, targetUserId)
-		return common.NewError(http.StatusBadRequest, "회사에 소속되어있는 사람은 권한 3,4,5만 줄 수 있습니다", err)
 	}
 
 	err = u.userRepository.UpdateUser(targetUserId, map[string]interface{}{
