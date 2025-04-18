@@ -84,14 +84,7 @@ func (p *departmentPersistence) UpdateDepartment(companyId uint, departmentID ui
 	if leaderID, exists := updates["department_leader_id"]; exists {
 		switch v := leaderID.(type) {
 		case int:
-			if v > 0 {
-				// 새로운 부서장 지정
-				if err := tx.Model(&model.User{}).Where("id = ?", v).Update("role", 4).Error; err != nil {
-					tx.Rollback()
-					return fmt.Errorf("새로운 부서장 role 업데이트 중 DB 오류: %w", err)
-				}
-			} else {
-				// 부서장을 없애는 경우 (0 또는 음수)
+			if v <= 0 {
 				updates["department_leader_id"] = nil
 			}
 		case nil:
