@@ -267,6 +267,8 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			company = &map[string]interface{}{"name": userData["company_name"]}
 		}
 
+		fmt.Println("userData", role)
+
 		return &entity.User{
 			ID:       &id,
 			Email:    &email,
@@ -333,6 +335,8 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	if user.UserProfile.Company != nil {
 		company = &map[string]interface{}{"name": user.UserProfile.Company.CpName}
 	}
+
+	fmt.Println("user.Role", user.Role)
 
 	entityUser := &entity.User{
 		ID:       &user.ID,

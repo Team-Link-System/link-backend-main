@@ -7,5 +7,5 @@ type CreateDepartmentRequest struct {
 
 type UpdateDepartmentRequest struct {
 	Name               *string `json:"name" binding:"required"`
-	DepartmentLeaderID *uint   `json:"department_leader_id,omitempty"`
+	DepartmentLeaderID *int    `json:"department_leader_id,omitempty"`
 }
