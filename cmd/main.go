@@ -210,7 +210,7 @@ func startServer() {
 				//TODO 회사 직책 관련 핸들러
 				company.GET("/position/list", companyHandler.GetCompanyPositionList)
 				company.GET("/position/:positionid", companyHandler.GetCompanyPositionDetail)
-				company.POST("/position", companyHandler.CreateCompanyPosition)
+				company.POST("/position/:companyid", companyHandler.CreateCompanyPosition)
 				company.DELETE("/position/:positionid", companyHandler.DeleteCompanyPosition)
 				company.PUT("/position/:positionid", companyHandler.UpdateCompanyPosition)
 			}
@@ -269,7 +269,7 @@ func startServer() {
 				admin.PUT("/user/:userid", adminHandler.AdminUpdateUser)
 				admin.DELETE("/user/:userid", adminHandler.AdminRemoveUserFromCompany) //TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
 				admin.PUT("/user/:userid/status", adminHandler.AdminUpdateUserStatus)
-
+				admin.PUT("/user/:userid/department", adminHandler.AdminUpdateUserDepartment)
 				//TODO 부서 관련 핸들러
 				admin.POST("/department", adminHandler.AdminCreateDepartment)
 				admin.PUT("/department/:companyid/:departmentid", adminHandler.AdminUpdateDepartment)

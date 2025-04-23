@@ -79,3 +79,7 @@ type AdminUpdateDepartmentRequest struct {
 type AdminUpdateUserStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
+
+type AdminUpdateUserDepartmentRequest struct {
+	DepartmentIds []uint `json:"department_ids"`
+}

@@ -915,9 +915,6 @@ func (r *userPersistence) AdminSearchUser(searchTerm string) ([]entity.User, err
 }
 
 func (r *userPersistence) UpdateUserDepartments(userId uint, departmentIds []uint) error {
-	//TODO 사용자 부서 업데이트 중간테이블업데이트 해야함 갯수 안맞는데 새로 들어온건 새로 삽입
-	//TODO 삭제를 하고 다시 삽입을 해야하나? -> 고민
-	//TODO 사용자 프로필 업데이트 함수 중간테이블 업데이트 함수 만들어야함
 	tx := r.db.Begin()
 	if tx.Error != nil {
 		log.Printf("트랜잭션 시작 중 오류: %v", tx.Error)

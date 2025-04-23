@@ -433,7 +433,7 @@ func (u *userUsecase) GetUsersByCompany(requestUserId uint, query *req.UserQuery
 			CompanyName:     _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Company}, "name"), ""),
 			DepartmentIds:   _utils.ExtractValuesFromMapSlice[uint](user.UserProfile.Departments, "id"),
 			DepartmentNames: _utils.ExtractValuesFromMapSlice[string](user.UserProfile.Departments, "name"),
-			PositionId:      _utils.GetValueOrDefault(user.UserProfile.PositionId, 0),
+			PositionId:      _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[uint]([]*map[string]interface{}{user.UserProfile.Position}, "id"), 0),
 			PositionName:    _utils.GetFirstOrEmpty(_utils.ExtractValuesFromMapSlice[string]([]*map[string]interface{}{user.UserProfile.Position}, "name"), ""),
 			EntryDate:       user.UserProfile.EntryDate,
 			CreatedAt:       _utils.GetValueOrDefault(user.CreatedAt, time.Time{}),
