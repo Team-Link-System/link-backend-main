@@ -382,6 +382,44 @@ func (h *AdminHandler) AdminUpdateUserRole(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 권한 수정에 성공하였습니다.", nil))
 }
 
+// TODO 사용자 부서 수정
+func (h *AdminHandler) AdminUpdateUserDepartment(c *gin.Context) {
+	adminUserId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	targetUserId, err := strconv.Atoi(c.Param("userid"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	var request req.AdminUpdateUserDepartmentRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다.", err))
+		return
+	}
+
+	if len(request.DepartmentIds) == 0 {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "부서 ID가 입력되지 않았습니다.", nil))
+		return
+	}
+
+	err = h.adminUsecase.AdminUpdateUserDepartment(adminUserId.(uint), uint(targetUserId), &request)
+	if err != nil {
+		if appError, ok := err.(*common.AppError); ok {
+			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))
+		} else {
+			c.JSON(http.StatusInternalServerError, common.NewError(http.StatusInternalServerError, "서버 에러", err))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "사용자 부서 수정에 성공하였습니다.", nil))
+}
+
 // TODO 관리자 1,2,3 일반 사용자 회사에서 퇴출
 func (h *AdminHandler) AdminRemoveUserFromCompany(c *gin.Context) {
 	adminUserId, exists := c.Get("userId")

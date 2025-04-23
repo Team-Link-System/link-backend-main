@@ -6,8 +6,8 @@ type DepartmentListResponse struct {
 	ID                 uint      `json:"id"`
 	Name               string    `json:"name"`
 	CompanyID          uint      `json:"company_id"`
-	DepartmentLeaderID *uint     `json:"department_leader_id,omitempty"`
-	DepartmentLeader   *string   `json:"department_leader_name,omitempty"`
+	DepartmentLeaderID *uint     `json:"department_leader_id"`
+	DepartmentLeader   *string   `json:"department_leader_name"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }

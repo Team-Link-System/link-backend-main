@@ -160,11 +160,16 @@ func (h *CompanyHandler) GetOrganizationByCompany(c *gin.Context) {
 	c.JSON(http.StatusOK, common.NewResponse(http.StatusOK, "회사 조직도 조회 성공", response))
 }
 
-// TODO 회사 직책 생성 (role 4 이하 사용자)
 func (h *CompanyHandler) CreateCompanyPosition(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, common.NewError(http.StatusUnauthorized, "인증되지 않은 요청입니다", nil))
+		return
+	}
+
+	companyId, err := strconv.Atoi(c.Param("companyid"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "잘못된 요청입니다", err))
 		return
 	}
 
@@ -174,7 +179,7 @@ func (h *CompanyHandler) CreateCompanyPosition(c *gin.Context) {
 		return
 	}
 
-	err := h.companyUsecase.CreateCompanyPosition(userId.(uint), request)
+	err = h.companyUsecase.CreateCompanyPosition(userId.(uint), uint(companyId), request)
 	if err != nil {
 		if appError, ok := err.(*common.AppError); ok {
 			c.JSON(appError.StatusCode, common.NewError(appError.StatusCode, appError.Message, appError.Err))

@@ -267,6 +267,8 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 			company = &map[string]interface{}{"name": userData["company_name"]}
 		}
 
+		fmt.Println("userData", role)
+
 		return &entity.User{
 			ID:       &id,
 			Email:    &email,
@@ -333,6 +335,8 @@ func (r *userPersistence) GetUserByID(id uint) (*entity.User, error) {
 	if user.UserProfile.Company != nil {
 		company = &map[string]interface{}{"name": user.UserProfile.Company.CpName}
 	}
+
+	fmt.Println("user.Role", user.Role)
 
 	entityUser := &entity.User{
 		ID:       &user.ID,
@@ -594,7 +598,7 @@ func (r *userPersistence) GetUsersByCompany(companyId uint, queryOptions *entity
 		Joins("LEFT JOIN user_profile_departments ON user_profile_departments.user_profile_user_id = users.id").
 		Joins("LEFT JOIN departments ON departments.id = user_profile_departments.department_id").
 		Joins("LEFT JOIN positions ON positions.id = user_profiles.position_id").
-		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleCompanyManager, entity.RoleUser)
+		Where("user_profiles.company_id = ? AND (users.role >= ? AND users.role <= ?)", companyId, entity.RoleSubAdmin, entity.RoleUser)
 
 	if queryOptions == nil {
 		queryOptions = &entity.UserQueryOptions{
@@ -911,9 +915,6 @@ func (r *userPersistence) AdminSearchUser(searchTerm string) ([]entity.User, err
 }
 
 func (r *userPersistence) UpdateUserDepartments(userId uint, departmentIds []uint) error {
-	//TODO 사용자 부서 업데이트 중간테이블업데이트 해야함 갯수 안맞는데 새로 들어온건 새로 삽입
-	//TODO 삭제를 하고 다시 삽입을 해야하나? -> 고민
-	//TODO 사용자 프로필 업데이트 함수 중간테이블 업데이트 함수 만들어야함
 	tx := r.db.Begin()
 	if tx.Error != nil {
 		log.Printf("트랜잭션 시작 중 오류: %v", tx.Error)

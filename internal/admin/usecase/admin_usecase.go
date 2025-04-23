@@ -37,12 +37,15 @@ type AdminUsecase interface {
 	AdminUpdateCompany(requestUserID uint, request *req.AdminUpdateCompanyRequest) error
 	AdminDeleteCompany(requestUserID uint, companyID uint) error
 	AdminAddUserToCompany(adminUserId uint, targetUserId uint, companyID uint) error
+	AdminUpdateUserDepartment(adminUserId uint, targetUserId uint, request *req.AdminUpdateUserDepartmentRequest) error
 
 	//Department 관련
 	AdminCreateDepartment(adminUserId uint, request *req.AdminCreateDepartmentRequest) error
 	AdminGetAllDepartments(adminUserId uint, companyId uint) ([]res.AdminGetDepartmentResponse, error)
 	AdminDeleteDepartment(adminUserId uint, companyID uint, departmentID uint) error
 	AdminUpdateDepartment(adminUserId uint, companyID uint, departmentID uint, request *req.AdminUpdateDepartmentRequest) error
+
+	//User 관련
 
 	//리포트 관련
 	AdminGetReportsByUser(adminUserId uint, targetUserId uint, queryParams *req.GetReportsQueryParams) (*res.GetReportsResponse, error)
@@ -277,20 +280,20 @@ func (u *adminUsecase) AdminUpdateUser(adminUserId uint, targetUserId uint, requ
 		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
 	}
 
-	if adminUser.Role > _userEntity.RoleSubAdmin {
-		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d", adminUserId)
-		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
-	}
-
 	targetUser, err := u.userRepository.GetUserByID(targetUserId)
 	if err != nil {
 		log.Printf("대상 사용자 조회 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "대상 사용자 조회 중 오류 발생", err)
 	}
 
-	if request.Role != 0 && request.Role <= 2 {
+	if adminUser.Role > _userEntity.RoleCompanyManager {
 		log.Printf("권한이 없는 사용자가 사용자 정보를 업데이트하려 했습니다: 요청자 ID %d", adminUserId)
-		return common.NewError(http.StatusForbidden, "일반 사용자의 권한 변경은 3,4,5만 가능합니다", err)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	if adminUser.Role >= _userEntity.RoleCompanyManager && adminUser.Role <= _userEntity.RoleCompanySubManager && *targetUser.UserProfile.CompanyID != *adminUser.UserProfile.CompanyID {
+		log.Printf("회사 관리자는 소속 회사 사용자만 업데이트 가능합니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
 	updateData := map[string]interface{}{}
@@ -761,8 +764,13 @@ func (u *adminUsecase) AdminDeleteDepartment(adminUserId uint, companyID uint, d
 		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
 	}
 
-	if adminUser.Role > _userEntity.RoleSubAdmin {
+	if adminUser.Role > _userEntity.RoleCompanySubManager {
 		log.Printf("권한이 없는 사용자가 부서를 삭제하려 했습니다: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	if adminUser.Role <= _userEntity.RoleCompanySubManager && adminUser.Role >= _userEntity.RoleCompanyManager && *adminUser.UserProfile.CompanyID != companyID {
+		log.Printf("회사 관리자는 소속 회사 부서만 삭제 가능합니다: 요청자 ID %d", adminUserId)
 		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
 	}
 
@@ -876,6 +884,40 @@ func (u *adminUsecase) AdminUpdateUserStatus(adminUserId uint, targetUserId uint
 	if err != nil {
 		log.Printf("사용자 상태 수정 중 오류 발생: %v", err)
 		return common.NewError(http.StatusInternalServerError, "사용자 상태 수정 중 오류 발생", err)
+	}
+
+	return nil
+}
+
+func (u *adminUsecase) AdminUpdateUserDepartment(adminUserId uint, targetUserId uint, request *req.AdminUpdateUserDepartmentRequest) error {
+	adminUser, err := u.userRepository.GetUserByID(adminUserId)
+	if err != nil {
+		log.Printf("관리자 계정 조회 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "관리자 계정 조회 중 오류 발생", err)
+	}
+
+	if adminUser.Role > _userEntity.RoleCompanyManager {
+		log.Printf("권한이 없는 사용자가 사용자를 수정하려 했습니다.: 요청자 ID %d", adminUserId)
+		return common.NewError(http.StatusForbidden, "권한이 없습니다", err)
+	}
+
+	targetUser, err := u.userRepository.GetUserByID(targetUserId)
+	if err != nil {
+		log.Printf("해당 사용자는 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "해당 사용자는 존재하지 않습니다", err)
+	}
+
+	_, err = u.departmentRepository.GetDepartmentByID(*targetUser.UserProfile.CompanyID, uint(request.DepartmentIds[0]))
+	if err != nil {
+		log.Printf("해당 부서는 존재하지 않습니다: %v", err)
+		return common.NewError(http.StatusBadRequest, "해당 부서는 존재하지 않습니다", err)
+	}
+
+	err = u.userRepository.UpdateUserDepartments(targetUserId, request.DepartmentIds)
+
+	if err != nil {
+		log.Printf("사용자 부서 수정 중 오류 발생: %v", err)
+		return common.NewError(http.StatusInternalServerError, "사용자 부서 수정 중 오류 발생", err)
 	}
 
 	return nil

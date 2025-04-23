@@ -104,6 +104,8 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 		return
 	}
 
+	fmt.Println("targetUserId", targetUserId)
+
 	targetUserIdUint, err := strconv.ParseUint(targetUserId, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.NewError(http.StatusBadRequest, "유효하지 않은 사용자 ID입니다", err))

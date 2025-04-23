@@ -25,7 +25,7 @@ type CompanyUsecase interface {
 	AddUserToCompany(requestUserId uint, userId uint, companyId uint) error
 	GetOrganizationByCompany(requestUserId uint) (*res.OrganizationResponse, error)
 
-	CreateCompanyPosition(requestUserId uint, request req.CompanyPositionRequest) error
+	CreateCompanyPosition(requestUserId uint, companyId uint, request req.CompanyPositionRequest) error
 	GetCompanyPositionList(requestUserId uint) ([]res.GetCompanyPositionResponse, error)
 	GetCompanyPositionDetail(requestUserId uint, positionId uint) (*res.GetCompanyPositionResponse, error)
 	DeleteCompanyPosition(requestUserId uint, positionId uint) error
@@ -178,7 +178,6 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 	var unassignedUsers []res.GetOrganizationUserInfoResponse
 
 	for _, user := range users {
-		// 각 사용자의 Position 정보 가져오기
 		positionName := ""
 		if user.UserProfile.Position != nil {
 			if posName, ok := (*user.UserProfile.Position)["name"].(string); ok {
@@ -265,7 +264,7 @@ func (u *companyUsecase) GetOrganizationByCompany(requestUserId uint) (*res.Orga
 }
 
 // TODO 본인 회사 직책 생성 (Role 3,4)
-func (u *companyUsecase) CreateCompanyPosition(requestUserId uint, request req.CompanyPositionRequest) error {
+func (u *companyUsecase) CreateCompanyPosition(requestUserId uint, companyId uint, request req.CompanyPositionRequest) error {
 
 	requestUser, err := u.userRepository.GetUserByID(requestUserId)
 	if err != nil {
@@ -276,7 +275,11 @@ func (u *companyUsecase) CreateCompanyPosition(requestUserId uint, request req.C
 		return common.NewError(http.StatusForbidden, "관리자 권한이 없습니다", nil)
 	}
 
-	company, err := u.companyRepository.GetCompanyByID(*requestUser.UserProfile.CompanyID)
+	if requestUser.Role >= _userEntity.RoleCompanyManager && requestUser.Role <= _userEntity.RoleCompanySubManager && *requestUser.UserProfile.CompanyID != companyId {
+		return common.NewError(http.StatusBadRequest, "본인 회사 직책만 생성 가능합니다", nil)
+	}
+
+	company, err := u.companyRepository.GetCompanyByID(companyId)
 	if err != nil {
 		return common.NewError(http.StatusInternalServerError, "서버 에러", err)
 	}
